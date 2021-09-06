@@ -12,7 +12,7 @@ func NewCatalogFromJSON(jsonFile string) (*Catalog, error) {
 	// read from the JSON file
 	bytes, err := os.ReadFile(jsonFile)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot read JSON file '%s': %w", jsonFile, err)
+		return nil, fmt.Errorf("cannot read JSON file '%s': %w", jsonFile, err)
 	}
 
 	// unmarshal the file contents into a catalog
@@ -23,7 +23,7 @@ func NewCatalogFromJSON(jsonFile string) (*Catalog, error) {
 
 func NewJSONFileFromCatalog(jsonFile string, catalog *Catalog) error {
 	// marshal the catalog into JSON bytes
-	bytes, err := json.Marshal(catalog)
+	bytes, err := json.MarshalIndent(catalog, "", "  ")
 	if err != nil {
 		return err
 	}
