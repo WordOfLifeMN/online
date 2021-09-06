@@ -1,0 +1,24 @@
+{
+    "series": [
+        {
+            "id": "SERIES-ID",
+            "name": "SERIES-NAME",
+            "description": "SERIES-DESCRIPTION",
+            "visibility": "public"
+        }
+    ],
+    "messages": [
+        {
+            "date": "2021-01-01",
+            "name": "MESSAGE-NAME",
+            "description": "MESSAGE-DESCRIPTION",
+            "speakers": [
+                "SPEAKER-A",
+                "SPEAKER-B"
+            ],
+            "ministry": "wol",
+            "type": "message",
+            "visibility": "public"
+        }
+    ]
+}
