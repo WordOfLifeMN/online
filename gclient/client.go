@@ -1,5 +1,7 @@
 package gclient
 
+// methdos for accessing and interacting with Google API
+
 import (
 	"context"
 	"fmt"

@@ -16,12 +16,7 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
-	"log"
-
-	"github.com/WordOfLifeMN/online/gclient"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // checkCmd represents the check command
@@ -50,38 +45,5 @@ func init() {
 
 func check(cmd *cobra.Command, args []string) error {
 	initLogging()
-
-	sheetID := viper.GetString("sheet-id")
-
-	// get the spreadsheet service
-	log.Printf("Checking spreadsheet %s", sheetID)
-	service, err := gclient.GetSheetService(cmd.Context())
-	if err != nil {
-		return err
-	}
-
-	// output the sheet information
-	document, err := service.Spreadsheets.Get(sheetID).Do()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Spreadsheet \"%s\" (%s)\n", document.Properties.Title, sheetID)
-
-	// output the sheet info
-	for _, sheet := range document.Sheets {
-		fmt.Printf("  Sheet #%d : %s\n", sheet.Properties.Index, sheet.Properties.Title)
-		titleRange := fmt.Sprintf("'%s'!1:1", sheet.Properties.Title)
-		values, err := service.Spreadsheets.Values.Get(sheetID, titleRange).Do()
-		if err != nil {
-			fmt.Printf("ERROR: Unable to get the column titles: %v", err)
-			continue
-		}
-		fmt.Printf("    Columns : ")
-		for _, v := range values.Values[0] {
-			fmt.Printf("%v, ", v)
-		}
-		fmt.Println()
-	}
-
 	return nil
 }

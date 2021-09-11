@@ -1,5 +1,7 @@
 package gclient
 
+// code that can read a spreadsheet and generate a catalog model from it
+
 import (
 	"fmt"
 	"log"
@@ -9,8 +11,6 @@ import (
 	"github.com/WordOfLifeMN/online/catalog"
 	"google.golang.org/api/sheets/v4"
 )
-
-// code that can read a spreadsheet and generate a catalog model from it
 
 // NewCatalogFromSheet takes a valid spreadsheet service and a spreadsheet
 // document ID and creates a catalog from the info in the spreadsheet

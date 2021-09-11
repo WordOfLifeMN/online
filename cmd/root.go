@@ -16,11 +16,15 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"strings"
 
+	"github.com/WordOfLifeMN/online/catalog"
+	"github.com/WordOfLifeMN/online/gclient"
 	"github.com/spf13/cobra"
 
 	"github.com/spf13/viper"
@@ -49,11 +53,15 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Include logging")
+	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+
 	rootCmd.PersistentFlags().String("sheet-id", "", "ID of Google spreadsheet that contains the series and messages")
 	viper.BindPFlag("sheet-id", rootCmd.PersistentFlags().Lookup("sheet-id"))
 
-	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Include logging")
-	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	rootCmd.PersistentFlags().StringP("input", "i", "", "Path to JSON file to read catalog from (overrides --sheet-id)")
+	viper.BindPFlag("input", rootCmd.PersistentFlags().Lookup("input"))
+
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -88,4 +96,34 @@ func initLogging() {
 	if !verbose {
 		log.Default().SetOutput(io.Discard)
 	}
+}
+
+// readOnlineContentFromInput reads the content of a catalog from wherever
+// requested. If there is an --input parameter, then it is read from that file.
+// Otherwise, it is read from the --sheet-id. If there is no --input or --sheet-id, then an error is returned
+func readOnlineContentFromInput(ctx context.Context) (*catalog.Catalog, error) {
+
+	// check if reading from file
+	inputFile := viper.GetString("input")
+	if inputFile != "" {
+		switch {
+		case strings.HasSuffix(strings.ToUpper(inputFile), ".JSON"):
+			return catalog.NewCatalogFromJSON(inputFile)
+		}
+		return nil, fmt.Errorf("filetype %s is not supported", inputFile)
+	}
+
+	// check if reading from Google Sheet
+	sheetID := viper.GetString("sheet-id")
+	if sheetID != "" {
+		sheetService, err := gclient.GetSheetService(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return gclient.NewCatalogFromSheet(sheetService, sheetID)
+	}
+
+	// no input
+	return nil, fmt.Errorf("no input specified. please provide an --input or --sheet-id parameter, or configure a default sheet-id in the ~/.wolm/online.yaml file")
 }
