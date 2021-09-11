@@ -35,8 +35,8 @@ type CatalogSeri struct {
 	Visibility  View             `json:"visibility"`            // visibility of this series as a whole
 	Jacket      string           `json:"jacket,omitempty"`      // link to the DVD (or CD) jacket for this series
 	Thumbnail   string           `json:"thumbnail,omitempty"`   // link to the thumbnail to use for the series
-	StartDate   DateOnly         `json:"start-date"`            // date of first message in the series
-	EndDate     DateOnly         `json:"end-date"`              // date of last message in the series
+	StartDate   DateOnly         `json:"start-date,omitempty"`  // date of first message in the series
+	EndDate     DateOnly         `json:"end-date,omitempty"`    // date of last message in the series
 
 	// cached or generated data. note that this data could be customized for
 	// different views of the series. when read from the online content, the

@@ -59,6 +59,8 @@ func (s *CatalogIOTestSuite) TestJSONWrite() {
 				},
 				Jacket:    "URL://JACKET",
 				Thumbnail: "URL://THUMB",
+				StartDate: MustParseDateOnly("2021-01-01"),
+				EndDate:   MustParseDateOnly("2021-01-08"),
 			},
 		},
 		Messages: []CatalogMessage{
@@ -105,7 +107,9 @@ func (s *CatalogIOTestSuite) TestJSONWrite() {
       ],
       "visibility": "private",
       "jacket": "URL://JACKET",
-      "thumbnail": "URL://THUMB"
+      "thumbnail": "URL://THUMB",
+      "start-date": "2021-01-01",
+      "end-date": "2021-01-08"
     }
   ],
   "messages": [
