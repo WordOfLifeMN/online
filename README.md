@@ -1,5 +1,8 @@
 Application to manage the Word Of Life Ministries online catalog.
 
+# Status
+> This project is under construction
+
 This is a GoLang application that reads information about series and messages
 from Google Sheets, and generates output files that can be uploaded to the web
 to serve this content online.
