@@ -75,10 +75,10 @@ func readSeriesFromDocument(service *sheets.Service, documentID string) ([]catal
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("  Found the following columns:\n")
-	for k, v := range columns {
-		log.Printf("    Column %d: %s\n", v, k)
-	}
+	log.Printf("  Found %d columns\n", len(columns))
+	// for k, v := range columns {
+	// 	log.Printf("    Column %d: %s\n", v, k)
+	// }
 
 	// validate that the columns we are expecting are actually there
 	for _, requiredColumn := range requiredSeriesColumns {
@@ -100,7 +100,7 @@ func readSeriesFromDocument(service *sheets.Service, documentID string) ([]catal
 	}
 
 	// iterate through all the results, creating a new series for each one
-	log.Printf("Found %d series", len(values.Values))
+	log.Printf("  Found %d series", len(values.Values))
 	for seriesIndex, seriesRow := range values.Values {
 		seri, err := newCatalogSeriFromRow(columns, seriesRow)
 		if err != nil {
@@ -214,10 +214,10 @@ func readMessagesFromSheet(service *sheets.Service, documentID string, sheetName
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("  Found the following columns:\n")
-	for k, v := range columns {
-		log.Printf("    Column %d: %s\n", v, k)
-	}
+	log.Printf("  Found %d columns:\n", len(columns))
+	// for k, v := range columns {
+	// 	log.Printf("    Column %d: %s\n", v, k)
+	// }
 
 	// validate that the columns we are expecting are actually there
 	for _, requiredColumn := range requiredMessageColumns {
@@ -239,7 +239,7 @@ func readMessagesFromSheet(service *sheets.Service, documentID string, sheetName
 	}
 
 	// iterate through all the results, creating a new series for each one
-	log.Printf("Found %d messages", len(values.Values))
+	log.Printf("  Found %d messages", len(values.Values))
 	for messageIndex, messageRow := range values.Values {
 		message, err := newCatalogMessageFromRow(columns, messageRow)
 		if err != nil {

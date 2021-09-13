@@ -1,5 +1,5 @@
 /*
-Copyright © 2021 Word of Life Ministries <info@wordoflifemn.org>
+Copyright © 2021 NAME HERE <EMAIL ADDRESS>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,29 +16,26 @@ limitations under the License.
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
 
-// checkCmd represents the check command
-var checkCmd = &cobra.Command{
-	Use:   "check [--input FILE | --sheet-id ID]",
-	Short: "Validate a catalog has correct data in it.",
-	Long: `Ensures that an online content catalog is internall consistent.
-
-Validates:
-- All series referenced by messages actually exist`,
-	RunE: check,
-	Args: cobra.NoArgs,
+// dumpCmd represents the dump command
+var dumpCmd = &cobra.Command{
+	Use:     "dump [--sheet-id ID | --input FILE]",
+	Short:   "Read the content and output the data in JSON",
+	Long:    `Used to make a local copy of the data.`,
+	Example: `dump --sheet-id 1vvhIGMPvVF-DtWoYsEbVBvzk_VtLyKuIw_zyLdsB-JY >/tmp/catalog.json`,
+	RunE:    dump,
 }
 
 func init() {
-	rootCmd.AddCommand(checkCmd)
+	rootCmd.AddCommand(dumpCmd)
 }
 
-func check(cmd *cobra.Command, args []string) error {
+func dump(cmd *cobra.Command, args []string) error {
 	initLogging()
 
 	catalog, err := readOnlineContentFromInput(cmd.Context())
@@ -46,11 +43,12 @@ func check(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	valid := catalog.IsValid()
-
-	if !valid {
-		fmt.Fprintf(os.Stderr, "The catolog was not valid (see errors above)")
+	bytes, err := json.MarshalIndent(catalog, "", "  ")
+	if err != nil {
+		return err
 	}
+
+	fmt.Print(string(bytes))
 
 	return nil
 }
