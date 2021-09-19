@@ -69,3 +69,8 @@ func NewSeriesReferencesFromStrings(names string, tracks string) []SeriesReferen
 
 	return seriesRefs
 }
+
+// Determines if this is a special case of a reference to a message that is stand-alone
+func (r *SeriesReference) IsStandAloneMessage() bool {
+	return r.Name == "SAM" || r.Name == "sam"
+}

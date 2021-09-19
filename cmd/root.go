@@ -41,6 +41,7 @@ series or messages that are presented, then generate the static files for
 accessing the content online.
 
 Supports generating a RSS podcast as well as a HTML static website.`,
+	SilenceUsage: true,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -17,7 +17,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -41,15 +40,21 @@ func init() {
 func check(cmd *cobra.Command, args []string) error {
 	initLogging()
 
+	// // testing output streams
+	// fmt.Fprintf(os.Stdout, "Sent to stdout\n")
+	// fmt.Fprintf(os.Stderr, "Sent to stderr\n")
+	// log.Printf("Sent to log\n")
+	// return nil
+
 	catalog, err := readOnlineContentFromInput(cmd.Context())
 	if err != nil {
 		return err
 	}
 
-	valid := catalog.IsValid()
+	valid := catalog.IsValid(true)
 
 	if !valid {
-		fmt.Fprintf(os.Stderr, "The catolog was not valid (see errors above)")
+		return fmt.Errorf("The online catalog was not valid (see errors above)")
 	}
 
 	return nil

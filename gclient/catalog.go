@@ -128,16 +128,22 @@ func newCatalogSeriFromRow(columns map[string]int, rowData []interface{}) (catal
 
 	// get dates
 	dString := getCellString(rowData, columns[seriesStartDate])
-	if d, err := catalog.ParseDateOnly(dString); err == nil {
+	if dString == "" {
+		seri.StartDate = catalog.DateOnly{} // zero date
+	} else if d, err := catalog.ParseDateOnly(dString); err == nil {
 		seri.StartDate = d
 	} else {
 		log.Printf("WARNING: Cannot parse start date '%s' for series '%s'", dString, seri.Name)
+		seri.StartDate = catalog.DateOnly{} // zero date
 	}
 	dString = getCellString(rowData, columns[seriesEndDate])
-	if d, err := catalog.ParseDateOnly(dString); err == nil {
+	if dString == "" {
+		seri.EndDate = catalog.DateOnly{} // zero date
+	} else if d, err := catalog.ParseDateOnly(dString); err == nil {
 		seri.EndDate = d
 	} else {
 		log.Printf("WARNING: Cannot parse end date '%s' for series '%s'", dString, seri.Name)
+		seri.EndDate = catalog.DateOnly{} // zero date
 	}
 
 	// jacket prefers the DVD, then CD
@@ -161,7 +167,7 @@ const (
 	msgType        string = "Type"
 	msgVisibility  string = "Visibility"
 	msgSeries      string = "Series Name"
-	msgSeriesIndex string = "Track #"
+	msgSeriesIndex string = "Track"
 	msgPlaylist    string = "Playlist"
 	msgDescription string = "Description"
 	msgAudio       string = "Audio Link"
@@ -190,9 +196,10 @@ func readMessagesFromDocument(service *sheets.Service, documentID string) ([]cat
 	}
 
 	// iterate through all the sheets looking for those that start with "Messages"
-	tabPrefix := "Messages"
 	for _, sheet := range document.Sheets {
-		if strings.HasPrefix(sheet.Properties.Title, tabPrefix) {
+		title := strings.ToLower(sheet.Properties.Title)
+		log.Printf("Checking sheet %s\n", title)
+		if strings.HasPrefix(title, "messages") || strings.HasPrefix(title, "msgs") {
 			sheetMessages, err := readMessagesFromSheet(service, documentID, sheet.Properties.Title)
 			if err != nil {
 				log.Printf("Unable to read messages from sheet '%s'", sheet.Properties.Title)
@@ -364,5 +371,5 @@ func getCellString(rowData []interface{}, index int) string {
 		return ""
 	}
 
-	return fmt.Sprintf("%v", rowData[index])
+	return strings.TrimSpace(fmt.Sprintf("%v", rowData[index]))
 }

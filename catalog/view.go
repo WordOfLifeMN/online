@@ -6,10 +6,11 @@ import "strings"
 type View string
 
 const (
-	Raw     View = "raw"     // undetermined or unedited
-	Public  View = "public"  // available to anyone
-	Partner View = "partner" // available to covenant partners
-	Private View = "private" // not to be displayed online to anyone
+	UnknownView View = "unknown" // undetermined view
+	Raw         View = "raw"     // unedited, raw footage - assumed to be private
+	Public      View = "public"  // available to anyone
+	Partner     View = "partner" // available to covenant partners
+	Private     View = "private" // not to be displayed online to anyone
 )
 
 func NewViewFromString(s string) View {
@@ -17,10 +18,13 @@ func NewViewFromString(s string) View {
 	case "public":
 		return Public
 	case "protected":
+		return Partner
 	case "partner":
 		return Partner
 	case "private":
 		return Private
+	case "raw":
+		return Raw
 	}
-	return Raw
+	return UnknownView
 }

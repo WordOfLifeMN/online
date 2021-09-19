@@ -83,6 +83,10 @@ func NewResourcesFromString(s string) []OnlineResource {
 
 	s = strings.TrimSpace(s)
 
+	if s == "-" || s == "n/a" {
+		return results
+	}
+
 	for _, part := range strings.Split(s, ";") {
 		r := NewResourceFromString(part)
 		if r.URL != "" {

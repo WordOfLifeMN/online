@@ -1,7 +1,6 @@
 package catalog
 
 import (
-	"log"
 	"strings"
 )
 
@@ -34,6 +33,6 @@ func NewMinistryFromString(s string) Ministry {
 		return FaithAndFreedom
 	}
 
-	log.Printf("WARNING: Encountered unknown ministry '%s'", s)
+	// log.Printf("WARNING: Encountered unknown ministry '%s'", s)
 	return UnknownMinistry
 }

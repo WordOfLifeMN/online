@@ -1,7 +1,6 @@
 package catalog
 
 import (
-	"log"
 	"strings"
 )
 
@@ -40,6 +39,6 @@ func NewMessageTypeFromString(s string) MessageType {
 		return Word
 	}
 
-	log.Printf("WARNING: Encountered unknown message type '%s'", s)
+	// log.Printf("WARNING: Encountered unknown message type '%s'", s)
 	return UnknownType
 }

@@ -107,3 +107,9 @@ func TestUnmarshalDate(t *testing.T) {
 	assert.Equal(t, time.March, s.Date.Month())
 	assert.Equal(t, 4, s.Date.Day())
 }
+
+func TestZeroDate(t *testing.T) {
+	sut := DateOnly{}
+
+	assert.True(t, sut.IsZero())
+}

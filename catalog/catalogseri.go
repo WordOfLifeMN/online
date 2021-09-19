@@ -1,6 +1,10 @@
 package catalog
 
-import "github.com/WordOfLifeMN/online/util"
+import (
+	"strings"
+
+	"github.com/WordOfLifeMN/online/util"
+)
 
 // CatalogSeri describes one series in a catalog. A Series describes a
 // collection of related messages. This could be a collection of one or more
@@ -28,6 +32,19 @@ type CatalogSeri struct {
 	View     View             `json:"-"` // view of this cached data, "Raw" if unfiltered yet
 	messages []CatalogMessage `json:"-"` // list of messages in the series
 	speakers []string         `json:"-"` // list of speakers in the series
+	nameLC   string           `json:"-"` // lowercase version of the series name (used for searching)
+}
+
+// Initializes the series for use. This assumes that the series was just read in
+// from disk or network and will take care of setting up the internal
+// bookkeeping that is necessary for performance
+func (s *CatalogSeri) initialize() {
+	// use the lower-case name as a flag
+	if s.nameLC != "" {
+		return
+	}
+
+	s.nameLC = strings.ToLower(s.Name)
 }
 
 // Gets the ID of a series. If the series has an explicit ID (from the spreadsheet) then it will
