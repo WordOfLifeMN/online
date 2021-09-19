@@ -457,60 +457,60 @@ func (t *CatalogTestSuite) TestValidateSeriesNames_Duplicates() {
 	t.False(sut.IsSeriesNamesValid())
 }
 
-func (t *CatalogTestSuite) TestValidateMessageNames() {
-	sut := Catalog{
-		Messages: []CatalogMessage{
-			{Name: "MESSAGE-A"},
-			{Name: "MESSAGE-B"},
-		},
-	}
+// func (t *CatalogTestSuite) TestValidateMessageNames() {
+// 	sut := Catalog{
+// 		Messages: []CatalogMessage{
+// 			{Name: "MESSAGE-A"},
+// 			{Name: "MESSAGE-B"},
+// 		},
+// 	}
 
-	// then
-	t.True(sut.IsMessageNamesValid())
-}
+// 	// then
+// 	t.True(sut.IsMessageNamesValid())
+// }
 
-func (t *CatalogTestSuite) TestValidateMessageNames_Duplicates() {
-	sut := Catalog{
-		Messages: []CatalogMessage{
-			{Name: "MESSAGE-A"},
-			{Name: "MESSAGE-B"},
-			{Name: "MESSAGE-A"},
-		},
-	}
+// func (t *CatalogTestSuite) TestValidateMessageNames_Duplicates() {
+// 	sut := Catalog{
+// 		Messages: []CatalogMessage{
+// 			{Name: "MESSAGE-A"},
+// 			{Name: "MESSAGE-B"},
+// 			{Name: "MESSAGE-A"},
+// 		},
+// 	}
 
-	// then
-	t.False(sut.IsMessageNamesValid())
-}
+// 	// then
+// 	t.False(sut.IsMessageNamesValid())
+// }
 
-func (t *CatalogTestSuite) TestValidateSeriesMessageNames_Duplicate() {
-	sut := Catalog{
-		Series: []CatalogSeri{
-			{Name: "SERIES-A"},
-			{Name: "SERIES-B"},
-		},
-		Messages: []CatalogMessage{
-			{Name: "SERIES-A"},
-		},
-	}
+// func (t *CatalogTestSuite) TestValidateSeriesMessageNames_Duplicate() {
+// 	sut := Catalog{
+// 		Series: []CatalogSeri{
+// 			{Name: "SERIES-A"},
+// 			{Name: "SERIES-B"},
+// 		},
+// 		Messages: []CatalogMessage{
+// 			{Name: "SERIES-A"},
+// 		},
+// 	}
 
-	// then should be invalid because the message isn't in a series
-	t.False(sut.IsSeriesAndMessageNamesValid())
-}
+// 	// then should be invalid because the message isn't in a series
+// 	t.False(sut.IsSeriesAndMessageNamesValid())
+// }
 
-func (t *CatalogTestSuite) TestValidateSeriesMessageNames_MessageInSeriesNotChecked() {
-	sut := Catalog{
-		Series: []CatalogSeri{
-			{Name: "SERIES-A"},
-			{Name: "SERIES-B"},
-		},
-		Messages: []CatalogMessage{
-			{
-				Name:   "SERIES-A",
-				Series: []SeriesReference{{Name: "SERIES-A"}},
-			},
-		},
-	}
+// func (t *CatalogTestSuite) TestValidateSeriesMessageNames_MessageInSeriesNotChecked() {
+// 	sut := Catalog{
+// 		Series: []CatalogSeri{
+// 			{Name: "SERIES-A"},
+// 			{Name: "SERIES-B"},
+// 		},
+// 		Messages: []CatalogMessage{
+// 			{
+// 				Name:   "SERIES-A",
+// 				Series: []SeriesReference{{Name: "SERIES-A"}},
+// 			},
+// 		},
+// 	}
 
-	// then should be valid because the message is in a different series
-	t.True(sut.IsSeriesAndMessageNamesValid())
-}
+// 	// then should be valid because the message is in a different series
+// 	t.True(sut.IsSeriesAndMessageNamesValid())
+// }
