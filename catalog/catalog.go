@@ -27,54 +27,6 @@ type Catalog struct {
 	allSeries     []CatalogSeri `json:"-"` // all the series, both from online content, and generated from single messages
 }
 
-// CatalogSeri describes one series in a catalog. A Series describes a
-// collection of related messages. This could be a collection of one or more
-// messages.
-//
-// IsRaw determines if the data is raw from the online content source. In this view,
-type CatalogSeri struct {
-	ID          string           `json:"id"`                    // web- and file-safe ID
-	Name        string           `json:"name"`                  // display name
-	Description string           `json:"description,omitempty"` // detailed description of contents of series
-	Booklets    []OnlineResource `json:"booklets,omitempty"`    // list of study booklets for this series (pdf)
-	Resources   []OnlineResource `json:"resource,omitempty"`    // any other online resources (links, docs, youtube, etc)
-	Visibility  View             `json:"visibility"`            // visibility of this series as a whole
-	Jacket      string           `json:"jacket,omitempty"`      // link to the DVD (or CD) jacket for this series
-	Thumbnail   string           `json:"thumbnail,omitempty"`   // link to the thumbnail to use for the series
-	StartDate   DateOnly         `json:"start-date,omitempty"`  // date of first message in the series
-	EndDate     DateOnly         `json:"end-date,omitempty"`    // date of last message in the series
-
-	// cached or generated data. note that this data could be customized for
-	// different views of the series. when read from the online content, the
-	// view is "Raw" and the list of messages could contain messages with
-	// different visibilities, however, after calling GetView(), the returned
-	// series view is not "Raw" and the rest of the data will only include
-	// information consistent with the view
-	View     View             `json:"-"` // view of this cached data, "Raw" if unfiltered yet
-	messages []CatalogMessage `json:"-"` // list of messages in the series
-	speakers []string         `json:"-"` // list of speakers in the series
-}
-
-// CatalogMessage describes one message. The message may be part of a series or
-// not. A message is one media event (audio + video recording). A message may
-// contain information linking it to a series, but the message just has that
-// metadata (like series name and index), and it is up to an external process if
-// that information will be used to assemble related messages into a series
-type CatalogMessage struct {
-	Date        DateOnly          `json:"date"`                  // date message was given/recorded (required)
-	Name        string            `json:"name"`                  // name of the message (required)
-	Description string            `json:"description,omitempty"` // detailed description of this message
-	Speakers    []string          `json:"speakers"`              // names of significant speakers in the message, typically in order they spoke
-	Ministry    Ministry          `json:"ministry"`              // which ministry this message was presented for
-	Type        MessageType       `json:"type"`                  // category of this message
-	Visibility  View              `json:"visibility,omitempty"`  // visibility of this message
-	Series      []SeriesReference `json:"series,omitempty"`      // which series this message belongs to
-	Playlist    []string          `json:"playlist,omitempty"`    // playlist(s) this message is in. used to generate podcasts
-	Audio       string            `json:"audio,omitempty"`       // URL of the audio file
-	Video       string            `json:"video,omitempty"`       // URL of the video. normally on YouTube, BitChute, Rumble, or S3
-	Resources   []OnlineResource  `json:"resources,omitempty"`   // list of online resources for this message (links, docs, video, etc)
-}
-
 /*
  * Access
  */
@@ -163,6 +115,9 @@ func (c *Catalog) FindMessagesInSeries(seriesName string) []CatalogMessage {
 //  - Message names not in a series are unique wrt Series names
 func (c *Catalog) IsValid() bool {
 	valid := true
+
+	// TODO - add validation for series and messages individually
+	// TODO - messages should validate audio/video is URL or in progress/exporting/rendering/etc
 
 	valid = valid && c.IsMessageSeriesValid()
 	valid = valid && c.IsMessageSeriesIndexValid()
@@ -327,62 +282,4 @@ func NewSeriesFromMessage(msg *CatalogMessage) CatalogSeri {
 	seri.ID = "SAM-" + util.ComputeHash(seri.Name)
 
 	return seri
-}
-
-// Gets the ID of a series. If the series has an explicit ID (from the spreadsheet) then it will
-// be returned. If the series doesn't have an ID yet, then one will be created from the name.
-// Ideally, the ID of a series should be unique and persistent, so this is why we use the ID
-// from the spreadsheet first (because it should never change). Generating an ID from the name
-// is second-best because it is only persistent unless somone changes the name
-func (s *CatalogSeri) GetID() string {
-	if s.ID == "" {
-		// generate an ID from the name
-		prefix := "ID-"
-		switch s.GetMinistry() {
-		case WordOfLife:
-			prefix = "WOLS-"
-		case CenterOfRelationshipExperience:
-			prefix = "CORE-"
-		case AskThePastor:
-			prefix = "ATP-"
-		case FaithAndFreedom:
-			prefix = "FandF-"
-		}
-		s.ID = prefix + util.ComputeHash(s.Name)
-	}
-
-	return s.ID
-}
-
-// Gets the Ministry of a series
-func (s *CatalogSeri) GetMinistry() Ministry {
-	if len(s.messages) > 0 {
-		return s.messages[0].Ministry
-	}
-	return UnknownMinistry
-}
-
-// ****************************************************************************
-// Catalog Message
-// ****************************************************************************
-
-// Determines if the message is in the specified series
-func (m *CatalogMessage) IsInSeries(seriesName string) bool {
-	for _, ref := range m.Series {
-		if ref.Name == seriesName {
-			return true
-		}
-	}
-	return false
-}
-
-// Gets the series reference from this message for the specified series. nil if
-// the message is not in the series
-func (m *CatalogMessage) FindSeriesReference(seriesName string) *SeriesReference {
-	for _, ref := range m.Series {
-		if ref.Name == seriesName {
-			return &ref
-		}
-	}
-	return nil
 }
