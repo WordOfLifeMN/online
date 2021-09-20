@@ -16,10 +16,13 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
+	"encoding/xml"
 	"fmt"
-	"html/template"
 	"io"
 	"os"
+	"sort"
+	"text/template"
 	"time"
 
 	"github.com/WordOfLifeMN/online/catalog"
@@ -46,6 +49,8 @@ func init() {
 }
 
 func podcast(cmd *cobra.Command, args []string) error {
+	initLogging()
+
 	ministry := catalog.NewMinistryFromString(viper.GetString("ministry"))
 	if ministry == catalog.UnknownMinistry {
 		return fmt.Errorf("ministry '%s' is unknown", viper.GetString("ministry"))
@@ -57,17 +62,43 @@ func podcast(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	data := map[string]interface{}{
-		"title":         "Word of Life Ministries: Sunday",
-		"description":   "Podcast of Word of Life Ministries Sunday services",
-		"copyrightYear": time.Now().Year(),
+	// determine the maximum age of items in the podcast
+	cutoff := time.Now().AddDate(0, 0, -1*viper.GetInt("days"))
+
+	// get messages that match
+	//  - ministry == WOL
+	//  - visibility == Public
+	//  - date > cutoff
+	//  - playlist == Service
+	messages := []catalog.CatalogMessage{}
+	for _, msg := range cat.Messages {
+		if msg.Ministry != catalog.WordOfLife ||
+			msg.Visibility != catalog.Public ||
+			msg.Date.Before(cutoff) {
+			continue
+		}
+
+		found := false
+		for _, playlist := range msg.Playlist {
+			found = found || playlist == "service"
+		}
+		if !found {
+			continue
+		}
+
+		messages = append(messages, msg)
 	}
 
-	// TODO - filter the catalog
-	data["messages"] = []catalog.CatalogMessage{}
-	cat = cat // suppress warning
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].Date.Time.Before(messages[j].Date.Time)
+	})
 
-	// TODO - do we want to create multiple podcasts to different files?
+	data := map[string]interface{}{
+		"Title":         "Word of Life Ministries: Sunday",
+		"Description":   "Podcast of Word of Life Ministries Sunday services",
+		"CopyrightYear": time.Now().Year(),
+		"Messages":      messages,
+	}
 
 	return printPodcast(data, os.Stdout)
 }
@@ -80,12 +111,28 @@ func podcast(cmd *cobra.Command, args []string) error {
 //  - Messages - []CatalogMessage - list of messages to display (in order to display)
 func printPodcast(data map[string]interface{}, output io.Writer) error {
 	// get the podcast template
-	// TODO: how is this going to work from any wd?
-	fileName := "../templates/podcast.xml"
-	template, err := template.ParseFiles(fileName)
+	templateName, err := getTemplatePath("podcast.xml")
 	if err != nil {
-		return fmt.Errorf("cannot read template '%s': %w", fileName, err)
+		return fmt.Errorf("cannot find template 'podcast'")
 	}
 
-	return template.Execute(output, data)
+	t := template.New("podcast")
+	t.Funcs(template.FuncMap{
+		"xml": func(s string) string {
+			var b bytes.Buffer
+			xml.EscapeText(&b, []byte(s))
+			return b.String()
+		},
+	})
+	t, err = t.ParseFiles(templateName)
+	if err != nil {
+		return fmt.Errorf("cannot read template '%s': %w", templateName, err)
+	}
+
+	err = t.ExecuteTemplate(output, "podcast.xml", data)
+	if err != nil {
+		return fmt.Errorf("failed to execute the template '%s': %w", templateName, err)
+	}
+
+	return nil
 }

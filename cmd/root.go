@@ -21,6 +21,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/WordOfLifeMN/online/catalog"
@@ -127,4 +128,21 @@ func readOnlineContentFromInput(ctx context.Context) (*catalog.Catalog, error) {
 
 	// no input
 	return nil, fmt.Errorf("no input specified. please provide an --input or --sheet-id parameter, or configure a default sheet-id in the ~/.wolm/online.yaml file")
+}
+
+func getTemplatePath(templateName string) (string, error) {
+	// find a path relative to the executable
+	execPath, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	execDir := filepath.Dir(execPath)
+	templatePath := filepath.Join(execDir, "templates", templateName)
+
+	// if the template exists, return it
+	if _, err = os.Stat(templatePath); os.IsNotExist(err) {
+		templatePath = filepath.Join("/Users/kmurray/git/go/src/github.com/WordOfLifeMN/online/templates", templateName)
+	}
+
+	return templatePath, nil
 }

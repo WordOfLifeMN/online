@@ -15,16 +15,16 @@
             <link>http://www.wordoflifemn.org/</link>
         </image>
         <atom:link href="http://s3-us-west-2.amazonaws.com/wordoflife.mn.podcast/wolmn-service-podcast.rss.xml" rel="self" type="application/rss+xml" />
-        {{ range .Messages -}}
+        {{- range .Messages }}
         <item>
-            <title>{{ .Name }}</title>
-            <description>{{ .Description }} message from {{ .Date.Format "Jan 2, 2006" }}</description>
+            <title>{{ .Name | xml }}</title>
+            <description>{{ .Name | xml }} ({{ .Date.Format "Jan 2, 2006" }})</description>
             <author>media@wordoflifemn.org (Word of Life Ministries)</author>
             <category>Christian Sermon</category>
             <guid>{{ .Audio }}</guid>
             <pubDate>{{ .Date.Format "Mon, 2 Jan 2006" }} 10:00:00 CDT</pubDate>
             <enclosure url="{{ .Audio }}" length="{{ .GetAudioSize }}" type="audio/mpeg" />
         </item>
-        {{ end -}}
+        {{- end }}
     </channel>
 </rss>
