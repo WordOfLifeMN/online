@@ -16,6 +16,66 @@ func TestCatalogMessageTestSuite(t *testing.T) {
 	suite.Run(t, new(CatalogMessageTestSuite))
 }
 
+// +---------------------------------------------------------------------------
+// | Constructors
+// +---------------------------------------------------------------------------
+
+func (t *CatalogMessageTestSuite) TestInitializeAudio() {
+	// given
+	sut := CatalogMessage{
+		Audio: "http://path/file.mp3",
+	}
+
+	// when-then
+	t.NoError(sut.initialize())
+	t.Equal("http://path/file.mp3", sut.Audio)
+
+	// when-then
+	sut.Audio = ""
+	t.NoError(sut.initialize())
+	t.Equal("", sut.Audio)
+
+	// when-then
+	sut.Audio = "in progress"
+	t.NoError(sut.initialize())
+	t.Equal("", sut.Audio)
+
+	// when-then
+	sut.Audio = "-"
+	t.NoError(sut.initialize())
+	t.Equal("", sut.Audio)
+}
+
+func (t *CatalogMessageTestSuite) TestInitializeVideo() {
+	// given
+	sut := CatalogMessage{
+		Video: "http://path/file.mp4",
+	}
+
+	// when-then
+	t.NoError(sut.initialize())
+	t.Equal("http://path/file.mp4", sut.Video)
+
+	// when-then
+	sut.Video = ""
+	t.NoError(sut.initialize())
+	t.Equal("", sut.Video)
+
+	// when-then
+	sut.Video = "in progress"
+	t.NoError(sut.initialize())
+	t.Equal("", sut.Video)
+
+	// when-then
+	sut.Video = "-"
+	t.NoError(sut.initialize())
+	t.Equal("", sut.Video)
+}
+
+// +---------------------------------------------------------------------------
+// | Audio checks
+// +---------------------------------------------------------------------------
+
 func (t *CatalogMessageTestSuite) TestGetAudioSize_NoAudio() {
 	// given
 	sut := CatalogMessage{

@@ -61,16 +61,7 @@ func NewResourceFromString(s string) OnlineResource {
 	default:
 		// just a URL
 		r.URL = s
-
-		// try to get a good name
-		r.Name = filepath.Base(s)
-		p := strings.LastIndex(r.Name, ".")
-		if p != -1 {
-			r.Name = r.Name[:p]
-		}
-		if human, err := url.QueryUnescape(r.Name); err == nil {
-			r.Name = human
-		}
+		r.Name = r.GetNameFromURL()
 	}
 
 	return r
@@ -95,4 +86,27 @@ func NewResourcesFromString(s string) []OnlineResource {
 	}
 
 	return results
+}
+
+// GetNameFromURL creates a human-readable name from the resource's URL. It does this by
+// extracting the last field of the URL and trying to eliminate any URL encoding or markup
+func (r *OnlineResource) GetNameFromURL() string {
+	// extract the last element of the URL
+	name := filepath.Base(r.URL)
+
+	// trim the extension
+	p := strings.LastIndex(name, ".")
+	if p != -1 {
+		name = name[:p]
+	}
+
+	// decode URL
+	if human, err := url.QueryUnescape(name); err == nil {
+		name = human
+	}
+
+	// convert underscores to spaces
+	name = strings.ReplaceAll(name, "_", " ")
+
+	return name
 }

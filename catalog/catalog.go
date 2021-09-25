@@ -4,15 +4,14 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/WordOfLifeMN/online/util"
 )
 
 // Describes the catalog model.
 //
-// In this package "seri" is the singlular form of "series", just so we can
-// avoid the name collision of a "series" is a list of "series" (since "series"
-// is both singular and plural)
+// In this package "seri" is the singlular form of "series", just so we can avoid the name
+// collision of a "series" is a list of "series" (since "series" is both singular and plural)
+// * hello
+// * there
 
 // Catalog contains all information about online content
 type Catalog struct {
@@ -21,26 +20,66 @@ type Catalog struct {
 	Series   []CatalogSeri    `json:"series,omitempty"`   // series defined in the online content
 	Messages []CatalogMessage `json:"messages,omitempty"` // messages defined in the online content
 
-	initialized   bool          `json:"-"` // true if the catalog has been initialized
-	messageSeries []CatalogSeri `json:"-"` // series generated from single messages
-	allSeries     []CatalogSeri `json:"-"` // all the series, both from online content, and generated from single messages
+	initialized bool `json:"-"` // true if the catalog has been initialized
 }
 
-/*
- * Access
- */
+// +---------------------------------------------------------------------------
+// | Constructors
+// +---------------------------------------------------------------------------
+
+// initialize prepares the catalog for use. It will
+// - add the messages to the series
+// - create single-message series for all the standalone messages
+func (c *Catalog) initialize() error {
+	if c.initialized {
+		return nil
+	}
+
+	// initialize series and messages
+	for _, seri := range c.Series {
+		seri.initialize()
+	}
+	for _, msg := range c.Messages {
+		msg.initialize()
+	}
+
+	// add series to the messages that they belong to
+	if err := c.addMessagesToTheirSeries(); err != nil {
+		return err
+	}
+
+	if err := c.createStandAloneMessageSeries(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// addMessagesToTheirSeries finds all the messages that belong to each series and adds them to
+// the series in track order
+func (c *Catalog) addMessagesToTheirSeries() error {
+	// TODO - implement
+	return nil
+}
+
+// createStandAloneMessageSeries creates a series entry for every message that isn't already in
+// a series. These new series are appended to the Series list. In addition, it also looks for
+// messages that are in the `SAM` (Stand Alone Message) "series" and creates a new series for
+// those messages
+func (c *Catalog) createStandAloneMessageSeries() error {
+	// TODO - implement
+	return nil
+}
+
+// +---------------------------------------------------------------------------
+// | Access
+// +---------------------------------------------------------------------------
 
 // Finds a series by name and returns it. (nil, false) if not found
 func (c *Catalog) FindSeries(targetName string) (seri *CatalogSeri, ok bool) {
-	// search all series, but fall back to explicit series if unprepared
-	corpus := c.allSeries
-	if len(corpus) == 0 {
-		corpus = c.Series
-	}
-
 	// search for the series
 	targetNameLC := strings.ToLower(targetName)
-	for _, seri := range corpus {
+	for _, seri := range c.Series {
 		seri.initialize()
 		if seri.nameLC == targetNameLC {
 			return &seri, true
@@ -97,25 +136,4 @@ func (c *Catalog) FindMessagesInSeries(seriesName string) []CatalogMessage {
 		})
 
 	return msgs
-}
-
-// ****************************************************************************
-// Catalog Seri
-// ****************************************************************************
-
-// Creates a new series record from a message. This creates a Series that is a Series of the one message
-// that was passed in
-func NewSeriesFromMessage(msg *CatalogMessage) CatalogSeri {
-	seri := CatalogSeri{}
-	seri.Name = msg.Name
-	seri.Description = msg.Description
-	seri.Resources = msg.Resources
-	seri.Visibility = msg.Visibility
-	seri.StartDate = msg.Date
-	seri.EndDate = msg.Date
-	seri.messages = []CatalogMessage{*msg}
-
-	seri.ID = "SAM-" + util.ComputeHash(seri.Name)
-
-	return seri
 }

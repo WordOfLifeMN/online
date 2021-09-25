@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-// CatalogMessage describes one message. The message may be part of a series or
-// not. A message is one media event (audio + video recording). A message may
-// contain information linking it to a series, but the message just has that
-// metadata (like series name and index), and it is up to an external process if
-// that information will be used to assemble related messages into a series
+// CatalogMessage describes one message. The message may be part of a series or not. A message
+// is one media event (audio + video recording). A message may contain information linking it to
+// a series, but the message just has that metadata (like series name and index), and it is up
+// to an external process if that information will be used to assemble related messages into a
+// series
 type CatalogMessage struct {
 	Date        DateOnly          `json:"date"`                  // date message was given/recorded (required)
 	Name        string            `json:"name"`                  // name of the message (required)
@@ -27,15 +27,30 @@ type CatalogMessage struct {
 	Resources   []OnlineResource  `json:"resources,omitempty"`   // list of online resources for this message (links, docs, video, etc)
 }
 
-// Determines if the message is in the specified series
-func (m *CatalogMessage) IsInSeries(seriesName string) bool {
-	for _, ref := range m.Series {
-		if ref.Name == seriesName {
-			return true
-		}
+// +---------------------------------------------------------------------------
+// | Constructors
+// +---------------------------------------------------------------------------
+
+// initialize prepares the message for use. Performs the following checks:
+//  - If the audio/video URL isn't a URL, then deletes it (assumes it was one of the statuses,
+//    like "in progress", "rendering", etc)
+func (m *CatalogMessage) initialize() error {
+	// clean audio
+	if !strings.Contains(m.Audio, "://") {
+		m.Audio = ""
 	}
-	return false
+
+	// clean video
+	if !strings.Contains(m.Video, "://") {
+		m.Video = ""
+	}
+
+	return nil
 }
+
+// +---------------------------------------------------------------------------
+// | Accessors
+// +---------------------------------------------------------------------------
 
 // Gets the series reference from this message for the specified series. nil if
 // the message is not in the series
@@ -83,4 +98,18 @@ func (m *CatalogMessage) GetAudioSize() int {
 	}
 
 	return length
+}
+
+// +---------------------------------------------------------------------------
+// | Queries
+// +---------------------------------------------------------------------------
+
+// Determines if the message is in the specified series
+func (m *CatalogMessage) IsInSeries(seriesName string) bool {
+	for _, ref := range m.Series {
+		if ref.Name == seriesName {
+			return true
+		}
+	}
+	return false
 }

@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"log"
 	"strings"
 
 	"github.com/WordOfLifeMN/online/util"
@@ -35,25 +36,63 @@ type CatalogSeri struct {
 	nameLC   string           `json:"-"` // lowercase version of the series name (used for searching)
 }
 
-// Initializes the series for use. This assumes that the series was just read in
-// from disk or network and will take care of setting up the internal
-// bookkeeping that is necessary for performance
-func (s *CatalogSeri) initialize() {
-	// use the lower-case name as a flag
+// +---------------------------------------------------------------------------
+// | Constructors
+// +---------------------------------------------------------------------------
+
+// Creates a new series record from a message. This creates a Series that is a Series of the one message
+// that was passed in
+func NewSeriesFromMessage(msg *CatalogMessage) CatalogSeri {
+	seri := CatalogSeri{}
+	seri.Name = msg.Name
+	seri.Description = msg.Description
+	seri.Resources = msg.Resources
+	seri.Visibility = msg.Visibility
+	seri.StartDate = msg.Date
+	seri.EndDate = msg.Date
+	seri.messages = []CatalogMessage{*msg}
+
+	seri.ID = "SAM-" + util.ComputeHash(seri.Name)
+
+	seri.initialize()
+
+	return seri
+}
+
+// Initializes the series for use. This assumes that the series was just read in from disk or
+// network and will take care of setting up the internal bookkeeping that is necessary for
+// performance
+func (s *CatalogSeri) initialize() error {
+	// use the lower-case name as a flag whether this has been initialized or not
 	if s.nameLC != "" {
-		return
+		return nil
 	}
 
 	s.nameLC = strings.ToLower(s.Name)
+
+	// TODO - make sure resources have names?
+
+	return nil
 }
+
+// +---------------------------------------------------------------------------
+// | Accessors
+// +---------------------------------------------------------------------------
 
 // Gets the ID of a series. If the series has an explicit ID (from the spreadsheet) then it will
 // be returned. If the series doesn't have an ID yet, then one will be created from the name.
 // Ideally, the ID of a series should be unique and persistent, so this is why we use the ID
 // from the spreadsheet first (because it should never change). Generating an ID from the name
-// is second-best because it is only persistent unless somone changes the name
+// is second-best because it is only persistent unless someone changes the name
 func (s *CatalogSeri) GetID() string {
+
 	if s.ID == "" {
+		// if there is no message, then there is no ID
+		if len(s.messages) == 0 {
+			log.Printf("WARNING: Tried to generate an ID for series '%s' with no ministry", s.Name)
+			return ""
+		}
+
 		// generate an ID from the name
 		prefix := "ID-"
 		switch s.GetMinistry() {
@@ -65,6 +104,8 @@ func (s *CatalogSeri) GetID() string {
 			prefix = "ATP-"
 		case FaithAndFreedom:
 			prefix = "FandF-"
+		case TheBridgeOutreach:
+			prefix = "TBO-"
 		}
 		s.ID = prefix + util.ComputeHash(s.Name)
 	}
@@ -74,8 +115,19 @@ func (s *CatalogSeri) GetID() string {
 
 // Gets the Ministry of a series
 func (s *CatalogSeri) GetMinistry() Ministry {
-	if len(s.messages) > 0 {
-		return s.messages[0].Ministry
+	if len(s.messages) == 0 {
+		return UnknownMinistry
 	}
-	return UnknownMinistry
+	return s.messages[0].Ministry
+}
+
+// +---------------------------------------------------------------------------
+// | Queries
+// +---------------------------------------------------------------------------
+
+// IsBooklet determines if this series just represents a booklet. A booklet "series" looks like
+// a series, except it has a booklet but no messages or ID. Note that a normal series can also
+// have a booklet but a "booklet series" has no messages
+func (s *CatalogSeri) IsBooklet() bool {
+	return len(s.Booklets) > 0 && len(s.messages) == 0 && s.ID == ""
 }

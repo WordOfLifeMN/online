@@ -3,101 +3,100 @@ package catalog
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestPanicsOnEmptyString(t *testing.T) {
-	assert.Equal(t, OnlineResource{}, NewResourceFromString(""))
+type OnlineResourceTestSuite struct {
+	suite.Suite
 }
 
-func TestNewWikiString(t *testing.T) {
-	assert.Equal(t,
+// Runs the test suite as a test
+func TestOnlineResourceestSuite(t *testing.T) {
+	suite.Run(t, new(OnlineResourceTestSuite))
+}
+
+func (t *OnlineResourceTestSuite) TestEmptyString() {
+	t.Equal(OnlineResource{}, NewResourceFromString(""))
+}
+
+func (t *OnlineResourceTestSuite) TestNewWikiString() {
+	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
 		NewResourceFromString("Hi|http://hi"))
 
-	assert.Equal(t,
+	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
 		NewResourceFromString(" Hi|http://hi"))
 
-	assert.Equal(t,
+	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
 		NewResourceFromString("Hi|http://hi "))
 
-	assert.Equal(t,
+	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
 		NewResourceFromString("Hi | http://hi"))
 
-	assert.Equal(t,
+	t.Equal(
 		OnlineResource{URL: "http://hi.doc", Name: "Hi"},
 		NewResourceFromString("Hi | http://hi.doc"))
 
 }
 
-func TestNewMarkdownString(t *testing.T) {
-	assert.Equal(t,
+func (t *OnlineResourceTestSuite) TestNewMarkdownString() {
+	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
 		NewResourceFromString("[Hi](http://hi)"))
 
-	assert.Equal(t,
+	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
 		NewResourceFromString("[ Hi ](http://hi)"))
 
-	assert.Equal(t,
+	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
 		NewResourceFromString("[Hi]( http://hi )"))
 
 }
 
-func TestNewRawURL(t *testing.T) {
-	assert.Equal(t,
+func (t *OnlineResourceTestSuite) TestNewRawURL() {
+	t.Equal(
 		OnlineResource{URL: "http://hi.doc", Name: "hi"},
 		NewResourceFromString("http://hi.doc"))
 
-	assert.Equal(t,
-		OnlineResource{URL: "http://path/hi.doc", Name: "hi"},
-		NewResourceFromString("http://path/hi.doc"))
+	t.Equal(
+		OnlineResource{URL: "http://hi.doc", Name: "hi"},
+		NewResourceFromString("http://hi.doc "))
 
-	assert.Equal(t,
-		OnlineResource{URL: "http://hi", Name: "hi"},
-		NewResourceFromString("http://hi"))
-
-	assert.Equal(t,
-		OnlineResource{URL: "http://yt/hi/", Name: "hi"},
-		NewResourceFromString("http://yt/hi/"))
-
-	assert.Equal(t,
-		OnlineResource{URL: "http://yt/hi+there.pdf", Name: "hi there"},
-		NewResourceFromString("http://yt/hi+there.pdf"))
-
-	assert.Equal(t,
-		OnlineResource{URL: "http://hi%20there.pdf", Name: "hi there"},
-		NewResourceFromString("http://hi%20there.pdf"))
-
-	assert.Equal(t,
-		OnlineResource{URL: "http://Dr.%20Doolittle.pdf", Name: "Dr. Doolittle"},
-		NewResourceFromString("http://Dr.%20Doolittle.pdf"))
-
-	assert.Equal(t,
-		OnlineResource{
-			URL:  "http://file%20for%20q%2Ba%2C%20and%20%22discussion%22.pdf",
-			Name: "file for q+a, and \"discussion\"",
-		},
-		NewResourceFromString("http://file%20for%20q%2Ba%2C%20and%20%22discussion%22.pdf"))
-
+	t.Equal(
+		OnlineResource{URL: "http://hi.doc", Name: "hi"},
+		NewResourceFromString(" http://hi.doc"))
 }
 
-func TestNewEmptyResources(t *testing.T) {
-	assert.Len(t, NewResourcesFromString(""), 0)
+func (t *OnlineResourceTestSuite) TestNameFromURL() {
+	t.Equal("hi", (&OnlineResource{URL: "http://path/hi.doc"}).GetNameFromURL())
+	t.Equal("hi", (&OnlineResource{URL: "http://hi"}).GetNameFromURL())
+	t.Equal("hi", (&OnlineResource{URL: "http://yt/hi/"}).GetNameFromURL())
+	t.Equal("Dr. Doolittle", (&OnlineResource{URL: "http://Dr.%20Doolittle.pdf"}).GetNameFromURL())
+	t.Equal("file for q+a, and \"discussion\"",
+		(&OnlineResource{URL: "http://file%20for%20q%2Ba%2C%20and%20%22discussion%22.pdf"}).GetNameFromURL())
 
-	assert.Len(t, NewResourcesFromString(" "), 0)
-
-	assert.Len(t, NewResourcesFromString(";;;"), 0)
-
-	assert.Len(t, NewResourcesFromString("; ; ;"), 0)
+	// different space encodings
+	t.Equal("hi there", (&OnlineResource{URL: "http://yt/hi+there.pdf"}).GetNameFromURL())
+	t.Equal("hi there", (&OnlineResource{URL: "http://hi%20there.pdf"}).GetNameFromURL())
+	t.Equal("hi there", (&OnlineResource{URL: "http://hi_there.pdf"}).GetNameFromURL())
 }
 
-func TestNewResources(t *testing.T) {
-	assert.Equal(t,
+func (t *OnlineResourceTestSuite) TestNewEmptyResources() {
+	t.Len(NewResourcesFromString(""), 0)
+
+	t.Len(NewResourcesFromString(" "), 0)
+
+	t.Len(NewResourcesFromString(";;;"), 0)
+
+	t.Len(NewResourcesFromString("; ; ;"), 0)
+}
+
+func (t *OnlineResourceTestSuite) TestNewResources() {
+	t.Equal(
 		[]OnlineResource{
 			{
 				Name: "one",
