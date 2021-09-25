@@ -54,8 +54,10 @@ func check(cmd *cobra.Command, args []string) error {
 	valid := catalog.IsValid(true)
 
 	if !valid {
-		return fmt.Errorf("The online catalog was not valid (see errors above)")
+		return fmt.Errorf("the online catalog was not valid (see errors above)")
 	}
+
+	fmt.Printf("Online content is valid\n")
 
 	return nil
 }

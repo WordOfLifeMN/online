@@ -86,8 +86,9 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	if err := viper.ReadInConfig(); err != nil {
+		err = fmt.Errorf("cannot read configuration file: %w", err)
+		fmt.Fprintf(os.Stderr, "%s", err.Error())
 	}
 }
 
@@ -97,7 +98,15 @@ func initLogging() {
 	verbose := viper.GetBool("verbose")
 	if !verbose {
 		log.Default().SetOutput(io.Discard)
+		return
 	}
+
+	// since we're verbose, let's dump the configuration
+	log.Printf("Using config file: %s", viper.ConfigFileUsed())
+	for _, key := range viper.AllKeys() {
+		log.Printf("    %s = %s", key, viper.GetString(key))
+	}
+
 }
 
 // readOnlineContentFromInput reads the content of a catalog from wherever
@@ -131,18 +140,31 @@ func readOnlineContentFromInput(ctx context.Context) (*catalog.Catalog, error) {
 }
 
 func getTemplatePath(templateName string) (string, error) {
+	// read template path from configuration
+	templateDir := viper.GetString("template-dir")
+	templatePath := filepath.Join(templateDir, templateName)
+	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
+		log.Printf("Template from config: %s", templatePath)
+		return templatePath, nil
+	}
+
 	// find a path relative to the executable
 	execPath, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
 	execDir := filepath.Dir(execPath)
-	templatePath := filepath.Join(execDir, "templates", templateName)
-
-	// if the template exists, return it
-	if _, err = os.Stat(templatePath); os.IsNotExist(err) {
-		templatePath = filepath.Join("/Users/kmurray/git/go/src/github.com/WordOfLifeMN/online/templates", templateName)
+	templatePath = filepath.Join(execDir, "templates", templateName)
+	if _, err = os.Stat(templatePath); !os.IsNotExist(err) {
+		log.Printf("Template from executable: %s", templatePath)
+		return templatePath, nil
 	}
 
-	return templatePath, nil
+	templatePath = filepath.Join("/Users/kmurray/git/go/src/github.com/WordOfLifeMN/online/templates", templateName)
+	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
+		log.Printf("Template hardcoded: %s", templatePath)
+		return templatePath, nil
+	}
+
+	return "", fmt.Errorf("cannot find templates to use to generate web pages")
 }

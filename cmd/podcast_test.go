@@ -57,7 +57,7 @@ func TestSingleMessagePodcast(t *testing.T) {
 	assert.Contains(s, "Copyright 1000 ")
 	assert.Contains(s, "<item>")
 	assert.Contains(s, "<title>MSG-TITLE<")
-	assert.Contains(s, "<description>MSG-DESC message from Feb 3, 2001<")
+	assert.Contains(s, "<description>MSG-TITLE (Feb 3, 2001)<")
 	assert.Contains(s, "<pubDate>Sat, 3 Feb 2001 10:00:00 CDT<")
 	assert.Contains(s, `url="http://AUDIO.mp3"`)
 	assert.Contains(s, `length="-1"`) // because audio file does not exist
@@ -90,7 +90,7 @@ func TestSingleMessagePodcastCharacters(t *testing.T) {
 	assert.Contains(s, "<title>T&#39;LE<")
 	assert.Contains(s, "<description>DESC &amp; DETAILS<")
 	assert.Contains(s, "<title>MSG&lt;TITLE&gt;<")
-	assert.Contains(s, "<description>MSG &#34;DESC&#34; message from Feb 3, 2001<")
+	assert.Contains(s, "<description>MSG&lt;TITLE&gt; (Feb 3, 2001)<")
 }
 
 // TODO: test special characters in title/description like ' < and >

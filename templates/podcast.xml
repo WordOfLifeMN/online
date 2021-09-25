@@ -1,8 +1,8 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
-        <title>{{ .Title }}</title>
+        <title>{{ .Title | xml }}</title>
         <link>http://www.wordoflifemn.org/</link>
-        <description>{{ .Description }}</description>
+        <description>{{ .Description | xml }}</description>
         <language>en-us</language>
         <copyright>Copyright {{ .CopyrightYear }} Word of Life Ministries</copyright>
         <managingEditor>media@wordoflifemn.org (Word of Life Ministries)</managingEditor>
@@ -11,7 +11,7 @@
         <ttl>60</ttl>
         <image>
             <url>https://s3-us-west-2.amazonaws.com/wordoflife.mn.podcast/WordofLifeMinD72aR05aP01ZL.png</url>
-            <title>{{ .Title }}</title>
+            <title>{{ .Title | xml }}</title>
             <link>http://www.wordoflifemn.org/</link>
         </image>
         <atom:link href="http://s3-us-west-2.amazonaws.com/wordoflife.mn.podcast/wolmn-service-podcast.rss.xml" rel="self" type="application/rss+xml" />
@@ -21,9 +21,9 @@
             <description>{{ .Name | xml }} ({{ .Date.Format "Jan 2, 2006" }})</description>
             <author>media@wordoflifemn.org (Word of Life Ministries)</author>
             <category>Christian Sermon</category>
-            <guid>{{ .Audio }}</guid>
+            <guid>{{ .Audio | xml }}</guid>
             <pubDate>{{ .Date.Format "Mon, 2 Jan 2006" }} 10:00:00 CDT</pubDate>
-            <enclosure url="{{ .Audio }}" length="{{ .GetAudioSize }}" type="audio/mpeg" />
+            <enclosure url="{{ .Audio | xml }}" length="{{ .GetAudioSize }}" type="audio/mpeg" />
         </item>
         {{- end }}
     </channel>
