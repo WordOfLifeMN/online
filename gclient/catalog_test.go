@@ -50,7 +50,7 @@ func TestReadSeries(t *testing.T) {
 	assert.Equal(t, "Public Series", sut.Name)
 	assert.Equal(t, "A series that contains 3 public messages", sut.Description)
 	assert.Equal(t, catalog.MustParseDateOnly("2014-01-05"), sut.StartDate)
-	assert.Equal(t, catalog.MustParseDateOnly("2014-02-02"), sut.EndDate)
+	assert.Equal(t, catalog.MustParseDateOnly("2014-02-02"), sut.StopDate)
 	assert.Equal(t, catalog.Public, sut.Visibility)
 
 	// validate booklet
@@ -94,46 +94,6 @@ func TestReadMessageSheet(t *testing.T) {
 	assert.Equal(t, catalog.Public, sut.Visibility)
 	assert.Equal(t, "https://s3/2021/audio.mp3", sut.Audio)
 	assert.Equal(t, "https://youtu.be/c/blahtyblah", sut.Video)
-
-	// validate speakers
-	sut = msgs[1]
-	assert.Equal(t, "Speakers", sut.Name)
-	assert.Len(t, sut.Speakers, 2)
-	assert.Equal(t, "Sven", sut.Speakers[0])
-	assert.Equal(t, "Ollie", sut.Speakers[1])
-
-	// validate speaker first names
-	sut = msgs[2]
-	assert.Equal(t, "Speakers First Names", sut.Name)
-	assert.Len(t, sut.Speakers, 3)
-	assert.Equal(t, "Pastor Vern Peltz", sut.Speakers[0])
-	assert.Equal(t, "Pastor Mary Peltz", sut.Speakers[1])
-	assert.Equal(t, "Pastor Dave Warren", sut.Speakers[2])
-
-	// validate speaker first+last names
-	sut = msgs[3]
-	assert.Equal(t, "Speakers No Title", sut.Name)
-	assert.Len(t, sut.Speakers, 3)
-	assert.Equal(t, "Pastor Vern Peltz", sut.Speakers[0])
-	assert.Equal(t, "Pastor Mary Peltz", sut.Speakers[1])
-	assert.Equal(t, "Pastor Dave Warren", sut.Speakers[2])
-
-	// validate speaker first+last names
-	sut = msgs[4]
-	assert.Equal(t, "Speakers Title", sut.Name)
-	assert.Len(t, sut.Speakers, 1)
-	assert.Equal(t, "Pastor Mary Peltz", sut.Speakers[0])
-
-	// validate speaker missing
-	sut = msgs[5]
-	assert.Equal(t, "Speakers Missing", sut.Name)
-	assert.Len(t, sut.Speakers, 0)
-
-	// validate speaker Mary not a pastor
-	sut = msgs[6]
-	assert.Equal(t, "Speaker Mary Not Pastor", sut.Name)
-	assert.Len(t, sut.Speakers, 1)
-	assert.Equal(t, "Mary Peltz", sut.Speakers[0])
 
 	// validate playlists
 	sut = msgs[7]

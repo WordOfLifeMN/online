@@ -15,9 +15,139 @@ func TestCatalogTestSuite(t *testing.T) {
 	suite.Run(t, new(CatalogTestSuite))
 }
 
-/******************************************************************************
- * Access
- *****************************************************************************/
+// +---------------------------------------------------------------------------
+// | Construction
+// +---------------------------------------------------------------------------
+
+func (t *CatalogTestSuite) TestAddMessagesToTheirSeries() {
+	// given
+	sut := Catalog{
+		Series: []CatalogSeri{
+			{Name: "SERIES-1"},
+			{Name: "SERIES-2"},
+		},
+		Messages: []CatalogMessage{
+			{
+				Date: MustParseDateOnly("2021-01-01"),
+				Name: "MSG-A",
+				Series: []SeriesReference{
+					{Name: "SERIES-1", Index: 1},
+				},
+			},
+			{
+				Date: MustParseDateOnly("2021-01-02"),
+				Name: "MSG-B",
+				Series: []SeriesReference{
+					{Name: "SERIES-1", Index: 2},
+					{Name: "SERIES-2", Index: 1},
+				},
+			},
+			{
+				Date: MustParseDateOnly("2021-01-03"),
+				Name: "MSG-C",
+				Series: []SeriesReference{
+					{Name: "SERIES-1", Index: 3},
+					{Name: "SERIES-2", Index: 2},
+					{Name: "SERIES-3", Index: 1}, // bogus reference
+				},
+			},
+			{
+				Date: MustParseDateOnly("2021-01-04"),
+				Name: "MSG-D",
+				Series: []SeriesReference{
+					{Name: "SERIES-2", Index: 3},
+					{Name: "SAM", Index: 0},
+				},
+			},
+		},
+	}
+
+	// when
+	sut.addMessagesToTheirSeries()
+
+	// then
+	t.Len(sut.Series, 2)
+
+	// then series 1
+	s := sut.Series[0]
+	t.Len(s.messages, 3)
+	t.Equal("MSG-A", s.messages[0].Name)
+	t.Equal("MSG-B", s.messages[1].Name)
+	t.Equal("MSG-C", s.messages[2].Name)
+	t.Equal(MustParseDateOnly("2021-01-01"), s.StartDate)
+	t.Equal(MustParseDateOnly("2021-01-03"), s.StopDate)
+
+	// then series 2
+	s = sut.Series[1]
+	t.Len(s.messages, 3)
+	t.Equal("MSG-B", s.messages[0].Name)
+	t.Equal("MSG-C", s.messages[1].Name)
+	t.Equal("MSG-D", s.messages[2].Name)
+	t.Equal(MustParseDateOnly("2021-01-02"), s.StartDate)
+	t.Equal(MustParseDateOnly("2021-01-04"), s.StopDate)
+}
+func (t *CatalogTestSuite) TestCreatingSeriesForStandaloneMessages() {
+	// given
+	sut := Catalog{
+		Series: []CatalogSeri{},
+		Messages: []CatalogMessage{
+			{
+				Date: MustParseDateOnly("2021-01-01"),
+				Name: "MSG-A",
+			},
+			{
+				Date: MustParseDateOnly("2021-01-02"),
+				Name: "MSG-B",
+				Series: []SeriesReference{
+					{Name: "SERIES-1", Index: 2},
+					{Name: "SAM", Index: 1},
+				},
+			},
+			{
+				Date: MustParseDateOnly("2021-01-03"),
+				Name: "MSG-C",
+				Series: []SeriesReference{
+					{Name: "SAM", Index: 2},
+				},
+			},
+		},
+	}
+
+	// when
+	sut.createStandAloneMessageSeries()
+
+	// then
+	t.Len(sut.Series, 3)
+
+	// then series 1
+	s := sut.Series[0]
+	t.Len(s.messages, 1)
+	t.Equal("MSG-A", s.Name)
+	t.Equal("MSG-A", s.messages[0].Name)
+	t.Equal(MustParseDateOnly("2021-01-01"), s.StartDate)
+	t.Equal(MustParseDateOnly("2021-01-01"), s.StopDate)
+
+	// then series 2
+	s = sut.Series[1]
+	t.Len(s.messages, 1)
+	t.Equal("MSG-B", s.Name)
+	t.Equal("MSG-B", s.messages[0].Name)
+	t.Equal(MustParseDateOnly("2021-01-02"), s.StartDate)
+	t.Equal(MustParseDateOnly("2021-01-02"), s.StopDate)
+
+	// then series 3
+	s = sut.Series[2]
+	t.Len(s.messages, 1)
+	t.Equal("MSG-C", s.Name)
+	t.Equal("MSG-C", s.messages[0].Name)
+	t.Equal(MustParseDateOnly("2021-01-03"), s.StartDate)
+	t.Equal(MustParseDateOnly("2021-01-03"), s.StopDate)
+
+}
+
+// +---------------------------------------------------------------------------
+// | Access
+// +---------------------------------------------------------------------------
 
 func (t *CatalogTestSuite) TestFindSeries() {
 	// given

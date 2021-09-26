@@ -21,55 +21,123 @@ func TestCatalogMessageTestSuite(t *testing.T) {
 // +---------------------------------------------------------------------------
 
 func (t *CatalogMessageTestSuite) TestInitializeAudio() {
-	// given
-	sut := CatalogMessage{
-		Audio: "http://path/file.mp3",
-	}
-
 	// when-then
-	t.NoError(sut.initialize())
+	sut := CatalogMessage{Audio: "http://path/file.mp3"}
+	t.NoError(sut.Initialize())
 	t.Equal("http://path/file.mp3", sut.Audio)
 
 	// when-then
-	sut.Audio = ""
-	t.NoError(sut.initialize())
+	sut = CatalogMessage{Audio: ""}
+	t.NoError(sut.Initialize())
 	t.Equal("", sut.Audio)
 
 	// when-then
-	sut.Audio = "in progress"
-	t.NoError(sut.initialize())
+	sut = CatalogMessage{Audio: "in progress"}
+	t.NoError(sut.Initialize())
 	t.Equal("", sut.Audio)
 
 	// when-then
-	sut.Audio = "-"
-	t.NoError(sut.initialize())
+	sut = CatalogMessage{Audio: "-"}
+	t.NoError(sut.Initialize())
+	t.Equal("", sut.Audio)
+
+	// when-then
+	sut = CatalogMessage{Audio: "exporting"}
+	t.NoError(sut.Initialize())
 	t.Equal("", sut.Audio)
 }
 
 func (t *CatalogMessageTestSuite) TestInitializeVideo() {
-	// given
-	sut := CatalogMessage{
-		Video: "http://path/file.mp4",
-	}
-
 	// when-then
-	t.NoError(sut.initialize())
+	sut := CatalogMessage{Video: "http://path/file.mp4"}
+	t.NoError(sut.Initialize())
 	t.Equal("http://path/file.mp4", sut.Video)
 
 	// when-then
-	sut.Video = ""
-	t.NoError(sut.initialize())
+	sut = CatalogMessage{Video: ""}
+	t.NoError(sut.Initialize())
 	t.Equal("", sut.Video)
 
 	// when-then
-	sut.Video = "in progress"
-	t.NoError(sut.initialize())
+	sut = CatalogMessage{Video: "in progress"}
+	t.NoError(sut.Initialize())
 	t.Equal("", sut.Video)
 
 	// when-then
-	sut.Video = "-"
-	t.NoError(sut.initialize())
+	sut = CatalogMessage{Video: "-"}
+	t.NoError(sut.Initialize())
 	t.Equal("", sut.Video)
+
+	// when-then
+	sut = CatalogMessage{Video: "uploading"}
+	t.NoError(sut.Initialize())
+	t.Equal("", sut.Video)
+}
+
+func (t *CatalogMessageTestSuite) TestSpeakerNames() {
+	// given
+	sut := CatalogMessage{
+		Speakers: []string{"Sven ", " Ollie"},
+	}
+
+	// when-then
+	t.NoError(sut.Initialize())
+	t.Equal("Sven", sut.Speakers[0])
+	t.Equal("Ollie", sut.Speakers[1])
+}
+
+func (t *CatalogMessageTestSuite) TestSpeakerNames_Vern() {
+	// given
+	sut := CatalogMessage{
+		Speakers: []string{"Vern ", " vern", "Vern Peltz"},
+	}
+
+	// when-then
+	t.NoError(sut.Initialize())
+	t.Equal("Pastor Vern Peltz", sut.Speakers[0])
+	t.Equal("Pastor Vern Peltz", sut.Speakers[1])
+	t.Equal("Pastor Vern Peltz", sut.Speakers[2])
+}
+
+func (t *CatalogMessageTestSuite) TestSpeakerNames_Dave() {
+	// given
+	sut := CatalogMessage{
+		Speakers: []string{"Dave ", " dave", "Dave Warren"},
+	}
+
+	// when-then
+	t.NoError(sut.Initialize())
+	t.Equal("Pastor Dave Warren", sut.Speakers[0])
+	t.Equal("Pastor Dave Warren", sut.Speakers[1])
+	t.Equal("Pastor Dave Warren", sut.Speakers[2])
+}
+
+func (t *CatalogMessageTestSuite) TestSpeakerNames_MaryWOL() {
+	// given
+	sut := CatalogMessage{
+		Speakers: []string{"Mary ", " mary", "Mary Peltz"},
+	}
+
+	// when-then
+	t.NoError(sut.Initialize())
+	t.Equal("Pastor Mary Peltz", sut.Speakers[0])
+	t.Equal("Pastor Mary Peltz", sut.Speakers[1])
+	t.Equal("Pastor Mary Peltz", sut.Speakers[2])
+}
+
+func (t *CatalogMessageTestSuite) TestSpeakerNames_MaryCORE() {
+	// given
+	sut := CatalogMessage{
+		Ministry: CenterOfRelationshipExperience,
+		Speakers: []string{"Mary ", " mary", "Mary Peltz", "Pastor Mary Peltz"},
+	}
+
+	// when-then
+	t.NoError(sut.Initialize())
+	t.Equal("Mary Peltz", sut.Speakers[0])
+	t.Equal("Mary Peltz", sut.Speakers[1])
+	t.Equal("Mary Peltz", sut.Speakers[2])
+	t.Equal("Mary Peltz", sut.Speakers[3])
 }
 
 // +---------------------------------------------------------------------------
@@ -104,4 +172,54 @@ func (t *CatalogMessageTestSuite) TestGetAudioSize_ValidFile() {
 	}
 	// then
 	t.Equal(48458231, sut.GetAudioSize())
+}
+
+// +---------------------------------------------------------------------------
+// | Queries
+// +---------------------------------------------------------------------------
+
+func (t *CatalogMessageTestSuite) TestGetSeriesReference() {
+	// given
+	sut := CatalogMessage{
+		Name: "MESSAGE",
+		Series: []SeriesReference{
+			{Name: "SERIES", Index: 2},
+			{Name: "OTHER", Index: 12},
+		},
+	}
+
+	ref := sut.FindSeriesReference("OTHER")
+	t.NotNil(ref)
+	t.Equal(12, ref.Index)
+	t.True(sut.IsInSeries("OTHER"))
+}
+
+func (t *CatalogMessageTestSuite) TestGetSeriesReference_Missing() {
+	// given
+	sut := CatalogMessage{
+		Name: "MESSAGE",
+		Series: []SeriesReference{
+			{Name: "SERIES", Index: 2},
+			{Name: "OTHER", Index: 2},
+		},
+	}
+
+	ref := sut.FindSeriesReference("NUNSUCH")
+	t.Nil(ref)
+	t.False(sut.IsInSeries("NUNSUCH"))
+}
+
+func (t *CatalogMessageTestSuite) TestGetSeriesReference_IgnoresCase() {
+	// given
+	sut := CatalogMessage{
+		Name: "MESSAGE",
+		Series: []SeriesReference{
+			{Name: "SERIES", Index: 2},
+			{Name: "OTHER", Index: 2},
+		},
+	}
+
+	ref := sut.FindSeriesReference("other")
+	t.NotNil(ref)
+	t.True(sut.IsInSeries("other"))
 }

@@ -60,7 +60,7 @@ func (s *CatalogIOTestSuite) TestJSONWrite() {
 				Jacket:    "URL://JACKET",
 				Thumbnail: "URL://THUMB",
 				StartDate: MustParseDateOnly("2021-01-01"),
-				EndDate:   MustParseDateOnly("2021-01-08"),
+				StopDate:  MustParseDateOnly("2021-01-08"),
 			},
 		},
 		Messages: []CatalogMessage{

@@ -138,12 +138,12 @@ func newCatalogSeriFromRow(columns map[string]int, rowData []interface{}) (catal
 	}
 	dString = getCellString(rowData, columns[seriesEndDate])
 	if dString == "" {
-		seri.EndDate = catalog.DateOnly{} // zero date
+		seri.StopDate = catalog.DateOnly{} // zero date
 	} else if d, err := catalog.ParseDateOnly(dString); err == nil {
-		seri.EndDate = d
+		seri.StopDate = d
 	} else {
 		log.Printf("WARNING: Cannot parse end date '%s' for series '%s'", dString, seri.Name)
-		seri.EndDate = catalog.DateOnly{} // zero date
+		seri.StopDate = catalog.DateOnly{} // zero date
 	}
 
 	// jacket prefers the DVD, then CD
@@ -288,7 +288,6 @@ func newCatalogMessageFromRow(columns map[string]int, rowData []interface{}) (ca
 	// speakers
 	s := getCellString(rowData, columns[msgSpeakers])
 	for _, speaker := range strings.Split(s, ";") {
-		speaker = normalizeSpeakerName(speaker, msg.Ministry)
 		if speaker != "" {
 			msg.Speakers = append(msg.Speakers, speaker)
 		}
@@ -314,34 +313,6 @@ func newCatalogMessageFromRow(columns map[string]int, rowData []interface{}) (ca
 	msg.Resources = catalog.NewResourcesFromString(getCellString(rowData, columns[msgResources]))
 
 	return msg, nil
-}
-
-// normalizeSpeakerName takes one speaker's name and returns the formal name we
-// want to use in the interface. Adds titles where appropriate (this is mostly a
-// convenience function so I don't have to type full titles and names in the
-// spreadsheet)
-func normalizeSpeakerName(s string, ministry catalog.Ministry) string {
-	s = strings.TrimSpace(s)
-
-	// Vern
-	if s == "Vern" || s == "Vern Peltz" {
-		return "Pastor Vern Peltz"
-	}
-
-	// Dave
-	if s == "Dave" || s == "Dave Warren" {
-		return "Pastor Dave Warren"
-	}
-
-	// Mary
-	if s == "Mary" || s == "Mary Peltz" {
-		if ministry == catalog.CenterOfRelationshipExperience {
-			return "Mary Peltz"
-		}
-		return "Pastor Mary Peltz"
-	}
-
-	return s
 }
 
 // getIndexOfColumns takes a sheet name and returns all the column titles in a

@@ -349,7 +349,7 @@ func (m *CatalogMessage) IsValid(report *util.IndentingReport) bool {
 }
 
 // +---------------------------------------------------------------------------
-// | Message validation
+// | Resource validation
 // +---------------------------------------------------------------------------
 
 func (r *OnlineResource) IsValid(report *util.IndentingReport) bool {
