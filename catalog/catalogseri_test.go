@@ -93,8 +93,9 @@ func (t *CatalogSeriTestSuite) TestSeriesNormalization_Dates() {
 func (t *CatalogSeriTestSuite) TestSeriesNormalization_Speakers() {
 	// given
 	sut := CatalogSeri{
-		Name: "SERIES",
-		View: Public,
+		Name:     "SERIES",
+		View:     Public,
+		Speakers: []string{"Frodo", "Sam"},
 		messages: []CatalogMessage{
 			{
 				Name:       "MSG2",
@@ -121,11 +122,12 @@ func (t *CatalogSeriTestSuite) TestSeriesNormalization_Speakers() {
 	sut.Normalize()
 
 	// then - names should be in order of index, with duplicates ignored
-	t.Len(sut.speakers, 4)
-	t.Equal("Tim", sut.speakers[0])
-	t.Equal("Sam", sut.speakers[1])
-	t.Equal("Ollie", sut.speakers[2])
-	t.Equal("Sven", sut.speakers[3])
+	t.Len(sut.allSpeakers, 5)
+	t.Equal("Frodo", sut.allSpeakers[0])
+	t.Equal("Sam", sut.allSpeakers[1])
+	t.Equal("Tim", sut.allSpeakers[2])
+	t.Equal("Ollie", sut.allSpeakers[3])
+	t.Equal("Sven", sut.allSpeakers[4])
 }
 
 func (t *CatalogSeriTestSuite) TestSeriesNormalization_Resources() {
@@ -169,11 +171,11 @@ func (t *CatalogSeriTestSuite) TestSeriesNormalization_Resources() {
 	sut.Normalize()
 
 	// then - names should be in order of index with duplicate URLs ignored
-	t.Len(sut.Resources, 4)
-	t.Equal("Series Notes", sut.Resources[0].Name)      // keep notes from series
-	t.Equal("First Study Notes", sut.Resources[1].Name) // notes from 1st message
-	t.Equal("Sidetrack", sut.Resources[2].Name)         // unique notes from 2nd message
-	t.Equal("Skizzle", sut.Resources[3].Name)           // note from 0th message
+	t.Len(sut.allResources, 4)
+	t.Equal("Series Notes", sut.allResources[0].Name)      // keep notes from series
+	t.Equal("First Study Notes", sut.allResources[1].Name) // notes from 1st message
+	t.Equal("Sidetrack", sut.allResources[2].Name)         // unique notes from 2nd message
+	t.Equal("Skizzle", sut.allResources[3].Name)           // note from 0th message
 }
 
 // +---------------------------------------------------------------------------
@@ -324,4 +326,66 @@ func (t *CatalogSeriTestSuite) TestBooklet() {
 
 	// then
 	t.False(sut.IsBooklet())
+}
+
+// +---------------------------------------------------------------------------
+// | Filters
+// +---------------------------------------------------------------------------
+
+func (t *CatalogSeriTestSuite) TestFilterByMinistry_Empty() {
+	corpus := []CatalogSeri{}
+	t.Nil(FilterSeriesByMinistry(corpus, WordOfLife))
+}
+
+func (t *CatalogSeriTestSuite) TestFilterByMinistry_None() {
+	// given
+	corpus := []CatalogSeri{
+		{
+			Name: "SERIES-1",
+			messages: []CatalogMessage{
+				{Name: "MSG-A", Ministry: WordOfLife},
+			},
+		},
+		{
+			Name: "SERIES-2",
+			messages: []CatalogMessage{
+				{Name: "MSG-B", Ministry: WordOfLife},
+			},
+		},
+	}
+
+	// then
+	t.Nil(FilterSeriesByMinistry(corpus, TheBridgeOutreach))
+}
+
+func (t *CatalogSeriTestSuite) TestFilterByMinistry() {
+	// given
+	corpus := []CatalogSeri{
+		{
+			Name: "SERIES-1",
+			messages: []CatalogMessage{
+				{Name: "MSG-A", Ministry: WordOfLife},
+			},
+		},
+		{
+			Name: "SERIES-2",
+			messages: []CatalogMessage{
+				{Name: "MSG-B", Ministry: AskThePastor},
+			},
+		},
+		{
+			Name: "SERIES-3",
+			messages: []CatalogMessage{
+				{Name: "MSG-C", Ministry: WordOfLife},
+			},
+		},
+	}
+
+	// when
+	result := FilterSeriesByMinistry(corpus, WordOfLife)
+
+	// then
+	t.Len(result, 2)
+	t.Equal("SERIES-1", result[0].Name)
+	t.Equal("SERIES-3", result[1].Name)
 }

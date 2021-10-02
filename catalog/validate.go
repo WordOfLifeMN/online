@@ -90,7 +90,7 @@ func (c *Catalog) IsMessageSeriesValid(report *util.IndentingReport) bool {
 				continue
 			}
 
-			if _, ok := c.FindSeries(ref.Name); !ok {
+			if _, ok := c.FindSeriByName(ref.Name); !ok {
 				valid = false
 				report.Printf("Message '%s' references series named '%s' which cannot be found\n",
 					msg.Name, ref.Name)

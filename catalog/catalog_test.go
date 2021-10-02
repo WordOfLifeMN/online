@@ -161,12 +161,12 @@ func (t *CatalogTestSuite) TestFindSeries() {
 	}
 
 	// then
-	seri, ok := sut.FindSeries("TEST-A")
+	seri, ok := sut.FindSeriByName("TEST-A")
 	t.True(ok)
 	t.NotNil(seri)
 	t.Equal("TEST-A", seri.Name)
 
-	seri, ok = sut.FindSeries("NUN-SUCH")
+	seri, ok = sut.FindSeriByName("NUN-SUCH")
 	t.False(ok)
 	t.Nil(seri)
 }
@@ -176,7 +176,7 @@ func (t *CatalogTestSuite) TestFindSeries_Empty() {
 	sut := Catalog{}
 
 	// then
-	seri, ok := sut.FindSeries("NUN-SUCH")
+	seri, ok := sut.FindSeriByName("NUN-SUCH")
 	t.False(ok)
 	t.Nil(seri)
 }

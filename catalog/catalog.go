@@ -58,7 +58,7 @@ func (c *Catalog) Initialize() error {
 // addMessagesToTheirSeries finds all the messages that belong to each series and adds them to
 // the series in track order
 func (c *Catalog) addMessagesToTheirSeries() error {
-	for index, _ := range c.Series {
+	for index := range c.Series {
 		seri := &c.Series[index]
 
 		// skip series that are already set up
@@ -103,16 +103,22 @@ func (c *Catalog) createStandAloneMessageSeries() error {
 // +---------------------------------------------------------------------------
 
 // Finds a series by name and returns it. (nil, false) if not found
-func (c *Catalog) FindSeries(targetName string) (seri *CatalogSeri, ok bool) {
+func (c *Catalog) FindSeriByName(seriesName string) (seri *CatalogSeri, ok bool) {
 	// search for the series
-	targetNameUC := strings.ToUpper(targetName)
+	seriesNameUC := strings.ToUpper(seriesName)
 	for _, seri := range c.Series {
 		seri.Initialize()
-		if strings.ToUpper(seri.Name) == targetNameUC {
+		if strings.ToUpper(seri.Name) == seriesNameUC {
 			return &seri, true
 		}
 	}
 	return nil, false
+}
+
+// FindSeriesByMinistry searches the catalog for all series that are in a specific ministry.
+// Returns a copy of those series, or nil slice if no series with the ministry can be found
+func (c *Catalog) FindSeriesByMinistry(ministry Ministry) []CatalogSeri {
+	return FilterSeriesByMinistry(c.Series, ministry)
 }
 
 // Given a series name, finds all the messages that are in that series. This returns a slice of

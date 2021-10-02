@@ -16,8 +16,9 @@ type CatalogSeri struct {
 	ID          string           `json:"id"`                    // web- and file-safe ID
 	Name        string           `json:"name"`                  // display name
 	Description string           `json:"description,omitempty"` // detailed description of contents of series
+	Speakers    []string         `json:"speakers,omitempty"`    // list of speakers in the series (does not include message speakers)
 	Booklets    []OnlineResource `json:"booklets,omitempty"`    // list of study booklets for this series (pdf)
-	Resources   []OnlineResource `json:"resource,omitempty"`    // any other online resources (links, docs, youtube, etc)
+	Resources   []OnlineResource `json:"resources,omitempty"`   // any other online resources (links, docs, youtube, etc) (does not include message resources)
 	Visibility  View             `json:"visibility"`            // visibility of this series as a whole
 	Jacket      string           `json:"jacket,omitempty"`      // link to the DVD (or CD) jacket for this series
 	Thumbnail   string           `json:"thumbnail,omitempty"`   // link to the thumbnail to use for the series
@@ -30,10 +31,11 @@ type CatalogSeri struct {
 	// different visibilities, however, after calling GetView(), the returned
 	// series view is not "Raw" and the rest of the data will only include
 	// information consistent with the view
-	View        View             `json:"-"` // view of this cached data, "Raw" if unfiltered yet
-	messages    []CatalogMessage `json:"-"` // list of messages in the series
-	speakers    []string         `json:"-"` // list of speakers in the series
-	initialized bool             `json:"-"` // has this object been initialized?
+	View         View             `json:"-"` // view of this cached data, "Raw" if unfiltered yet
+	messages     []CatalogMessage `json:"-"` // list of messages in the series
+	allSpeakers  []string         `json:"-"` // list of speakers in the series (including messages)
+	allResources []OnlineResource `json:"-"` // list of resources for the series (including messages)
+	initialized  bool             `json:"-"` // has this object been initialized?
 }
 
 // +---------------------------------------------------------------------------
@@ -108,9 +110,10 @@ func (s *CatalogSeri) Normalize() {
 	// initialize the fields we'll be updating
 	s.StartDate = DateOnly{}
 	s.StopDate = DateOnly{}
-
-	// TODO: we need to merge series resources with message resources, but in order to do that,
-	// we need a separate list of series resources
+	s.allSpeakers = make([]string, len(s.Speakers))
+	copy(s.allSpeakers, s.Speakers)
+	s.allResources = make([]OnlineResource, len(s.Resources))
+	copy(s.allResources, s.Resources)
 
 	// iterate messages and update fields
 	for _, msg := range s.messages {
@@ -126,23 +129,12 @@ func (s *CatalogSeri) Normalize() {
 
 		// update speakers
 		for _, speaker := range msg.Speakers {
-			if !s.IsSpeaker(speaker) {
-				s.speakers = append(s.speakers, speaker)
-			}
+			s.AddSpeakerToSeries(speaker)
 		}
 
 		// update resources
 		for _, resource := range msg.Resources {
-			found := false
-			for _, existing := range s.Resources {
-				if existing.URL == resource.URL {
-					found = true
-					break
-				}
-			}
-			if !found {
-				s.Resources = append(s.Resources, resource)
-			}
+			s.AddResourceToSeries(resource)
 		}
 	}
 }
@@ -193,6 +185,28 @@ func (s *CatalogSeri) GetMinistry() Ministry {
 	return s.messages[0].Ministry
 }
 
+// AddSpeakerToSeries adds a speaker to the list of series and message speakers if they aren't
+// already in the list
+func (s *CatalogSeri) AddSpeakerToSeries(speaker string) {
+	for _, existing := range s.allSpeakers {
+		if existing == speaker {
+			return
+		}
+	}
+	s.allSpeakers = append(s.allSpeakers, speaker)
+}
+
+// AddResourceToSeries adds a resource to the list of series and message resources if it isn't
+// already in the list
+func (s *CatalogSeri) AddResourceToSeries(resource OnlineResource) {
+	for _, existing := range s.allResources {
+		if existing.URL == resource.URL {
+			return
+		}
+	}
+	s.allResources = append(s.allResources, resource)
+}
+
 // +---------------------------------------------------------------------------
 // | Queries
 // +---------------------------------------------------------------------------
@@ -202,16 +216,6 @@ func (s *CatalogSeri) GetMinistry() Ministry {
 // have a booklet but a "booklet series" has no messages
 func (s *CatalogSeri) IsBooklet() bool {
 	return len(s.Booklets) > 0 && len(s.messages) == 0 && s.ID == ""
-}
-
-// IsSpeaker reports whether a specific person is a speaker in this series
-func (s *CatalogSeri) IsSpeaker(speaker string) bool {
-	for _, s := range s.speakers {
-		if s == speaker {
-			return true
-		}
-	}
-	return false
 }
 
 // IsMessageRelevant reports whether the specified message is relavant for this series. In order
@@ -234,4 +238,49 @@ func (s *CatalogSeri) IsMessageRelevant(msg *CatalogMessage) bool {
 	}
 
 	return true
+}
+
+// +---------------------------------------------------------------------------
+// | Filters
+// +---------------------------------------------------------------------------
+
+// FilterSeriesByMinistry takes a slice of series and returns another slice that only contains
+// the series that are in the specified ministry. Returns nil slice if none of the series in the
+// input slice is in the ministry
+func FilterSeriesByMinistry(corpus []CatalogSeri, ministry Ministry) []CatalogSeri {
+	var series []CatalogSeri
+
+	for _, seri := range corpus {
+		if seri.GetMinistry() == ministry {
+			series = append(series, seri)
+		}
+	}
+
+	return series
+}
+
+// FilterSeriesByView takes a slice of series and returns another slice that contains the series
+// that are applicable for the view. So a "partner" view can still display series with
+// visibility of "public" and "partner" but not "private". The resulting slice will be updated
+// so that only messages that match the view are included. In other words, if you ask for a
+// "public" view and there is a "public" series with a "private" message, the "private" message
+// will be removed from the series before returning
+func FilterSeriesByView(corpus []CatalogSeri, view View) []CatalogSeri {
+	var series []CatalogSeri
+
+	// TODO - implement
+
+	return series
+}
+
+// FilterSeriesByVisibility takes a slice of series and returns another slice that contains the
+// series that have the specific visibility. In other words, if you ask for a "public" view and
+// there is a "public" series with a "private" message, the "private" message will be removed
+// from the series before returning
+func FilterSeriesByVisibility(corpus []CatalogSeri, view View) []CatalogSeri {
+	var series []CatalogSeri
+
+	// TODO - implement
+
+	return series
 }
