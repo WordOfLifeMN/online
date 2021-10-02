@@ -27,33 +27,43 @@ import (
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
-// podcastCmd represents the podcast command
-var podcastCmd = &cobra.Command{
-	Use:   "podcast [--days n]",
-	Short: "Output a podcast document for recent messages",
-	Long:  `Output a podcast for recent messages.`,
-	RunE:  podcast,
+type podcastCmdStruct struct {
+	cobra.Command // the podcast command definition
+
+	// flags for this command
+	Days     int    // number of days of history the podcast should include
+	Ministry string // which ministry the podcast should be for
 }
+
+// podcastCmd represents the podcast command
+var podcastCmd *podcastCmdStruct
 
 func init() {
-	rootCmd.AddCommand(podcastCmd)
+	podcastCmd = &podcastCmdStruct{
+		Command: cobra.Command{
+			Use:   "podcast [--days n]",
+			Short: "Output a podcast document for recent messages",
+			Long:  `Output a podcast for recent messages.`,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				return podcastCmd.podcast()
+			},
+		},
+	}
 
-	podcastCmd.Flags().IntP("days", "d", 180, "How many days of history should be included in the podcast")
-	viper.BindPFlag("days", podcastCmd.Flags().Lookup("days"))
+	rootCmd.AddCommand(&podcastCmd.Command)
 
-	podcastCmd.Flags().StringP("ministry", "m", "wol", "Which ministry should the podcast be generated for?")
-	viper.BindPFlag("ministry", podcastCmd.Flags().Lookup("ministry"))
+	podcastCmd.Flags().IntVarP(&podcastCmd.Days, "days", "d", 180, "How many days of history should be included in the podcast")
+	podcastCmd.Flags().StringVarP(&podcastCmd.Ministry, "ministry", "m", "wol", "Which ministry should the podcast be generated for?")
 }
 
-func podcast(cmd *cobra.Command, args []string) error {
+func (cmd *podcastCmdStruct) podcast() error {
 	initLogging()
 
-	ministry := catalog.NewMinistryFromString(viper.GetString("ministry"))
+	ministry := catalog.NewMinistryFromString(cmd.Ministry)
 	if ministry == catalog.UnknownMinistry {
-		return fmt.Errorf("ministry '%s' is unknown", viper.GetString("ministry"))
+		return fmt.Errorf("ministry '%s' is unknown", cmd.Ministry)
 	}
 
 	// get the catalog
@@ -63,7 +73,7 @@ func podcast(cmd *cobra.Command, args []string) error {
 	}
 
 	// determine the maximum age of items in the podcast
-	cutoff := time.Now().AddDate(0, 0, -1*viper.GetInt("days"))
+	cutoff := time.Now().AddDate(0, 0, -1*cmd.Days)
 
 	// get messages that match
 	//  - ministry == WOL
@@ -100,7 +110,7 @@ func podcast(cmd *cobra.Command, args []string) error {
 		"Messages":      messages,
 	}
 
-	return printPodcast(data, os.Stdout)
+	return cmd.printPodcast(data, os.Stdout)
 }
 
 // printPodcast prints a RSS podcast file to the writer. data contains the data
@@ -109,7 +119,7 @@ func podcast(cmd *cobra.Command, args []string) error {
 //  - Description - string
 //  - CopyrightYear - int - 4-digit copyright year
 //  - Messages - []CatalogMessage - list of messages to display (in order to display)
-func printPodcast(data map[string]interface{}, output io.Writer) error {
+func (cmd *podcastCmdStruct) printPodcast(data map[string]interface{}, output io.Writer) error {
 	// get the podcast template
 	templateName, err := getTemplatePath("podcast.xml")
 	if err != nil {

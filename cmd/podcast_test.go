@@ -11,6 +11,8 @@ import (
 func TestEmptyPodcast(t *testing.T) {
 	assert := assert.New(t)
 
+	cmd := podcastCmdStruct{}
+
 	data := map[string]interface{}{
 		"Title":         "TITLE",
 		"Description":   "DESC",
@@ -18,7 +20,7 @@ func TestEmptyPodcast(t *testing.T) {
 	}
 
 	b := bytes.Buffer{}
-	err := printPodcast(data, &b)
+	err := cmd.printPodcast(data, &b)
 	assert.NoError(err)
 
 	s := b.String()
@@ -30,6 +32,8 @@ func TestEmptyPodcast(t *testing.T) {
 
 func TestSingleMessagePodcast(t *testing.T) {
 	assert := assert.New(t)
+
+	cmd := podcastCmdStruct{}
 
 	data := map[string]interface{}{
 		"Title":         "TITLE",
@@ -46,7 +50,7 @@ func TestSingleMessagePodcast(t *testing.T) {
 	}
 
 	b := bytes.Buffer{}
-	err := printPodcast(data, &b)
+	err := cmd.printPodcast(data, &b)
 	assert.NoError(err)
 
 	s := b.String()
@@ -66,6 +70,8 @@ func TestSingleMessagePodcast(t *testing.T) {
 func TestSingleMessagePodcastCharacters(t *testing.T) {
 	assert := assert.New(t)
 
+	cmd := podcastCmdStruct{}
+
 	data := map[string]interface{}{
 		"Title":         "T'LE",
 		"Description":   "DESC & DETAILS",
@@ -81,7 +87,7 @@ func TestSingleMessagePodcastCharacters(t *testing.T) {
 	}
 
 	b := bytes.Buffer{}
-	err := printPodcast(data, &b)
+	err := cmd.printPodcast(data, &b)
 	assert.NoError(err)
 
 	s := b.String()
