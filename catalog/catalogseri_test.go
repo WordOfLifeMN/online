@@ -27,7 +27,7 @@ func (t *CatalogSeriTestSuite) TestSeriesNormalization_Sorting() {
 	sut := CatalogSeri{
 		Name: "SERIES",
 		View: Public,
-		messages: []CatalogMessage{
+		Messages: []CatalogMessage{
 			{
 				Name:       "MSG2",
 				Series:     []SeriesReference{{Name: "SERIES", Index: 2}},
@@ -50,9 +50,9 @@ func (t *CatalogSeriTestSuite) TestSeriesNormalization_Sorting() {
 	sut.Normalize()
 
 	// then
-	t.Equal("MSG1", sut.messages[0].Name)
-	t.Equal("MSG2", sut.messages[1].Name)
-	t.Equal("MSG0", sut.messages[2].Name)
+	t.Equal("MSG1", sut.Messages[0].Name)
+	t.Equal("MSG2", sut.Messages[1].Name)
+	t.Equal("MSG0", sut.Messages[2].Name)
 }
 
 func (t *CatalogSeriTestSuite) TestSeriesNormalization_Dates() {
@@ -60,7 +60,7 @@ func (t *CatalogSeriTestSuite) TestSeriesNormalization_Dates() {
 	sut := CatalogSeri{
 		Name: "SERIES",
 		View: Public,
-		messages: []CatalogMessage{
+		Messages: []CatalogMessage{
 			{
 				Name:       "MSG2",
 				Series:     []SeriesReference{{Name: "SERIES", Index: 2}},
@@ -96,7 +96,7 @@ func (t *CatalogSeriTestSuite) TestSeriesNormalization_Speakers() {
 		Name:     "SERIES",
 		View:     Public,
 		Speakers: []string{"Frodo", "Sam"},
-		messages: []CatalogMessage{
+		Messages: []CatalogMessage{
 			{
 				Name:       "MSG2",
 				Series:     []SeriesReference{{Name: "SERIES", Index: 2}},
@@ -122,12 +122,12 @@ func (t *CatalogSeriTestSuite) TestSeriesNormalization_Speakers() {
 	sut.Normalize()
 
 	// then - names should be in order of index, with duplicates ignored
-	t.Len(sut.allSpeakers, 5)
-	t.Equal("Frodo", sut.allSpeakers[0])
-	t.Equal("Sam", sut.allSpeakers[1])
-	t.Equal("Tim", sut.allSpeakers[2])
-	t.Equal("Ollie", sut.allSpeakers[3])
-	t.Equal("Sven", sut.allSpeakers[4])
+	t.Len(sut.AllSpeakers, 5)
+	t.Equal("Frodo", sut.AllSpeakers[0])
+	t.Equal("Sam", sut.AllSpeakers[1])
+	t.Equal("Tim", sut.AllSpeakers[2])
+	t.Equal("Ollie", sut.AllSpeakers[3])
+	t.Equal("Sven", sut.AllSpeakers[4])
 }
 
 func (t *CatalogSeriTestSuite) TestSeriesNormalization_Resources() {
@@ -138,7 +138,7 @@ func (t *CatalogSeriTestSuite) TestSeriesNormalization_Resources() {
 		Resources: []OnlineResource{
 			{URL: "https://series/notes.pdf", Name: "Series Notes"},
 		},
-		messages: []CatalogMessage{
+		Messages: []CatalogMessage{
 			{
 				Name:       "MSG2",
 				Series:     []SeriesReference{{Name: "SERIES", Index: 2}},
@@ -171,11 +171,11 @@ func (t *CatalogSeriTestSuite) TestSeriesNormalization_Resources() {
 	sut.Normalize()
 
 	// then - names should be in order of index with duplicate URLs ignored
-	t.Len(sut.allResources, 4)
-	t.Equal("Series Notes", sut.allResources[0].Name)      // keep notes from series
-	t.Equal("First Study Notes", sut.allResources[1].Name) // notes from 1st message
-	t.Equal("Sidetrack", sut.allResources[2].Name)         // unique notes from 2nd message
-	t.Equal("Skizzle", sut.allResources[3].Name)           // note from 0th message
+	t.Len(sut.AllResources, 4)
+	t.Equal("Series Notes", sut.AllResources[0].Name)      // keep notes from series
+	t.Equal("First Study Notes", sut.AllResources[1].Name) // notes from 1st message
+	t.Equal("Sidetrack", sut.AllResources[2].Name)         // unique notes from 2nd message
+	t.Equal("Skizzle", sut.AllResources[3].Name)           // note from 0th message
 }
 
 // +---------------------------------------------------------------------------
@@ -186,7 +186,7 @@ func (t *CatalogSeriTestSuite) TestSeriesID_NoMessage() {
 	// given
 	sut := CatalogSeri{
 		Name:     "SERIES",
-		messages: []CatalogMessage{},
+		Messages: []CatalogMessage{},
 	}
 	// then
 	t.Equal("", sut.GetID())
@@ -196,7 +196,7 @@ func (t *CatalogSeriTestSuite) TestSeriesID_UnknownMinistry() {
 	// given
 	sut := CatalogSeri{
 		Name: "SERIES",
-		messages: []CatalogMessage{
+		Messages: []CatalogMessage{
 			{Name: "MESSAGE", Ministry: UnknownMinistry},
 		},
 	}
@@ -208,7 +208,7 @@ func (t *CatalogSeriTestSuite) TestSeriesID_WOL() {
 	// given
 	sut := CatalogSeri{
 		Name: "SERIES",
-		messages: []CatalogMessage{
+		Messages: []CatalogMessage{
 			{Name: "MESSAGE", Ministry: WordOfLife},
 		},
 	}
@@ -220,7 +220,7 @@ func (t *CatalogSeriTestSuite) TestSeriesID_AskPastor() {
 	// given
 	sut := CatalogSeri{
 		Name: "SERIES",
-		messages: []CatalogMessage{
+		Messages: []CatalogMessage{
 			{Name: "MESSAGE", Ministry: AskThePastor},
 		},
 	}
@@ -232,7 +232,7 @@ func (t *CatalogSeriTestSuite) TestSeriesID_CORE() {
 	// given
 	sut := CatalogSeri{
 		Name: "SERIES",
-		messages: []CatalogMessage{
+		Messages: []CatalogMessage{
 			{Name: "MESSAGE", Ministry: CenterOfRelationshipExperience},
 		},
 	}
@@ -244,7 +244,7 @@ func (t *CatalogSeriTestSuite) TestSeriesID_FaithAndFreedom() {
 	// given
 	sut := CatalogSeri{
 		Name: "SERIES",
-		messages: []CatalogMessage{
+		Messages: []CatalogMessage{
 			{Name: "MESSAGE", Ministry: FaithAndFreedom},
 		},
 	}
@@ -256,7 +256,7 @@ func (t *CatalogSeriTestSuite) TestSeriesID_TBO() {
 	// given
 	sut := CatalogSeri{
 		Name: "SERIES",
-		messages: []CatalogMessage{
+		Messages: []CatalogMessage{
 			{Name: "MESSAGE", Ministry: TheBridgeOutreach},
 		},
 	}
@@ -269,7 +269,7 @@ func (t *CatalogSeriTestSuite) TestSeriesID_Explicit() {
 	sut := CatalogSeri{
 		Name: "SERIES",
 		ID:   "MY-ID",
-		messages: []CatalogMessage{
+		Messages: []CatalogMessage{
 			{Name: "MESSAGE", Ministry: FaithAndFreedom},
 		},
 	}
@@ -319,7 +319,7 @@ func (t *CatalogSeriTestSuite) TestBooklet() {
 		Booklets: []OnlineResource{
 			{URL: "http://blah"},
 		},
-		messages: []CatalogMessage{
+		Messages: []CatalogMessage{
 			{Name: "MESSAGE"},
 		},
 	}
@@ -342,13 +342,13 @@ func (t *CatalogSeriTestSuite) TestFilterByMinistry_None() {
 	corpus := []CatalogSeri{
 		{
 			Name: "SERIES-1",
-			messages: []CatalogMessage{
+			Messages: []CatalogMessage{
 				{Name: "MSG-A", Ministry: WordOfLife},
 			},
 		},
 		{
 			Name: "SERIES-2",
-			messages: []CatalogMessage{
+			Messages: []CatalogMessage{
 				{Name: "MSG-B", Ministry: WordOfLife},
 			},
 		},
@@ -363,19 +363,19 @@ func (t *CatalogSeriTestSuite) TestFilterByMinistry() {
 	corpus := []CatalogSeri{
 		{
 			Name: "SERIES-1",
-			messages: []CatalogMessage{
+			Messages: []CatalogMessage{
 				{Name: "MSG-A", Ministry: WordOfLife},
 			},
 		},
 		{
 			Name: "SERIES-2",
-			messages: []CatalogMessage{
+			Messages: []CatalogMessage{
 				{Name: "MSG-B", Ministry: AskThePastor},
 			},
 		},
 		{
 			Name: "SERIES-3",
-			messages: []CatalogMessage{
+			Messages: []CatalogMessage{
 				{Name: "MSG-C", Ministry: WordOfLife},
 			},
 		},

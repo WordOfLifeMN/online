@@ -70,19 +70,19 @@ func (t *CatalogTestSuite) TestAddMessagesToTheirSeries() {
 
 	// then series 1
 	s := sut.Series[0]
-	t.Len(s.messages, 3)
-	t.Equal("MSG-A", s.messages[0].Name)
-	t.Equal("MSG-B", s.messages[1].Name)
-	t.Equal("MSG-C", s.messages[2].Name)
+	t.Len(s.Messages, 3)
+	t.Equal("MSG-A", s.Messages[0].Name)
+	t.Equal("MSG-B", s.Messages[1].Name)
+	t.Equal("MSG-C", s.Messages[2].Name)
 	t.Equal(MustParseDateOnly("2021-01-01"), s.StartDate)
 	t.Equal(MustParseDateOnly("2021-01-03"), s.StopDate)
 
 	// then series 2
 	s = sut.Series[1]
-	t.Len(s.messages, 3)
-	t.Equal("MSG-B", s.messages[0].Name)
-	t.Equal("MSG-C", s.messages[1].Name)
-	t.Equal("MSG-D", s.messages[2].Name)
+	t.Len(s.Messages, 3)
+	t.Equal("MSG-B", s.Messages[0].Name)
+	t.Equal("MSG-C", s.Messages[1].Name)
+	t.Equal("MSG-D", s.Messages[2].Name)
 	t.Equal(MustParseDateOnly("2021-01-02"), s.StartDate)
 	t.Equal(MustParseDateOnly("2021-01-04"), s.StopDate)
 }
@@ -121,25 +121,25 @@ func (t *CatalogTestSuite) TestCreatingSeriesForStandaloneMessages() {
 
 	// then series 1
 	s := sut.Series[0]
-	t.Len(s.messages, 1)
+	t.Len(s.Messages, 1)
 	t.Equal("MSG-A", s.Name)
-	t.Equal("MSG-A", s.messages[0].Name)
+	t.Equal("MSG-A", s.Messages[0].Name)
 	t.Equal(MustParseDateOnly("2021-01-01"), s.StartDate)
 	t.Equal(MustParseDateOnly("2021-01-01"), s.StopDate)
 
 	// then series 2
 	s = sut.Series[1]
-	t.Len(s.messages, 1)
+	t.Len(s.Messages, 1)
 	t.Equal("MSG-B", s.Name)
-	t.Equal("MSG-B", s.messages[0].Name)
+	t.Equal("MSG-B", s.Messages[0].Name)
 	t.Equal(MustParseDateOnly("2021-01-02"), s.StartDate)
 	t.Equal(MustParseDateOnly("2021-01-02"), s.StopDate)
 
 	// then series 3
 	s = sut.Series[2]
-	t.Len(s.messages, 1)
+	t.Len(s.Messages, 1)
 	t.Equal("MSG-C", s.Name)
-	t.Equal("MSG-C", s.messages[0].Name)
+	t.Equal("MSG-C", s.Messages[0].Name)
 	t.Equal(MustParseDateOnly("2021-01-03"), s.StartDate)
 	t.Equal(MustParseDateOnly("2021-01-03"), s.StopDate)
 

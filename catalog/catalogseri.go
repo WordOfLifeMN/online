@@ -32,9 +32,9 @@ type CatalogSeri struct {
 	// series view is not "Raw" and the rest of the data will only include
 	// information consistent with the view
 	View         View             `json:"-"` // view of this cached data, "Raw" if unfiltered yet
-	messages     []CatalogMessage `json:"-"` // list of messages in the series
-	allSpeakers  []string         `json:"-"` // list of speakers in the series (including messages)
-	allResources []OnlineResource `json:"-"` // list of resources for the series (including messages)
+	Messages     []CatalogMessage `json:"-"` // list of messages in the series
+	AllSpeakers  []string         `json:"-"` // list of speakers in the series (including messages)
+	AllResources []OnlineResource `json:"-"` // list of resources for the series (including messages)
 	initialized  bool             `json:"-"` // has this object been initialized?
 }
 
@@ -52,7 +52,7 @@ func NewSeriesFromMessage(msg *CatalogMessage) CatalogSeri {
 	seri.Visibility = msg.Visibility
 	seri.StartDate = msg.Date
 	seri.StopDate = msg.Date
-	seri.messages = []CatalogMessage{*msg}
+	seri.Messages = []CatalogMessage{*msg}
 
 	seri.ID = "SAM-" + util.ComputeHash(seri.Name)
 
@@ -88,15 +88,15 @@ func (s *CatalogSeri) Initialize() error {
 // includes start and stop dates, speakers, and resources.
 func (s *CatalogSeri) Normalize() {
 	// fast bail if nothing to do
-	if len(s.messages) == 0 {
+	if len(s.Messages) == 0 {
 		return
 	}
 
 	// sort by index number (0's at the end)
-	sort.SliceStable(s.messages,
+	sort.SliceStable(s.Messages,
 		func(i, j int) bool {
-			series1 := s.messages[i].Series
-			series2 := s.messages[j].Series
+			series1 := s.Messages[i].Series
+			series2 := s.Messages[j].Series
 
 			if len(series1) == 0 || series1[0].Index == 0 {
 				return false
@@ -110,13 +110,13 @@ func (s *CatalogSeri) Normalize() {
 	// initialize the fields we'll be updating
 	s.StartDate = DateOnly{}
 	s.StopDate = DateOnly{}
-	s.allSpeakers = make([]string, len(s.Speakers))
-	copy(s.allSpeakers, s.Speakers)
-	s.allResources = make([]OnlineResource, len(s.Resources))
-	copy(s.allResources, s.Resources)
+	s.AllSpeakers = make([]string, len(s.Speakers))
+	copy(s.AllSpeakers, s.Speakers)
+	s.AllResources = make([]OnlineResource, len(s.Resources))
+	copy(s.AllResources, s.Resources)
 
 	// iterate messages and update fields
-	for _, msg := range s.messages {
+	for _, msg := range s.Messages {
 		// set start date
 		if s.StartDate.IsZero() || msg.Date.Before(s.StartDate.Time) {
 			s.StartDate = msg.Date
@@ -152,7 +152,7 @@ func (s *CatalogSeri) GetID() string {
 
 	if s.ID == "" {
 		// if there is no message, then there is no ID
-		if len(s.messages) == 0 {
+		if len(s.Messages) == 0 {
 			log.Printf("WARNING: Tried to generate an ID for series '%s' with no ministry", s.Name)
 			return ""
 		}
@@ -179,32 +179,32 @@ func (s *CatalogSeri) GetID() string {
 
 // Gets the Ministry of a series
 func (s *CatalogSeri) GetMinistry() Ministry {
-	if len(s.messages) == 0 {
+	if len(s.Messages) == 0 {
 		return UnknownMinistry
 	}
-	return s.messages[0].Ministry
+	return s.Messages[0].Ministry
 }
 
 // AddSpeakerToSeries adds a speaker to the list of series and message speakers if they aren't
 // already in the list
 func (s *CatalogSeri) AddSpeakerToSeries(speaker string) {
-	for _, existing := range s.allSpeakers {
+	for _, existing := range s.AllSpeakers {
 		if existing == speaker {
 			return
 		}
 	}
-	s.allSpeakers = append(s.allSpeakers, speaker)
+	s.AllSpeakers = append(s.AllSpeakers, speaker)
 }
 
 // AddResourceToSeries adds a resource to the list of series and message resources if it isn't
 // already in the list
 func (s *CatalogSeri) AddResourceToSeries(resource OnlineResource) {
-	for _, existing := range s.allResources {
+	for _, existing := range s.AllResources {
 		if existing.URL == resource.URL {
 			return
 		}
 	}
-	s.allResources = append(s.allResources, resource)
+	s.AllResources = append(s.AllResources, resource)
 }
 
 // +---------------------------------------------------------------------------
@@ -215,7 +215,7 @@ func (s *CatalogSeri) AddResourceToSeries(resource OnlineResource) {
 // a series, except it has a booklet but no messages or ID. Note that a normal series can also
 // have a booklet but a "booklet series" has no messages
 func (s *CatalogSeri) IsBooklet() bool {
-	return len(s.Booklets) > 0 && len(s.messages) == 0 && s.ID == ""
+	return len(s.Booklets) > 0 && len(s.Messages) == 0 && s.ID == ""
 }
 
 // IsMessageRelevant reports whether the specified message is relavant for this series. In order

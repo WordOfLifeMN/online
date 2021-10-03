@@ -62,11 +62,11 @@ func (c *Catalog) addMessagesToTheirSeries() error {
 		seri := &c.Series[index]
 
 		// skip series that are already set up
-		if len(seri.messages) > 0 {
+		if len(seri.Messages) > 0 {
 			continue
 		}
 
-		seri.messages = c.FindMessagesInSeries(seri.Name)
+		seri.Messages = c.FindMessagesInSeries(seri.Name)
 		seri.Normalize()
 	}
 
