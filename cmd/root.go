@@ -26,6 +26,7 @@ import (
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/gclient"
+	"github.com/WordOfLifeMN/online/util"
 	"github.com/spf13/cobra"
 
 	"github.com/spf13/viper"
@@ -139,32 +140,65 @@ func readOnlineContentFromInput(ctx context.Context) (*catalog.Catalog, error) {
 	return nil, fmt.Errorf("no input specified. please provide an --input or --sheet-id parameter, or configure a default sheet-id in the ~/.wolm/online.yaml file")
 }
 
+// getTemplatePath finds the template with the specified name in the template directory. Returns
+// err if a template with the name cannot be found
 func getTemplatePath(templateName string) (string, error) {
-	// read template path from configuration
-	templateDir := viper.GetString("template-dir")
+	templateDir, err := getTemplateDir()
+	if err != nil {
+		return "", err
+	}
+
 	templatePath := filepath.Join(templateDir, templateName)
-	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
-		log.Printf("Template from config: %s", templatePath)
+	if util.DoesPathExist(templatePath) {
 		return templatePath, nil
 	}
 
-	// find a path relative to the executable
+	return "", fmt.Errorf("cannot find template %s", templatePath)
+}
+
+// getTemplateDir finds the directory that stores templates for rendering pages
+func getTemplateDir() (string, error) {
+	// check the configured directory: for when running binary executable with a configuration
+	// file
+	templateDir := viper.GetString("template-dir")
+	if templateDir != "" {
+		// log.Printf("Looking for template dir in config: %s", templateDir)
+		if util.IsDirectory(templateDir) {
+			return templateDir, nil
+		}
+	}
+
+	// check for a template directory relative to the executable: for when running the
+	// executable in the project directory
 	execPath, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
 	execDir := filepath.Dir(execPath)
-	templatePath = filepath.Join(execDir, "templates", templateName)
-	if _, err = os.Stat(templatePath); !os.IsNotExist(err) {
-		log.Printf("Template from executable: %s", templatePath)
-		return templatePath, nil
+	templateDir = filepath.Join(execDir, "templates")
+	// log.Printf("Looking for template dir relative to executable: %s", templateDir)
+	if util.IsDirectory(templateDir) {
+		return templateDir, nil
 	}
 
-	templatePath = filepath.Join("/Users/kmurray/git/go/src/github.com/WordOfLifeMN/online/templates", templateName)
-	if _, err := os.Stat(templatePath); !os.IsNotExist(err) {
-		log.Printf("Template hardcoded: %s", templatePath)
-		return templatePath, nil
+	// check the current working directory: for when running a go tool like "go run"
+	cwDir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	templateDir = filepath.Join(cwDir, "templates")
+	// log.Printf("Looking for template dir in cwd: %s", templateDir)
+	if util.IsDirectory(templateDir) {
+		return templateDir, nil
 	}
 
-	return "", fmt.Errorf("cannot find templates to use to generate web pages")
+	// check relative to the current working directory: for when running go tests, where the cwd
+	// would be the pkg dir in the project
+	templateDir = filepath.Join(cwDir, "..", "templates")
+	// log.Printf("Looking for template dir relative to cwd: %s", templateDir)
+	if util.IsDirectory(templateDir) {
+		return templateDir, nil
+	}
+
+	return "", fmt.Errorf("unable to find the template directory")
 }
