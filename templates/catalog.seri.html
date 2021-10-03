@@ -1,0 +1,8 @@
+{{/* This is expecting data in the form of a CatalogSeri */ -}}
+
+Series Name: {{ .Name }}
+
+Messages: 
+{{- range .Messages }} 
+    {{ .Name }} ({{ .Date }}) 
+{{- end }}
