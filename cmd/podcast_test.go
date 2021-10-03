@@ -5,12 +5,19 @@ import (
 	"testing"
 
 	"github.com/WordOfLifeMN/online/catalog"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestEmptyPodcast(t *testing.T) {
-	assert := assert.New(t)
+type PodcastCmdTestSuite struct {
+	suite.Suite
+}
 
+// Runs the test suite as a test
+func TestPodcastCmdTestSuite(t *testing.T) {
+	suite.Run(t, new(PodcastCmdTestSuite))
+}
+
+func (t *PodcastCmdTestSuite) TestEmptyPodcast() {
 	cmd := podcastCmdStruct{}
 
 	data := map[string]interface{}{
@@ -21,18 +28,16 @@ func TestEmptyPodcast(t *testing.T) {
 
 	b := bytes.Buffer{}
 	err := cmd.printPodcast(data, &b)
-	assert.NoError(err)
+	t.NoError(err)
 
 	s := b.String()
-	assert.Contains(s, "<title>TITLE<")
-	assert.Contains(s, "<description>DESC<")
-	assert.Contains(s, "Copyright 1000 ")
-	assert.NotContains(s, "<item>")
+	t.Contains(s, "<title>TITLE<")
+	t.Contains(s, "<description>DESC<")
+	t.Contains(s, "Copyright 1000 ")
+	t.NotContains(s, "<item>")
 }
 
-func TestSingleMessagePodcast(t *testing.T) {
-	assert := assert.New(t)
-
+func (t *PodcastCmdTestSuite) TestSingleMessagePodcast() {
 	cmd := podcastCmdStruct{}
 
 	data := map[string]interface{}{
@@ -51,25 +56,23 @@ func TestSingleMessagePodcast(t *testing.T) {
 
 	b := bytes.Buffer{}
 	err := cmd.printPodcast(data, &b)
-	assert.NoError(err)
+	t.NoError(err)
 
 	s := b.String()
-	t.Logf("Single MessageString:\n%s", s)
+	t.T().Logf("Single MessageString:\n%s", s)
 
-	assert.Contains(s, "<title>TITLE<")
-	assert.Contains(s, "<description>DESC<")
-	assert.Contains(s, "Copyright 1000 ")
-	assert.Contains(s, "<item>")
-	assert.Contains(s, "<title>MSG-TITLE<")
-	assert.Contains(s, "<description>MSG-TITLE (Feb 3, 2001)<")
-	assert.Contains(s, "<pubDate>Sat, 3 Feb 2001 10:00:00 CDT<")
-	assert.Contains(s, `url="http://AUDIO.mp3"`)
-	assert.Contains(s, `length="-1"`) // because audio file does not exist
+	t.Contains(s, "<title>TITLE<")
+	t.Contains(s, "<description>DESC<")
+	t.Contains(s, "Copyright 1000 ")
+	t.Contains(s, "<item>")
+	t.Contains(s, "<title>MSG-TITLE<")
+	t.Contains(s, "<description>MSG-TITLE (Feb 3, 2001)<")
+	t.Contains(s, "<pubDate>Sat, 3 Feb 2001 10:00:00 CDT<")
+	t.Contains(s, `url="http://AUDIO.mp3"`)
+	t.Contains(s, `length="-1"`) // because audio file does not exist
 }
 
-func TestSingleMessagePodcastCharacters(t *testing.T) {
-	assert := assert.New(t)
-
+func (t *PodcastCmdTestSuite) TestSingleMessagePodcastCharacters() {
 	cmd := podcastCmdStruct{}
 
 	data := map[string]interface{}{
@@ -88,15 +91,13 @@ func TestSingleMessagePodcastCharacters(t *testing.T) {
 
 	b := bytes.Buffer{}
 	err := cmd.printPodcast(data, &b)
-	assert.NoError(err)
+	t.NoError(err)
 
 	s := b.String()
-	t.Logf("Single MessageString:\n%s", s)
+	t.T().Logf("Single MessageString:\n%s", s)
 
-	assert.Contains(s, "<title>T&#39;LE<")
-	assert.Contains(s, "<description>DESC &amp; DETAILS<")
-	assert.Contains(s, "<title>MSG&lt;TITLE&gt;<")
-	assert.Contains(s, "<description>MSG&lt;TITLE&gt; (Feb 3, 2001)<")
+	t.Contains(s, "<title>T&#39;LE<")
+	t.Contains(s, "<description>DESC &amp; DETAILS<")
+	t.Contains(s, "<title>MSG&lt;TITLE&gt;<")
+	t.Contains(s, "<description>MSG&lt;TITLE&gt; (Feb 3, 2001)<")
 }
-
-// TODO: test special characters in title/description like ' < and >

@@ -123,7 +123,7 @@ func (cmd *podcastCmdStruct) printPodcast(data map[string]interface{}, output io
 	// get the podcast template
 	templateName, err := getTemplatePath("podcast.xml")
 	if err != nil {
-		return fmt.Errorf("cannot find template 'podcast'")
+		return fmt.Errorf("cannot find template for 'podcast': %w", err)
 	}
 
 	t := template.New("podcast")
