@@ -49,7 +49,6 @@ const (
 	seriesStartDate   string = "Date Started"
 	seriesEndDate     string = "Date Ended"
 	seriesBooklets    string = "Booklets"
-	seriesResources   string = "Resources"
 	seriesVisibility  string = "Visibility"
 	seriesCDJacket    string = "CD Jacket"
 	seriesDVDJacket   string = "DVD Jacket"
@@ -60,7 +59,7 @@ var requiredSeriesColumns []string = []string{
 	seriesName, seriesID, seriesDescription,
 	seriesStartDate, seriesEndDate,
 	seriesVisibility,
-	seriesBooklets, seriesResources,
+	seriesBooklets,
 	seriesCDJacket, seriesDVDJacket, seriesThumbnail,
 }
 
@@ -154,7 +153,6 @@ func newCatalogSeriFromRow(columns map[string]int, rowData []interface{}) (catal
 
 	// unpack resources
 	seri.Booklets = catalog.NewResourcesFromString(getCellString(rowData, columns[seriesBooklets]))
-	seri.Resources = catalog.NewResourcesFromString(getCellString(rowData, columns[seriesResources]))
 
 	return seri, nil
 }

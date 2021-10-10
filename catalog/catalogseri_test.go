@@ -122,12 +122,11 @@ func (t *CatalogSeriTestSuite) TestSeriesNormalization_Speakers() {
 	sut.Normalize()
 
 	// then - names should be in order of index, with duplicates ignored
-	t.Len(sut.AllSpeakers, 5)
-	t.Equal("Frodo", sut.AllSpeakers[0])
-	t.Equal("Sam", sut.AllSpeakers[1])
-	t.Equal("Tim", sut.AllSpeakers[2])
-	t.Equal("Ollie", sut.AllSpeakers[3])
-	t.Equal("Sven", sut.AllSpeakers[4])
+	t.Len(sut.Speakers, 4)
+	t.Equal("Tim", sut.Speakers[0])
+	t.Equal("Sam", sut.Speakers[1])
+	t.Equal("Ollie", sut.Speakers[2])
+	t.Equal("Sven", sut.Speakers[3])
 }
 
 func (t *CatalogSeriTestSuite) TestSeriesNormalization_Resources() {
@@ -171,31 +170,28 @@ func (t *CatalogSeriTestSuite) TestSeriesNormalization_Resources() {
 	sut.Normalize()
 
 	// then - names should be in order of index with duplicate URLs ignored
-	t.Len(sut.AllResources, 4)
-	t.Equal("Series Notes", sut.AllResources[0].Name)      // keep notes from series
-	t.Equal("First Study Notes", sut.AllResources[1].Name) // notes from 1st message
-	t.Equal("Sidetrack", sut.AllResources[2].Name)         // unique notes from 2nd message
-	t.Equal("Skizzle", sut.AllResources[3].Name)           // note from 0th message
+	t.Len(sut.Resources, 3)
+	t.Equal("First Study Notes", sut.Resources[0].Name) // notes from 1st message
+	t.Equal("Sidetrack", sut.Resources[1].Name)         // unique notes from 2nd message
+	t.Equal("Skizzle", sut.Resources[2].Name)           // note from 0th message
 }
 
 func (t *CatalogSeriTestSuite) TestCopy() {
 	seri := CatalogSeri{
-		ID:           "ID",
-		Name:         "SERIES",
-		Description:  "DESCRIPTION",
-		Speakers:     []string{"VERN", "MARY"},
-		Booklets:     []OnlineResource{{URL: "https://thing.pdf", Name: "Thing", thumbnail: "https://thumb.jpg", classifier: "pdf"}},
-		Resources:    []OnlineResource{{URL: "https://thing.pdf", Name: "Thing", thumbnail: "https://thumb.jpg", classifier: "pdf"}},
-		Visibility:   Public,
-		Jacket:       "https://jacket.pdf",
-		Thumbnail:    "https://thumb.jpg",
-		StartDate:    MustParseDateOnly("2021-02-03"),
-		StopDate:     MustParseDateOnly("2021-05-14"),
-		View:         Public,
-		Messages:     []CatalogMessage{},
-		AllSpeakers:  []string{"Vern"},
-		AllResources: []OnlineResource{{URL: "https://thing.pdf", Name: "Thing", thumbnail: "https://thumb.jpg", classifier: "pdf"}},
-		initialized:  true,
+		ID:          "ID",
+		Name:        "SERIES",
+		Description: "DESCRIPTION",
+		Speakers:    []string{"VERN", "MARY"},
+		Booklets:    []OnlineResource{{URL: "https://thing.pdf", Name: "Thing", thumbnail: "https://thumb.jpg", classifier: "pdf"}},
+		Resources:   []OnlineResource{{URL: "https://thing.pdf", Name: "Thing", thumbnail: "https://thumb.jpg", classifier: "pdf"}},
+		Visibility:  Public,
+		Jacket:      "https://jacket.pdf",
+		Thumbnail:   "https://thumb.jpg",
+		StartDate:   MustParseDateOnly("2021-02-03"),
+		StopDate:    MustParseDateOnly("2021-05-14"),
+		View:        Public,
+		Messages:    []CatalogMessage{},
+		initialized: true,
 	}
 
 	cpy := seri.Copy()
@@ -205,8 +201,8 @@ func (t *CatalogSeriTestSuite) TestCopy() {
 	t.NotSame(seri.Booklets, cpy.Booklets)
 	t.NotSame(seri.Resources, cpy.Resources)
 	t.NotSame(seri.Messages, cpy.Messages)
-	t.NotSame(seri.AllSpeakers, cpy.AllSpeakers)
-	t.NotSame(seri.AllResources, cpy.AllResources)
+	t.NotSame(seri.Speakers, cpy.Speakers)
+	t.NotSame(seri.Resources, cpy.Resources)
 }
 
 // +---------------------------------------------------------------------------
@@ -507,17 +503,20 @@ func (t *CatalogSeriTestSuite) TestFilterByView_Series() {
 	// when, then
 	result := FilterSeriesByView(corpus, Public)
 	t.Len(result, 1)
+	t.Equal(Public, result[0].View)
 	t.Equal("SERIES-1", result[0].Name)
 
 	// when, then
 	result = FilterSeriesByView(corpus, Partner)
 	t.Len(result, 2)
+	t.Equal(Partner, result[0].View)
 	t.Equal("SERIES-1", result[0].Name)
 	t.Equal("SERIES-2", result[1].Name)
 
 	// when, then
 	result = FilterSeriesByView(corpus, Private)
 	t.Len(result, 3)
+	t.Equal(Private, result[0].View)
 	t.Equal("SERIES-1", result[0].Name)
 	t.Equal("SERIES-2", result[1].Name)
 	t.Equal("SERIES-3", result[2].Name)
@@ -573,6 +572,7 @@ func (t *CatalogSeriTestSuite) TestFilterByView_OnlyVisibleMessagesIncluded() {
 	// when, then
 	result := FilterSeriesByView(corpus, Public)
 	t.Len(result, 1)
+	t.Equal(Public, result[0].View)
 	t.Equal("SERIES-1", result[0].Name)
 	t.Len(result[0].Messages, 1)
 	t.Equal("MSG-A", result[0].Messages[0].Name)
@@ -583,9 +583,11 @@ func (t *CatalogSeriTestSuite) TestFilterByView_OnlyVisibleMessagesIncluded() {
 
 	t.Equal("SERIES-1", result[0].Name)
 	t.Len(result[0].Messages, 1)
+	t.Equal(Partner, result[0].View)
 	t.Equal("MSG-A", result[0].Messages[0].Name)
 
 	t.Equal("SERIES-2", result[1].Name)
+	t.Equal(Partner, result[0].View)
 	t.Equal("MSG-C", result[1].Messages[0].Name)
 	t.Equal("MSG-D", result[1].Messages[1].Name)
 }
@@ -625,7 +627,8 @@ func (t *CatalogSeriTestSuite) TestFilterByView_SeriesAreInitialized() {
 	// when, then
 	result := FilterSeriesByView(corpus, Public)
 	seri := result[0]
-	t.Equal([]string{"NANA", "VERN"}, seri.AllSpeakers)
+	t.Equal(Public, seri.View)
+	t.Equal([]string{"VERN"}, seri.Speakers)
 	t.Equal(MustParseDateOnly("2021-03-04"), seri.StartDate)
 	t.Equal(MustParseDateOnly("2021-03-04"), seri.StopDate)
 	t.Len(seri.Messages, 1)
@@ -634,7 +637,8 @@ func (t *CatalogSeriTestSuite) TestFilterByView_SeriesAreInitialized() {
 	// when, then
 	result = FilterSeriesByView(corpus, Partner)
 	seri = result[0]
-	t.Equal([]string{"NANA", "DAVE", "VERN"}, seri.AllSpeakers)
+	t.Equal(Partner, seri.View)
+	t.Equal([]string{"DAVE", "VERN"}, seri.Speakers)
 	t.Equal(MustParseDateOnly("2021-03-04"), seri.StartDate)
 	t.Equal(MustParseDateOnly("2021-03-18"), seri.StopDate)
 	t.Len(seri.Messages, 2)
@@ -644,7 +648,8 @@ func (t *CatalogSeriTestSuite) TestFilterByView_SeriesAreInitialized() {
 	// when, then
 	result = FilterSeriesByView(corpus, Private)
 	seri = result[0]
-	t.Equal([]string{"NANA", "DAVE", "VERN", "MARY"}, seri.AllSpeakers)
+	t.Equal(Private, seri.View)
+	t.Equal([]string{"DAVE", "VERN", "MARY"}, seri.Speakers)
 	t.Equal(MustParseDateOnly("2021-03-04"), seri.StartDate)
 	t.Equal(MustParseDateOnly("2021-03-18"), seri.StopDate)
 	t.Len(seri.Messages, 3)

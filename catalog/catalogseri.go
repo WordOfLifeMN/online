@@ -16,26 +16,23 @@ type CatalogSeri struct {
 	ID          string           `json:"id"`                    // web- and file-safe ID
 	Name        string           `json:"name"`                  // display name
 	Description string           `json:"description,omitempty"` // detailed description of contents of series
-	Speakers    []string         `json:"speakers,omitempty"`    // list of speakers in the series (does not include message speakers)
 	Booklets    []OnlineResource `json:"booklets,omitempty"`    // list of study booklets for this series (pdf)
-	Resources   []OnlineResource `json:"resources,omitempty"`   // any other online resources (links, docs, youtube, etc) (does not include message resources)
 	Visibility  View             `json:"visibility"`            // visibility of this series as a whole
 	Jacket      string           `json:"jacket,omitempty"`      // link to the DVD (or CD) jacket for this series
 	Thumbnail   string           `json:"thumbnail,omitempty"`   // link to the thumbnail to use for the series
-	StartDate   DateOnly         `json:"start-date,omitempty"`  // date of first message in the series
-	StopDate    DateOnly         `json:"end-date,omitempty"`    // date of last message in the series
 
-	// cached or generated data. note that this data could be customized for
-	// different views of the series. when read from the online content, the
-	// view is "Raw" and the list of messages could contain messages with
-	// different visibilities, however, after calling GetView(), the returned
-	// series view is not "Raw" and the rest of the data will only include
-	// information consistent with the view
-	View         View             `json:"-"` // view of this cached data, "Raw" if unfiltered yet
-	Messages     []CatalogMessage `json:"-"` // list of messages in the series
-	AllSpeakers  []string         `json:"-"` // list of speakers in the series (including messages)
-	AllResources []OnlineResource `json:"-"` // list of resources for the series (including messages)
-	initialized  bool             `json:"-"` // has this object been initialized?
+	// cached or generated data. note that this data could be customized for different views of
+	// the series. when read from the online content, the view is "Raw" and the list of messages
+	// could contain messages with different visibilities, however, after calling GetView(), the
+	// returned series view is not "Raw" and the rest of the data will only include information
+	// consistent with the view
+	View        View             `json:"-"`                    // view of this cached data, "Raw" if unfiltered yet
+	Messages    []CatalogMessage `json:"-"`                    // list of messages in the series
+	StartDate   DateOnly         `json:"start-date,omitempty"` // date of first message in the series
+	StopDate    DateOnly         `json:"end-date,omitempty"`   // date of last message in the series
+	Speakers    []string         `json:"speakers,omitempty"`   // list of speakers in the series (does not include message speakers)
+	Resources   []OnlineResource `json:"resources,omitempty"`  // any other online resources (links, docs, youtube, etc) (does not include message resources)
+	initialized bool             `json:"-"`                    // has this object been initialized?
 }
 
 // +---------------------------------------------------------------------------
@@ -71,8 +68,6 @@ func (s *CatalogSeri) Copy() CatalogSeri {
 	copy(seri.Speakers, s.Speakers)
 	copy(seri.Booklets, s.Booklets)
 	copy(seri.Resources, s.Resources)
-	copy(seri.AllSpeakers, s.AllSpeakers)
-	copy(seri.AllResources, s.AllResources)
 
 	seri.Messages = nil
 	for _, message := range s.Messages {
@@ -131,10 +126,8 @@ func (s *CatalogSeri) Normalize() {
 	// initialize the fields we'll be updating
 	s.StartDate = DateOnly{}
 	s.StopDate = DateOnly{}
-	s.AllSpeakers = make([]string, len(s.Speakers))
-	copy(s.AllSpeakers, s.Speakers)
-	s.AllResources = make([]OnlineResource, len(s.Resources))
-	copy(s.AllResources, s.Resources)
+	s.Speakers = nil
+	s.Resources = nil
 
 	// iterate messages and update fields
 	for _, msg := range s.Messages {
@@ -227,23 +220,23 @@ func (s *CatalogSeri) GetMinistry() Ministry {
 // AddSpeakerToSeries adds a speaker to the list of series and message speakers if they aren't
 // already in the list
 func (s *CatalogSeri) AddSpeakerToSeries(speaker string) {
-	for _, existing := range s.AllSpeakers {
+	for _, existing := range s.Speakers {
 		if existing == speaker {
 			return
 		}
 	}
-	s.AllSpeakers = append(s.AllSpeakers, speaker)
+	s.Speakers = append(s.Speakers, speaker)
 }
 
 // AddResourceToSeries adds a resource to the list of series and message resources if it isn't
 // already in the list
 func (s *CatalogSeri) AddResourceToSeries(resource OnlineResource) {
-	for _, existing := range s.AllResources {
+	for _, existing := range s.Resources {
 		if existing.URL == resource.URL {
 			return
 		}
 	}
-	s.AllResources = append(s.AllResources, resource)
+	s.Resources = append(s.Resources, resource)
 }
 
 // +---------------------------------------------------------------------------
@@ -330,6 +323,7 @@ func FilterSeriesByView(corpus []CatalogSeri, view View) []CatalogSeri {
 		}
 
 		candidate.Normalize()
+		candidate.View = view
 		series = append(series, candidate)
 	}
 

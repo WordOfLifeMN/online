@@ -81,7 +81,7 @@ func initConfig() {
 		viper.AddConfigPath(".")
 		viper.AddConfigPath("$HOME/.wolm")
 		viper.SetConfigType("yaml")
-		viper.SetConfigName("online")
+		viper.SetConfigName("online-config")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

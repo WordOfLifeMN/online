@@ -63,9 +63,6 @@ func TestReadSeries(t *testing.T) {
 	sut = series[2]
 	assert.Equal(t, "Resources", sut.Name)
 	assert.Len(t, sut.Booklets, 0)
-	assert.Len(t, sut.Resources, 2)
-	assert.Equal(t, catalog.OnlineResource{URL: "http://url-one.pdf", Name: "url-one"}, sut.Resources[0])
-	assert.Equal(t, catalog.OnlineResource{URL: "https://url-two.pdf", Name: "url-two"}, sut.Resources[1])
 }
 
 func TestReadMessageSheet(t *testing.T) {
