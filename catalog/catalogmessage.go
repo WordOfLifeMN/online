@@ -32,6 +32,20 @@ type CatalogMessage struct {
 // | Constructors
 // +---------------------------------------------------------------------------
 
+func (m *CatalogMessage) Copy() CatalogMessage {
+	// make a shallow copy
+	msg := *m
+
+	// make the deep copies
+	// NOTE: this creates new arrays, but not new objects in the arrays
+	copy(msg.Speakers, m.Speakers)
+	copy(msg.Series, m.Series)
+	copy(msg.Playlist, m.Playlist)
+	copy(msg.Resources, m.Resources)
+
+	return msg
+}
+
 // initialize prepares the message for use. Performs the following checks:
 //  - If the audio/video URL isn't a URL, then deletes it (assumes it was one of the statuses,
 //    like "in progress", "rendering", etc)

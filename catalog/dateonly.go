@@ -15,9 +15,14 @@ type DateOnly struct {
 
 const dateLayout = "2006-01-02"
 
+func NewDateToday() DateOnly {
+	return NewDateOnly(time.Now())
+}
+
 func NewDateOnly(t time.Time) DateOnly {
 	d := DateOnly{}
-	d.Time = t.Truncate(24 * time.Hour)
+	loc, _ := time.LoadLocation("UTC")
+	d.Time = t.In(loc).Truncate(24 * time.Hour)
 	return d
 }
 
@@ -35,7 +40,7 @@ func MustParseDateOnly(t string) DateOnly {
 	return d
 }
 
-func (d *DateOnly) String() string {
+func (d DateOnly) String() string {
 	return d.Time.Format(dateLayout)
 }
 
@@ -55,6 +60,6 @@ func (d *DateOnly) UnmarshalJSON(b []byte) (err error) {
 		d.Time = time.Time{}
 		return
 	}
-	d.Time, err = time.Parse(dateLayout, s)
+	*d, err = ParseDateOnly(s)
 	return
 }

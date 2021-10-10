@@ -1,0 +1,69 @@
+{{/* The html head section.
+Parameters:
+.Ministry: CatalogMinistry
+.Date: NewDateToday()
+*/ -}}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Media Catalog - WORD OF LIFE MINISTRIES</title>
+    <meta property="og:site_name" content="WORD OF LIFE MINISTRIES" />
+    <meta property="og:title" content="Media Catalog" />
+    <meta property="og:description" content="{{.Ministry.String}} - {{.Date}}" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="catalog.{{.Ministry}}.css">
+    <style>
+        body {
+            background-color: black;
+            margin: 15px;
+            font-family: "Arial", sans-serif;
+            color: #777;
+        }
+
+        a {
+            color: #999;
+        }
+
+        .wrapper {
+            text-transform: uppercase;
+        }
+
+        .wrapper a {
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- icon -->
+    <div class="wrapper">
+        <table>
+            <tr>
+                <td valign="middle">
+                    <a href="/">
+                        <img src="all.wordoflife.logo-xxsmall.png"
+                            alt="WORD OF LIFE MINISTRIES" />
+                    </a>
+                </td>
+                <td valign="middle">
+                    <a href="/">
+                        Word Of Life Ministries
+                    </a>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="main-wrap">
+        <div id="wsite-content" class="wsite-elements wsite-not-footer">
+            <div class="wsite-section-wrap">
+                <div class="wsite-section wsite-body-section wsite-background-32">
+                    <div class="wsite-section-content">
+                        <div class="container">
+                            <div class="wsite-section-elements">
+                                <div class="paragraph" style="text-align:left;">

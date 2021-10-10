@@ -27,12 +27,29 @@ func NewMinistryFromString(s string) Ministry {
 		return CenterOfRelationshipExperience
 	case "tbo":
 		return TheBridgeOutreach
-	case "ask pastor", string(AskThePastor):
+	case "ask pastor", "ask the pastor", "askthepastor", string(AskThePastor):
 		return AskThePastor
-	case "faith-freedom":
+	case "faith-freedom", "faithandfreedom":
 		return FaithAndFreedom
 	}
 
 	// log.Printf("WARNING: Encountered unknown ministry '%s'", s)
 	return UnknownMinistry
+}
+
+func (ministry Ministry) String() string {
+	switch ministry {
+	case WordOfLife:
+		return "Word of Life"
+	case CenterOfRelationshipExperience:
+		return "C.O.R.E."
+	case TheBridgeOutreach:
+		return "The Bridge Outreach"
+	case AskThePastor:
+		return "Ask the Pastor"
+	case FaithAndFreedom:
+		return "Faith & Freedom"
+	default:
+		return "(Unknown Ministry)"
+	}
 }

@@ -8,11 +8,12 @@ import (
 
 // code to read/write catalog information from/to disc
 
-func NewCatalogFromJSON(jsonFile string) (*Catalog, error) {
+// NewCatalogFromJSON reads a catalog from a file.
+func NewCatalogFromJSON(jsonFilePath string) (*Catalog, error) {
 	// read from the JSON file
-	bytes, err := os.ReadFile(jsonFile)
+	bytes, err := os.ReadFile(jsonFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read JSON file '%s': %w", jsonFile, err)
+		return nil, fmt.Errorf("cannot read JSON file '%s': %w", jsonFilePath, err)
 	}
 
 	// unmarshal the file contents into a catalog

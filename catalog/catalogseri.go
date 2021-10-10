@@ -61,6 +61,27 @@ func NewSeriesFromMessage(msg *CatalogMessage) CatalogSeri {
 	return seri
 }
 
+// Copy creates a deep copy of the Series
+func (s *CatalogSeri) Copy() CatalogSeri {
+	// make the shallow copy
+	seri := *s
+
+	// make the deep copy
+	// NOTE: this creates new arrays, but not new objects in the arrays
+	copy(seri.Speakers, s.Speakers)
+	copy(seri.Booklets, s.Booklets)
+	copy(seri.Resources, s.Resources)
+	copy(seri.AllSpeakers, s.AllSpeakers)
+	copy(seri.AllResources, s.AllResources)
+
+	seri.Messages = nil
+	for _, message := range s.Messages {
+		seri.Messages = append(seri.Messages, message.Copy())
+	}
+
+	return seri
+}
+
 // Initializes the series for use. This assumes that the series was just read in from disk or
 // network and will take care of setting up the internal bookkeeping that is necessary for
 // performance
@@ -149,32 +170,50 @@ func (s *CatalogSeri) Normalize() {
 // from the spreadsheet first (because it should never change). Generating an ID from the name
 // is second-best because it is only persistent unless someone changes the name
 func (s *CatalogSeri) GetID() string {
-
-	if s.ID == "" {
-		// if there is no message, then there is no ID
-		if len(s.Messages) == 0 {
-			log.Printf("WARNING: Tried to generate an ID for series '%s' with no ministry", s.Name)
-			return ""
-		}
-
-		// generate an ID from the name
-		prefix := "ID-"
-		switch s.GetMinistry() {
-		case WordOfLife:
-			prefix = "WOLS-"
-		case CenterOfRelationshipExperience:
-			prefix = "CORE-"
-		case AskThePastor:
-			prefix = "ATP-"
-		case FaithAndFreedom:
-			prefix = "FandF-"
-		case TheBridgeOutreach:
-			prefix = "TBO-"
-		}
-		s.ID = prefix + util.ComputeHash(s.Name)
+	if s.ID != "" {
+		// we already have an ID
+		return s.ID
 	}
 
+	// if there is no message, then there is no ID
+	if len(s.Messages) == 0 {
+		log.Printf("WARNING: Tried to generate an ID for series '%s' with no messages", s.Name)
+		return ""
+	}
+
+	// generate an ID from the name
+	prefix := "ID-"
+	switch s.GetMinistry() {
+	case WordOfLife:
+		prefix = "WOLS-"
+	case CenterOfRelationshipExperience:
+		prefix = "CORE-"
+	case AskThePastor:
+		prefix = "ATP-"
+	case FaithAndFreedom:
+		prefix = "FandF-"
+	case TheBridgeOutreach:
+		prefix = "TBO-"
+	}
+	s.ID = prefix + util.ComputeHash(s.Name)
+
 	return s.ID
+}
+
+// GetViewID gets an ID for the series for a specific view. If the view is public, then the
+// mystic ID is the same as the normal ID. However, if the view is partner or private, then the
+// mystic ID is additionally hashed to obscure/uniqueify the name
+func (s *CatalogSeri) GetViewID(view View) string {
+	// get the base ID for a public view
+	id := s.GetID()
+
+	// the public view is just the ID
+	if view == Public {
+		return id
+	}
+
+	// all other views have an additional hash
+	return id + "-" + util.ComputeHash(id+string(view))
 }
 
 // Gets the Ministry of a series
@@ -268,7 +307,31 @@ func FilterSeriesByMinistry(corpus []CatalogSeri, ministry Ministry) []CatalogSe
 func FilterSeriesByView(corpus []CatalogSeri, view View) []CatalogSeri {
 	var series []CatalogSeri
 
-	// TODO - implement
+	// TODO - IMHERE
+
+	for _, seri := range corpus {
+		// rule out any seri that doesn't have an acceptable visibilty
+		if !IsVisibleInView(seri.Visibility, view) {
+			continue
+		}
+
+		// make a copy of the series with only visible messages
+		candidate := seri.Copy()
+		candidate.Messages = nil
+		for _, msg := range seri.Messages {
+			if IsVisibleInView(msg.Visibility, view) {
+				candidate.Messages = append(candidate.Messages, msg)
+			}
+		}
+
+		// if no messages were appropriate then skip it
+		if len(candidate.Messages) == 0 {
+			continue
+		}
+
+		candidate.Normalize()
+		series = append(series, candidate)
+	}
 
 	return series
 }

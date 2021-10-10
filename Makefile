@@ -3,7 +3,8 @@ default: clean test build
 
 ## Cleans the intermediate and output files
 clean:
-	rm online
+	rm -f online
+	go clean -testcache
 
 ## Run the tests
 test:

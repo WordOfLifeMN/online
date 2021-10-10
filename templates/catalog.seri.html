@@ -1,8 +1,16 @@
-{{/* This is expecting data in the form of a CatalogSeri */ -}}
+{{/* Paramater map:
+    .Seri     CatalogSeri
+    .Ministry CatalogMinistry
+    .Date     NewDateToday
+*/ -}}
 
-Series Name: {{ .Name }}
+{{template "catalog.pre-content.html" .}}
+
+Series Name: {{ .Seri.Name }}
 
 Messages: 
-{{- range .Messages }} 
-    {{ .Name }} ({{ .Date }}) 
+{{- range .Seri.Messages }} 
+    {{.Name}} ({{.Date}}) 
 {{- end }}
+
+{{template "catalog.post-content.html" .}}
