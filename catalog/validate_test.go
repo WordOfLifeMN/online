@@ -132,54 +132,58 @@ func (t *ValidateTestSuite) TestMessageResource() {
 // | Series
 // +---------------------------------------------------------------------------
 
-func getValidTestSeri() CatalogSeri {
-	return CatalogSeri{
-		Name:        "SERIES",
+func (t *ValidateTestSuite) TestSeriName() {
+	sut := CatalogSeri{
 		ID:          "ID-123",
 		Description: "SERIES DESCRIPTION",
 		Visibility:  Public,
 	}
-}
-func (t *ValidateTestSuite) TestSeriName() {
-	sut := getValidTestSeri()
-	sut.Name = ""
 
 	t.False(sut.IsValid(t.Report))
 	t.Contains(t.Report.String(), "Has no name")
 }
 
 func (t *ValidateTestSuite) TestSeriID() {
-	sut := getValidTestSeri()
-	sut.ID = ""
-
+	sut := CatalogSeri{
+		Name:        "SERIES",
+		Description: "DESCRIPTION",
+		Visibility:  Public,
+	}
 	t.False(sut.IsValid(t.Report))
 	t.Contains(t.Report.String(), "Has no ID")
+
+	sut.Visibility = Partner
+	t.False(sut.IsValid(t.Report))
+	t.Contains(t.Report.String(), "Has no ID")
+
+	// Private series won't need IDs
+	sut.Visibility = Private
+	t.True(sut.IsValid(t.Report))
 }
 
 func (t *ValidateTestSuite) TestSeriBookletWithoutID() {
-	sut := getValidTestSeri()
-	sut.ID = ""
-	sut.Booklets = []OnlineResource{
-		{URL: "https://booklet.pdf"},
+	sut := CatalogSeri{
+		Name:        "SERIES",
+		ID:          "ID-123",
+		Description: "SERIES DESCRIPTION",
+		Visibility:  Public,
+		Booklets: []OnlineResource{
+			{URL: "https://booklet.pdf"},
+		},
 	}
 
 	t.True(sut.IsValid(t.Report))
 }
 
 func (t *ValidateTestSuite) TestSeriBooklet() {
-	sut := getValidTestSeri()
-	sut.Booklets = []OnlineResource{
-		{URL: "not a url", Name: "broken"},
-	}
-
-	t.False(sut.IsValid(t.Report))
-	t.Contains(t.Report.String(), "not contain a valid URL")
-}
-
-func (t *ValidateTestSuite) TestSeriResource() {
-	sut := getValidTestSeri()
-	sut.Resources = []OnlineResource{
-		{URL: "not a url", Name: "broken"},
+	sut := CatalogSeri{
+		Name:        "SERIES",
+		ID:          "ID-123",
+		Description: "SERIES DESCRIPTION",
+		Visibility:  Public,
+		Booklets: []OnlineResource{
+			{URL: "not a url", Name: "broken"},
+		},
 	}
 
 	t.False(sut.IsValid(t.Report))

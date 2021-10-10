@@ -239,7 +239,7 @@ func (s *CatalogSeri) IsValid(report *util.IndentingReport) bool {
 	}
 
 	// id
-	if s.ID == "" && !s.IsBooklet() {
+	if s.ID == "" && !s.IsBooklet() && (s.Visibility == Public || s.Visibility == Partner) {
 		report.Printf("Has no ID (and is not a booklet)")
 		valid = false
 	}
@@ -247,11 +247,6 @@ func (s *CatalogSeri) IsValid(report *util.IndentingReport) bool {
 	// booklets
 	for _, booklet := range s.Booklets {
 		valid = booklet.IsValid(report) && valid
-	}
-
-	// resources
-	for _, resource := range s.Resources {
-		valid = resource.IsValid(report) && valid
 	}
 
 	return valid
