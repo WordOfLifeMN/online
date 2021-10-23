@@ -36,8 +36,12 @@
                     "index": 1
                 }
             ],
-            "audio": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-01-05+People+of+Conviction+or+Convenience.mp3",
-            "video": "http://youtu.be/DGXneD1ZANY"
+            "audio": {
+                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-01-05+People+of+Conviction+or+Convenience.mp3"
+            },
+            "video": {
+                "url": "http://youtu.be/DGXneD1ZANY"
+            }
         },
         {
             "date": "2014-01-26",
@@ -55,8 +59,12 @@
                     "index": 2
                 }
             ],
-            "audio": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-01-26+Sustaining+the+Movement%2C+Part+1.mp3",
-            "video": "http://youtu.be/mgXe7AXvN18"
+            "audio": {
+                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-01-26+Sustaining+the+Movement%2C+Part+1.mp3"
+            },
+            "video": {
+                "url": "http://youtu.be/mgXe7AXvN18"
+            }
         },
         {
             "date": "2014-02-02",
@@ -74,8 +82,12 @@
                     "index": 3
                 }
             ],
-            "audio": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-02-02+Sustaining+the+Movement%2C+Part+2.mp3",
-            "video": "http://youtu.be/sKuG53t_9LM"
+            "audio": {
+                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-02-02+Sustaining+the+Movement%2C+Part+2.mp3"
+            },
+            "video": {
+                "url": "http://youtu.be/sKuG53t_9LM"
+            }
         },
         {
             "date": "2014-02-02",
@@ -86,8 +98,12 @@
             "ministry": "wol",
             "type": "word",
             "visibility": "private",
-            "audio": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-02-02+Word-Doreen+Samsa.mp3",
-            "video": "n/a"
+            "audio": {
+                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-02-02+Word-Doreen+Samsa.mp3"
+            },
+            "video": {
+                "url": "n/a"
+            }
         },
         {
             "date": "2013-02-20",
@@ -98,8 +114,12 @@
             "ministry": "core",
             "type": "message",
             "visibility": "public",
-            "audio": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2013/2013-02-20+Attachment+Disorder.mp3",
-            "video": "-"
+            "audio": {
+                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2013/2013-02-20+Attachment+Disorder.mp3"
+            },
+            "video": {
+                "url": "-"
+            }
         },
         {
             "date": "2014-07-18",
@@ -116,8 +136,12 @@
                     "name": "Summerfest 2014"
                 }
             ],
-            "audio": "-",
-            "video": "abrogated"
+            "audio": {
+                "url": "-"
+            },
+            "video": {
+                "url": "abrogated"
+            }
         },
         {
             "date": "2014-07-18",
@@ -136,8 +160,12 @@
                     "index": 1
                 }
             ],
-            "audio": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-07-18+Revival-Imparting+Life+to+Others.mp3",
-            "video": "http://youtu.be/APGvq3hVf9I"
+            "audio": {
+                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-07-18+Revival-Imparting+Life+to+Others.mp3"
+            },
+            "video": {
+                "url": "http://youtu.be/APGvq3hVf9I"
+            }
         },
         {
             "date": "2014-07-19",
@@ -153,8 +181,12 @@
                     "name": "Summerfest 2014"
                 }
             ],
-            "audio": "-",
-            "video": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.video/2014/2014-07-19+Childrens+Service.wmv"
+            "audio": {
+                "url": "-"
+            },
+            "video": {
+                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.video/2014/2014-07-19+Childrens+Service.wmv"
+            }
         },
         {
             "date": "2014-07-19",
@@ -172,8 +204,12 @@
                     "index": 2
                 }
             ],
-            "audio": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-07-19+The+Strength+of+Men.mp3",
-            "video": "http://youtu.be/VswC49qJqQo"
+            "audio": {
+                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-07-19+The+Strength+of+Men.mp3"
+            },
+            "video": {
+                "url": "http://youtu.be/VswC49qJqQo"
+            }
         },
         {
             "date": "2014-07-20",
@@ -190,8 +226,12 @@
                     "name": "Summerfest 2014"
                 }
             ],
-            "audio": "-",
-            "video": "http://youtu.be/lDepdLDKyDs"
+            "audio": {
+                "url": "-"
+            },
+            "video": {
+                "url": "http://youtu.be/lDepdLDKyDs"
+            }
         },
         {
             "date": "2014-07-20",
@@ -209,8 +249,12 @@
                     "index": 3
                 }
             ],
-            "audio": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-07-20+The+Power+to+Heal.mp3",
-            "video": "http://youtu.be/L_tsWGFIpJg"
+            "audio": {
+                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-07-20+The+Power+to+Heal.mp3"
+            },
+            "video": {
+                "url": "http://youtu.be/L_tsWGFIpJg"
+            }
         }
     ]
 }

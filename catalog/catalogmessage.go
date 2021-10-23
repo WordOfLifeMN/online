@@ -22,8 +22,8 @@ type CatalogMessage struct {
 	Visibility  View              `json:"visibility,omitempty"`  // visibility of this message
 	Series      []SeriesReference `json:"series,omitempty"`      // which series this message belongs to
 	Playlist    []string          `json:"playlist,omitempty"`    // playlist(s) this message is in. used to generate podcasts
-	Audio       string            `json:"audio,omitempty"`       // URL of the audio file
-	Video       string            `json:"video,omitempty"`       // URL of the video. normally on YouTube, BitChute, Rumble, or S3
+	Audio       *OnlineResource   `json:"audio,omitempty"`       // URL of the audio file
+	Video       *OnlineResource   `json:"video,omitempty"`       // URL of the video. normally on YouTube, BitChute, Rumble, or S3
 	Resources   []OnlineResource  `json:"resources,omitempty"`   // list of online resources for this message (links, docs, video, etc)
 	initialized bool              `json:"-"`                     // has this object been initialized?
 }
@@ -58,13 +58,13 @@ func (m *CatalogMessage) Initialize() error {
 	defer func() { m.initialized = true }()
 
 	// clean audio
-	if !strings.Contains(m.Audio, "://") {
-		m.Audio = ""
+	if m.Audio != nil && !strings.Contains(m.Audio.URL, "://") {
+		m.Audio = nil
 	}
 
 	// clean video
-	if !strings.Contains(m.Video, "://") {
-		m.Video = ""
+	if m.Video != nil && !strings.Contains(m.Video.URL, "://") {
+		m.Video = nil
 	}
 
 	// clean the names
@@ -105,31 +105,22 @@ func (m *CatalogMessage) SpeakerString() string {
 	return strings.Join(m.Speakers, ", ")
 }
 
-// GetAudioURL gets the URL for the audio version of this file. Returns "" if
-// there is no audio for this message
-func (m *CatalogMessage) GetAudioURL() string {
-	if strings.Contains(m.Audio, "://") {
-		return m.Audio
-	}
-	return ""
-}
-
 // GetAudioSize gets the size of the audio file in bytes. Returns -1 on error,
 // or 0 if no audio URL. Note this makes network calls to get the content size
 func (m *CatalogMessage) GetAudioSize() int {
-	audioURL := m.GetAudioURL()
-	if audioURL == "" {
+	m.Initialize()
+	if m.Audio == nil {
 		return 0
 	}
 
-	resp, err := http.Head(audioURL)
+	resp, err := http.Head(m.Audio.URL)
 	if err != nil {
-		log.Printf("WARNING: Could not get file size of %s: %s", audioURL, err.Error())
+		log.Printf("WARNING: Could not get file size of %s: %s", m.Audio.URL, err.Error())
 		return -1
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("WARNING: Unsuccessful status code getting file size of %s: %d", audioURL, resp.StatusCode)
+		log.Printf("WARNING: Unsuccessful status code getting file size of %s: %d", m.Audio.URL, resp.StatusCode)
 		return -1
 	}
 

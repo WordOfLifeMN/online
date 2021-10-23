@@ -37,7 +37,7 @@ type OnlineResource struct {
 // Markdown: "[name](url)"
 //
 // Wiki: "name|url"
-func NewResourceFromString(s string) OnlineResource {
+func NewResourceFromString(s string) *OnlineResource {
 	r := OnlineResource{}
 
 	s = strings.TrimSpace(s)
@@ -64,7 +64,7 @@ func NewResourceFromString(s string) OnlineResource {
 		r.Name = r.GetNameFromURL()
 	}
 
-	return r
+	return &r
 }
 
 // NewResourcesFromString parses a string that may contain multiple resources separated by semi-colons.
@@ -81,7 +81,7 @@ func NewResourcesFromString(s string) []OnlineResource {
 	for _, part := range strings.Split(s, ";") {
 		r := NewResourceFromString(part)
 		if r.URL != "" {
-			results = append(results, r)
+			results = append(results, *r)
 		}
 	}
 

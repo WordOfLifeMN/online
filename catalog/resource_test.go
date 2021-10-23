@@ -16,59 +16,59 @@ func TestOnlineResourceestSuite(t *testing.T) {
 }
 
 func (t *OnlineResourceTestSuite) TestEmptyString() {
-	t.Equal(OnlineResource{}, NewResourceFromString(""))
+	t.Equal(OnlineResource{}, *NewResourceFromString(""))
 }
 
 func (t *OnlineResourceTestSuite) TestNewWikiString() {
 	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
-		NewResourceFromString("Hi|http://hi"))
+		*NewResourceFromString("Hi|http://hi"))
 
 	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
-		NewResourceFromString(" Hi|http://hi"))
+		*NewResourceFromString(" Hi|http://hi"))
 
 	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
-		NewResourceFromString("Hi|http://hi "))
+		*NewResourceFromString("Hi|http://hi "))
 
 	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
-		NewResourceFromString("Hi | http://hi"))
+		*NewResourceFromString("Hi | http://hi"))
 
 	t.Equal(
 		OnlineResource{URL: "http://hi.doc", Name: "Hi"},
-		NewResourceFromString("Hi | http://hi.doc"))
+		*NewResourceFromString("Hi | http://hi.doc"))
 
 }
 
 func (t *OnlineResourceTestSuite) TestNewMarkdownString() {
 	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
-		NewResourceFromString("[Hi](http://hi)"))
+		*NewResourceFromString("[Hi](http://hi)"))
 
 	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
-		NewResourceFromString("[ Hi ](http://hi)"))
+		*NewResourceFromString("[ Hi ](http://hi)"))
 
 	t.Equal(
 		OnlineResource{URL: "http://hi", Name: "Hi"},
-		NewResourceFromString("[Hi]( http://hi )"))
+		*NewResourceFromString("[Hi]( http://hi )"))
 
 }
 
 func (t *OnlineResourceTestSuite) TestNewRawURL() {
 	t.Equal(
 		OnlineResource{URL: "http://hi.doc", Name: "hi"},
-		NewResourceFromString("http://hi.doc"))
+		*NewResourceFromString("http://hi.doc"))
 
 	t.Equal(
 		OnlineResource{URL: "http://hi.doc", Name: "hi"},
-		NewResourceFromString("http://hi.doc "))
+		*NewResourceFromString("http://hi.doc "))
 
 	t.Equal(
 		OnlineResource{URL: "http://hi.doc", Name: "hi"},
-		NewResourceFromString(" http://hi.doc"))
+		*NewResourceFromString(" http://hi.doc"))
 }
 
 func (t *OnlineResourceTestSuite) TestNameFromURL() {

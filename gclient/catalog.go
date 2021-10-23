@@ -267,8 +267,9 @@ func newCatalogMessageFromRow(columns map[string]int, rowData []interface{}) (ca
 	// simple mapping
 	msg.Name = getCellString(rowData, columns[msgName])
 	msg.Description = getCellString(rowData, columns[msgDescription])
-	msg.Audio = getCellString(rowData, columns[msgAudio])
-	msg.Video = getCellString(rowData, columns[msgVideo])
+
+	msg.Audio = catalog.NewResourceFromString(getCellString(rowData, columns[msgAudio]))
+	msg.Video = catalog.NewResourceFromString(getCellString(rowData, columns[msgVideo]))
 
 	// get date
 	dString := getCellString(rowData, columns[msgDate])

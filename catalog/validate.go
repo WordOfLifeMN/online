@@ -13,8 +13,9 @@ import (
 // List of states that audio and video's can be in. Most of these should be temporary states
 // during editing, but some are permanent
 var possibleAudioVideoStates = []string{
-	"-",           // permanent
-	"n/a",         // permanent
+	"-",           // permanent - doesn't exist
+	"n/a",         // permanent - not available
+	"n/e",         // permanent - not edited
 	"abrogated",   // permanent
 	"in progress", // temporary
 	"exporting",   // temporary
@@ -281,17 +282,7 @@ func (m *CatalogMessage) IsValid(report *util.IndentingReport) bool {
 		valid = false
 	}
 	if m.Ministry == UnknownMinistry {
-		report.Printf("Unknown ministry")
-		valid = false
-	}
-
-	// type
-	if m.Type == "" {
-		report.Printf("No type")
-		valid = false
-	}
-	if m.Type == UnknownType {
-		report.Printf("Unknown type")
+		report.Printf("Unknown ministry '%s'", string(m.Ministry))
 		valid = false
 	}
 
@@ -301,36 +292,48 @@ func (m *CatalogMessage) IsValid(report *util.IndentingReport) bool {
 		valid = false
 	}
 	if m.Visibility == UnknownView {
-		report.Printf("Unknown visibility")
+		report.Printf("Unknown visibility '%s'", string(m.Visibility))
 		valid = false
 	}
 
+	// type
+	if m.Visibility != Raw && m.Visibility != Private {
+		if m.Type == "" {
+			report.Printf("No type")
+			valid = false
+		}
+		if m.Type == UnknownType {
+			report.Printf("Unknown type '%s'", string(m.Type))
+			valid = false
+		}
+	}
+
 	// audio
-	if m.Audio != "" && !strings.Contains(m.Audio, "://") {
+	if m.Audio != nil && !strings.Contains(m.Audio.URL, "://") {
 		found := false
 		for _, expected := range possibleAudioVideoStates {
-			if m.Audio == expected {
+			if m.Audio.URL == expected {
 				found = true
 				break
 			}
 		}
 		if !found {
-			report.Printf("Audio isn't valid. It is neither a URL nor one of the expected values %v", possibleAudioVideoStates)
+			report.Printf("Audio '%s' isn't valid. It is neither a URL nor one of the expected values %v", m.Audio.URL, possibleAudioVideoStates)
 			valid = false
 		}
 	}
 
 	// video
-	if m.Video != "" && !strings.Contains(m.Video, "://") {
+	if m.Video != nil && !strings.Contains(m.Video.URL, "://") {
 		found := false
 		for _, expected := range possibleAudioVideoStates {
-			if m.Video == expected {
+			if m.Video.URL == expected {
 				found = true
 				break
 			}
 		}
 		if !found {
-			report.Printf("Video isn't valid. It is neither a URL nor one of the expected values %v", possibleAudioVideoStates)
+			report.Printf("Video '%s' isn't valid. It is neither a URL nor one of the expected values %v", m.Video.URL, possibleAudioVideoStates)
 			valid = false
 		}
 	}

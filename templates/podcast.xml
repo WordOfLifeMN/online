@@ -21,9 +21,9 @@
             <description>{{ .Name | xml }} ({{ .Date.Format "Jan 2, 2006" }})</description>
             <author>media@wordoflifemn.org (Word of Life Ministries)</author>
             <category>Christian Sermon</category>
-            <guid>{{ .Audio | xml }}</guid>
+            <guid>{{ .Audio.URL | xml }}</guid>
             <pubDate>{{ .Date.Format "Mon, 2 Jan 2006" }} 10:00:00 CDT</pubDate>
-            <enclosure url="{{ .Audio | xml }}" length="{{ .GetAudioSize }}" type="audio/mpeg" />
+            <enclosure url="{{ .Audio.URL | xml }}" length="{{ .GetAudioSize }}" type="audio/mpeg" />
         </item>
         {{- end }}
     </channel>

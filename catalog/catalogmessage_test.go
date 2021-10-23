@@ -22,56 +22,56 @@ func TestCatalogMessageTestSuite(t *testing.T) {
 
 func (t *CatalogMessageTestSuite) TestInitializeAudio() {
 	// when-then
-	sut := CatalogMessage{Audio: "http://path/file.mp3"}
+	sut := CatalogMessage{Audio: NewResourceFromString("http://path/file.mp3")}
 	t.NoError(sut.Initialize())
-	t.Equal("http://path/file.mp3", sut.Audio)
+	t.Equal("http://path/file.mp3", sut.Audio.URL)
 
 	// when-then
-	sut = CatalogMessage{Audio: ""}
+	sut = CatalogMessage{Audio: NewResourceFromString("")}
 	t.NoError(sut.Initialize())
-	t.Equal("", sut.Audio)
+	t.Nil(sut.Audio)
 
 	// when-then
-	sut = CatalogMessage{Audio: "in progress"}
+	sut = CatalogMessage{Audio: NewResourceFromString("in progress")}
 	t.NoError(sut.Initialize())
-	t.Equal("", sut.Audio)
+	t.Nil(sut.Audio)
 
 	// when-then
-	sut = CatalogMessage{Audio: "-"}
+	sut = CatalogMessage{Audio: NewResourceFromString("-")}
 	t.NoError(sut.Initialize())
-	t.Equal("", sut.Audio)
+	t.Nil(sut.Audio)
 
 	// when-then
-	sut = CatalogMessage{Audio: "exporting"}
+	sut = CatalogMessage{Audio: NewResourceFromString("exporting")}
 	t.NoError(sut.Initialize())
-	t.Equal("", sut.Audio)
+	t.Nil(sut.Audio)
 }
 
 func (t *CatalogMessageTestSuite) TestInitializeVideo() {
 	// when-then
-	sut := CatalogMessage{Video: "http://path/file.mp4"}
+	sut := CatalogMessage{Video: NewResourceFromString("http://path/file.mp4")}
 	t.NoError(sut.Initialize())
-	t.Equal("http://path/file.mp4", sut.Video)
+	t.Equal("http://path/file.mp4", sut.Video.URL)
 
 	// when-then
-	sut = CatalogMessage{Video: ""}
+	sut = CatalogMessage{Video: NewResourceFromString("")}
 	t.NoError(sut.Initialize())
-	t.Equal("", sut.Video)
+	t.Nil(sut.Video)
 
 	// when-then
-	sut = CatalogMessage{Video: "in progress"}
+	sut = CatalogMessage{Video: NewResourceFromString("in progress")}
 	t.NoError(sut.Initialize())
-	t.Equal("", sut.Video)
+	t.Nil(sut.Video)
 
 	// when-then
-	sut = CatalogMessage{Video: "-"}
+	sut = CatalogMessage{Video: NewResourceFromString("-")}
 	t.NoError(sut.Initialize())
-	t.Equal("", sut.Video)
+	t.Nil(sut.Video)
 
 	// when-then
-	sut = CatalogMessage{Video: "uploading"}
+	sut = CatalogMessage{Video: NewResourceFromString("uploading")}
 	t.NoError(sut.Initialize())
-	t.Equal("", sut.Video)
+	t.Nil(sut.Video)
 }
 
 func (t *CatalogMessageTestSuite) TestCopy() {
@@ -85,8 +85,8 @@ func (t *CatalogMessageTestSuite) TestCopy() {
 		Visibility:  Public,
 		Series:      []SeriesReference{{Name: "SERIES", Index: 12}},
 		Playlist:    []string{"Service"},
-		Audio:       "https://audio.mp3",
-		Video:       "https://video.mp4",
+		Audio:       NewResourceFromString("https://audio.mp3"),
+		Video:       NewResourceFromString("https://video.mp4"),
 		Resources:   []OnlineResource{{URL: "https://yes.pdf", Name: "Yes", thumbnail: "https://thumb", classifier: "pdf"}},
 		initialized: true,
 	}
@@ -179,7 +179,7 @@ func (t *CatalogMessageTestSuite) TestGetAudioSize_NoAudio() {
 	// given
 	sut := CatalogMessage{
 		Name:  "MESSAGE",
-		Audio: "-",
+		Audio: NewResourceFromString("-"),
 	}
 	// then
 	t.Equal(0, sut.GetAudioSize())
@@ -189,7 +189,7 @@ func (t *CatalogMessageTestSuite) TestGetAudioSize_IllegalReference() {
 	// given
 	sut := CatalogMessage{
 		Name:  "MESSAGE",
-		Audio: "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2000/no-such-file.mp3",
+		Audio: NewResourceFromString("https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2000/no-such-file.mp3"),
 	}
 	// then
 	t.Equal(-1, sut.GetAudioSize())
@@ -199,7 +199,7 @@ func (t *CatalogMessageTestSuite) TestGetAudioSize_ValidFile() {
 	// given
 	sut := CatalogMessage{
 		Name:  "MESSAGE",
-		Audio: "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2020/2020-10-11+Finding+and+Correcting+Fear%2C+Part+1.mp3",
+		Audio: NewResourceFromString("https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2020/2020-10-11+Finding+and+Correcting+Fear%2C+Part+1.mp3"),
 	}
 	// then
 	t.Equal(48458231, sut.GetAudioSize())

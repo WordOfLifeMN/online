@@ -63,7 +63,7 @@ func NewViewFromString(s string) View {
 		return Partner
 	case "partner":
 		return Partner
-	case "private":
+	case "", "private":
 		return Private
 	case "raw":
 		return Raw

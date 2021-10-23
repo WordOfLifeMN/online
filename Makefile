@@ -13,3 +13,7 @@ test:
 ## Build the executable
 build:
 	go build
+
+dryrun:
+	go run main.go -i testdata/small-catalog.json catalog --view=public -o /tmp/t -v
+	

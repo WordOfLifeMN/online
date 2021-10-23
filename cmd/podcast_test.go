@@ -49,7 +49,7 @@ func (t *PodcastCmdTestSuite) TestSingleMessagePodcast() {
 				Date:        catalog.MustParseDateOnly("2001-02-03"),
 				Name:        "MSG-TITLE",
 				Description: "MSG-DESC",
-				Audio:       "http://AUDIO.mp3",
+				Audio:       catalog.NewResourceFromString("http://AUDIO.mp3"),
 			},
 		},
 	}
@@ -84,7 +84,7 @@ func (t *PodcastCmdTestSuite) TestSingleMessagePodcastCharacters() {
 				Date:        catalog.MustParseDateOnly("2001-02-03"),
 				Name:        "MSG<TITLE>",
 				Description: `MSG "DESC"`,
-				Audio:       "http://AUDIO.mp3",
+				Audio:       catalog.NewResourceFromString("http://AUDIO.mp3"),
 			},
 		},
 	}
