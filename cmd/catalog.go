@@ -240,15 +240,18 @@ before running again, either delete this directory or create the file
 // copyStaticFilesToOutputDir copies all the static files to the output directory. This includes
 // any image files or other files that are not generated dynamically.
 func (cmd *catalogCmdStruct) copyStaticFilesToOutputDir(ministries []catalog.Ministry) error {
-	// find the static directory
+	// find the source directory containing static files
 	templateDir, err := getTemplateDir()
 	if err != nil {
 		return err
 	}
-	staticDir := filepath.Join(templateDir, "static")
-	if !util.IsDirectory(staticDir) {
-		return fmt.Errorf("cannot find static template directory %s", staticDir)
+	sourceDir := filepath.Join(templateDir, "static")
+	if !util.IsDirectory(sourceDir) {
+		return fmt.Errorf("cannot find static template directory %s", sourceDir)
 	}
+
+	// find the target directory for static files
+	targetDir := filepath.Join(cmd.OutputDir, "static")
 
 	// build a list of the prefixes we need to copy
 	prefixesToCopy := []string{"all."}
@@ -269,7 +272,7 @@ func (cmd *catalogCmdStruct) copyStaticFilesToOutputDir(ministries []catalog.Min
 			return true, nil
 		},
 	}
-	return copy.Copy(staticDir, cmd.OutputDir, opt)
+	return copy.Copy(sourceDir, targetDir, opt)
 }
 
 // getOutputFilePath generates the path of an output file based on the output parameters. Given a
