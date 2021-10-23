@@ -1,5 +1,48 @@
+{{/* The html head section.
+    Parameters:
+    .Ministry: CatalogMinistry
+    .Date: NewDateToday()
+    */ -}}
+    
+{{$borderColor := "#528d54" -}}
+{{$hiliteColor := "#337337" -}}
+{{$titleBackgroundColor := "#3e713f" -}}
+{{$titleForegroundColor := "#fff" -}}
+{{if eq .Ministry "tbo"}}
+    {{$borderColor = "#424242"}}
+    {{$hiliteColor = "#d15541"}}
+    {{$titleBackgroundColor = "#222222"}}
+{{else if eq .Ministry "core"}}
+    {{$borderColor = "#840"}}
+    {{$hiliteColor = "#5b2d00"}}
+    {{$titleBackgroundColor = "#452209"}}
+{{end -}}
+
+body {
+    background-color: black;
+    margin: 15px;
+    font-family: "Arial", sans-serif;
+    color: #777;
+}
+
+a {
+    color: #999;
+}
+
 div.message {
-    border: 2px solid #528d54;
+    border: 2px solid {{print $borderColor}};
     border-radius: 5px;
     margin-bottom: 8px;
+}
+
+div.message div.title {
+    padding:1px;
+    border: 0px solid;
+    border-radius: 3px;
+    background-color: {{print $titleBackgroundColor}};
+    color: {{print $titleForegroundColor}};	
+}
+
+div.message div.title span.name {
+    font-weight: bold;
 }

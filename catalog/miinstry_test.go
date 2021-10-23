@@ -36,10 +36,10 @@ func TestConvertToString(t *testing.T) {
 }
 
 func TestMinistryString(t *testing.T) {
-	assert.Equal(t, "Word of Life", WordOfLife.String())
-	assert.Equal(t, "C.O.R.E.", CenterOfRelationshipExperience.String())
-	assert.Equal(t, "The Bridge Outreach", TheBridgeOutreach.String())
-	assert.Equal(t, "Ask the Pastor", AskThePastor.String())
-	assert.Equal(t, "Faith & Freedom", FaithAndFreedom.String())
-	assert.Equal(t, "(Unknown Ministry)", UnknownMinistry.String())
+	assert.Equal(t, "Word of Life", WordOfLife.Description())
+	assert.Equal(t, "C.O.R.E.", CenterOfRelationshipExperience.Description())
+	assert.Equal(t, "The Bridge Outreach", TheBridgeOutreach.Description())
+	assert.Equal(t, "Ask the Pastor", AskThePastor.Description())
+	assert.Equal(t, "Faith & Freedom", FaithAndFreedom.Description())
+	assert.Equal(t, "(Unknown Ministry)", UnknownMinistry.Description())
 }

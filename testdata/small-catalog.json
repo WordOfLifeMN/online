@@ -5,7 +5,7 @@
             "id": "WOLS-Y4euZWJ3FJPSHyWk",
             "name": "A People of Conviction, or Convenience?",
             "description": "These messages deal with the power of Anti-Christ and where it is taking the world we are living in right now. We look at Tolerance, Pantheism, and Universalism which are the rising religions of the future. We also explore the influences of the present worldly system. How can we measure whether we are growing spiritually? How can we differentiate between God testing us or if it's Demonic testing? What is the purposes of these tests? What does a lukewarm Christian look like? Do we and our children even \"Know\" the God we serve? This is a powerful series to help us prepare for the evil days which lay before us.",
-            "visibility": "private",
+            "visibility": "public",
             "jacket": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/Jackets/People+of+Conviction+or+Convenience.pdf",
             "thumbnail": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/CoverImage/People+of+Conviction+or+Convenience.jpg",
             "start-date": "2014-01-05",
@@ -124,7 +124,8 @@
             "name": "Revival: Imparting Life to Others",
             "description": "On this message, Brad spoke about revival, what it really is, and if we want it - how to get it.",
             "speakers": [
-                "Brad Brede"
+                "Brad Brede",
+                "Pastor Vern Peltz"
             ],
             "ministry": "wol",
             "type": "message",

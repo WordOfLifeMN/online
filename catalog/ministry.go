@@ -37,7 +37,7 @@ func NewMinistryFromString(s string) Ministry {
 	return UnknownMinistry
 }
 
-func (ministry Ministry) String() string {
+func (ministry Ministry) Description() string {
 	switch ministry {
 	case WordOfLife:
 		return "Word of Life"

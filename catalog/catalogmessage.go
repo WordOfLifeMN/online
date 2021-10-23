@@ -100,6 +100,11 @@ func (m *CatalogMessage) normalizeSpeakerName(speaker string) string {
 // | Accessors
 // +---------------------------------------------------------------------------
 
+// SpeakerString gets all the speakers in a descriptive string
+func (m *CatalogMessage) SpeakerString() string {
+	return strings.Join(m.Speakers, ", ")
+}
+
 // GetAudioURL gets the URL for the audio version of this file. Returns "" if
 // there is no audio for this message
 func (m *CatalogMessage) GetAudioURL() string {

@@ -3,6 +3,7 @@ package catalog
 import (
 	"log"
 	"sort"
+	"strings"
 
 	"github.com/WordOfLifeMN/online/util"
 )
@@ -15,6 +16,8 @@ import (
 type CatalogSeri struct {
 	ID          string           `json:"id"`                    // web- and file-safe ID
 	Name        string           `json:"name"`                  // display name
+	StartDate   DateOnly         `json:"start-date,omitempty"`  // date of first message in the series
+	StopDate    DateOnly         `json:"end-date,omitempty"`    // date of last message in the series
 	Description string           `json:"description,omitempty"` // detailed description of contents of series
 	Booklets    []OnlineResource `json:"booklets,omitempty"`    // list of study booklets for this series (pdf)
 	Visibility  View             `json:"visibility"`            // visibility of this series as a whole
@@ -26,14 +29,22 @@ type CatalogSeri struct {
 	// could contain messages with different visibilities, however, after calling GetView(), the
 	// returned series view is not "Raw" and the rest of the data will only include information
 	// consistent with the view
-	View        View             `json:"-"`                    // view of this cached data, "Raw" if unfiltered yet
-	Messages    []CatalogMessage `json:"-"`                    // list of messages in the series
-	StartDate   DateOnly         `json:"start-date,omitempty"` // date of first message in the series
-	StopDate    DateOnly         `json:"end-date,omitempty"`   // date of last message in the series
-	Speakers    []string         `json:"speakers,omitempty"`   // list of speakers in the series (does not include message speakers)
-	Resources   []OnlineResource `json:"resources,omitempty"`  // any other online resources (links, docs, youtube, etc) (does not include message resources)
-	initialized bool             `json:"-"`                    // has this object been initialized?
+	View        View             `json:"-"`                   // view of this cached data, "Raw" if unfiltered yet
+	Messages    []CatalogMessage `json:"-"`                   // list of messages in the series
+	Speakers    []string         `json:"speakers,omitempty"`  // list of speakers in the series (does not include message speakers)
+	Resources   []OnlineResource `json:"resources,omitempty"` // any other online resources (links, docs, youtube, etc) (does not include message resources)
+	State       SeriesState      `json:"state,omitempty"`     // is the series in progress?
+	initialized bool             `json:"-"`                   // has this object been initialized?
 }
+
+type SeriesState int
+
+const (
+	State_Unknown       SeriesState = 0
+	State_HasNotStarted SeriesState = 1
+	State_InProgress    SeriesState = 2
+	State_Complete      SeriesState = 3
+)
 
 // +---------------------------------------------------------------------------
 // | Constructors
@@ -45,15 +56,17 @@ func NewSeriesFromMessage(msg *CatalogMessage) CatalogSeri {
 	seri := CatalogSeri{}
 	seri.Name = msg.Name
 	seri.Description = msg.Description
-	seri.Resources = msg.Resources
 	seri.Visibility = msg.Visibility
-	seri.StartDate = msg.Date
-	seri.StopDate = msg.Date
-	seri.Messages = []CatalogMessage{*msg}
+
+	// create a copy of the message for this seri
+	message := (*msg).Copy()
+	message.Series = []SeriesReference{{Name: seri.Name, Index: 1}}
+	seri.Messages = []CatalogMessage{message}
 
 	seri.ID = "SAM-" + util.ComputeHash(seri.Name)
 
 	seri.Initialize()
+	seri.Normalize()
 
 	return seri
 }
@@ -88,13 +101,23 @@ func (s *CatalogSeri) Initialize() error {
 
 	// ensure the visibility is valid
 	if s.Visibility == "" || s.Visibility == UnknownView {
-		log.Printf("Series '%s' has no visibility, defaulting to private", s.Name)
+		// log.Printf("Series '%s' has no visibility, defaulting to private", s.Name)
 		s.Visibility = Private
 	}
 
 	// default the view to the current visibility
 	if s.View == "" || s.View == UnknownView {
 		s.View = s.Visibility
+	}
+
+	if s.State == State_Unknown {
+		s.State = State_HasNotStarted
+		if !s.StartDate.IsZero() {
+			s.State = State_InProgress
+			if !s.StopDate.IsZero() {
+				s.State = State_Complete
+			}
+		}
 	}
 
 	return nil
@@ -209,12 +232,34 @@ func (s *CatalogSeri) GetViewID(view View) string {
 	return id + "-" + util.ComputeHash(id+string(view))
 }
 
+// DateString gets the date of the series in a displayable string
+func (s *CatalogSeri) DateString() string {
+	if s.State == State_Unknown || s.State == State_HasNotStarted {
+		return "Coming Soon"
+	}
+
+	if s.State == State_InProgress {
+		return "Started " + s.StartDate.Time.Format("January 2, 2006")
+	}
+
+	if s.StartDate.Year() == s.StopDate.Year() {
+		return s.StartDate.Time.Format("January 2") + " - " + s.StopDate.Time.Format("January 2, 2006")
+	}
+
+	return s.StartDate.Time.Format("January 2, 2006") + " - " + s.StopDate.Time.Format("January 2, 2006")
+}
+
 // Gets the Ministry of a series
 func (s *CatalogSeri) GetMinistry() Ministry {
 	if len(s.Messages) == 0 {
 		return UnknownMinistry
 	}
 	return s.Messages[0].Ministry
+}
+
+// SpeakerString gets the list of speakers as a display string
+func (s *CatalogSeri) SpeakerString() string {
+	return strings.Join(s.Speakers, ", ")
 }
 
 // AddSpeakerToSeries adds a speaker to the list of series and message speakers if they aren't

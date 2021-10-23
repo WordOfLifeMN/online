@@ -22,6 +22,94 @@ func TestCatalogSeriTestSuite(t *testing.T) {
 // TODO - Normalize: no messages, start date, stop date, speakers, messages that are not
 // relevant
 
+func (t *CatalogSeriTestSuite) TestNewSeriesFromStandAloneMessage() {
+	// given
+	msg := CatalogMessage{
+		Date:        MustParseDateOnly("2006-07-08"),
+		Name:        "A MESSAGE",
+		Description: "A DESCRIPTION",
+		Visibility:  Partner,
+		Speakers:    []string{"OLLIE", "SVEN"},
+		Resources: []OnlineResource{
+			{URL: "http://ollie.png", Name: "Ollie Portrait"},
+			{URL: "http://sven.png", Name: "Sven Portrait"},
+		},
+	}
+
+	// when
+	sut := NewSeriesFromMessage(&msg)
+
+	// then
+	t.Equal(MustParseDateOnly("2006-07-08"), sut.StartDate)
+	t.Equal(MustParseDateOnly("2006-07-08"), sut.StopDate)
+	t.Equal("A MESSAGE", sut.Name)
+	t.Equal("A DESCRIPTION", sut.Description)
+	t.Equal([]string{"OLLIE", "SVEN"}, sut.Speakers)
+	t.Equal(Partner, sut.Visibility)
+
+	// resources
+	t.Nil(sut.Booklets)
+	t.Len(sut.Resources, 2)
+	t.Equal("Ollie Portrait", sut.Resources[0].Name)
+	t.Equal("Sven Portrait", sut.Resources[1].Name)
+
+	// messages
+	t.Len(sut.Messages, 1)
+	t.Equal("A MESSAGE", sut.Messages[0].Name)
+	t.Len(sut.Messages[0].Series, 1)
+	t.Equal(SeriesReference{Name: "A MESSAGE", Index: 1}, sut.Messages[0].Series[0])
+
+	// verify message in series is not the message used for the copy
+	t.NotSame(&sut.Messages[0], &msg)
+	t.Len(msg.Series, 0)
+}
+
+func (t *CatalogSeriTestSuite) TestNewSeriesFromMessageInSeries() {
+	// given
+	msg := CatalogMessage{
+		Date:        MustParseDateOnly("2006-07-08"),
+		Name:        "A MESSAGE",
+		Description: "A DESCRIPTION",
+		Visibility:  Partner,
+		Speakers:    []string{"OLLIE", "SVEN"},
+		Resources: []OnlineResource{
+			{URL: "http://ollie.png", Name: "Ollie Portrait"},
+			{URL: "http://sven.png", Name: "Sven Portrait"},
+		},
+		Series: []SeriesReference{
+			{Name: "SOME OTHER SERIES", Index: 2},
+			{Name: "SAM", Index: 1},
+		},
+	}
+
+	// when
+	sut := NewSeriesFromMessage(&msg)
+
+	// then
+	t.Equal(MustParseDateOnly("2006-07-08"), sut.StartDate)
+	t.Equal(MustParseDateOnly("2006-07-08"), sut.StopDate)
+	t.Equal("A MESSAGE", sut.Name)
+	t.Equal("A DESCRIPTION", sut.Description)
+	t.Equal([]string{"OLLIE", "SVEN"}, sut.Speakers)
+	t.Equal(Partner, sut.Visibility)
+
+	// resources
+	t.Nil(sut.Booklets)
+	t.Len(sut.Resources, 2)
+	t.Equal("Ollie Portrait", sut.Resources[0].Name)
+	t.Equal("Sven Portrait", sut.Resources[1].Name)
+
+	// messages
+	t.Len(sut.Messages, 1)
+	t.Equal("A MESSAGE", sut.Messages[0].Name)
+	t.Len(sut.Messages[0].Series, 1)
+	t.Equal(SeriesReference{Name: "A MESSAGE", Index: 1}, sut.Messages[0].Series[0])
+
+	// verify message in series is not the message used for the copy
+	t.NotSame(&sut.Messages[0], &msg)
+	t.Len(msg.Series, 2)
+}
+
 func (t *CatalogSeriTestSuite) TestSeriesNormalization_Sorting() {
 	// given
 	sut := CatalogSeri{
@@ -189,6 +277,7 @@ func (t *CatalogSeriTestSuite) TestCopy() {
 		Thumbnail:   "https://thumb.jpg",
 		StartDate:   MustParseDateOnly("2021-02-03"),
 		StopDate:    MustParseDateOnly("2021-05-14"),
+		State:       State_InProgress,
 		View:        Public,
 		Messages:    []CatalogMessage{},
 		initialized: true,
@@ -197,6 +286,8 @@ func (t *CatalogSeriTestSuite) TestCopy() {
 	cpy := seri.Copy()
 
 	t.Equal(seri.Name, cpy.Name)
+	t.Equal(seri.State, cpy.State)
+	t.True(cpy.initialized)
 	t.NotSame(seri.Speakers, cpy.Speakers)
 	t.NotSame(seri.Booklets, cpy.Booklets)
 	t.NotSame(seri.Resources, cpy.Resources)
@@ -324,6 +415,57 @@ func (t *CatalogSeriTestSuite) TestSeriesViewID() {
 	t.NotEqual(publicID, partnerID)
 	t.NotEqual(publicID, privateID)
 	t.NotEqual(partnerID, privateID)
+}
+
+func (t *CatalogSeriTestSuite) TestDateString() {
+	// given
+	sut := CatalogSeri{
+		Name: "SERIES",
+	}
+	sut.Initialize()
+	t.Equal("Coming Soon", sut.DateString())
+
+	// given
+	sut = CatalogSeri{
+		Name:      "SERIES",
+		StartDate: MustParseDateOnly("2006-07-08"),
+	}
+	sut.Initialize()
+	t.Equal("Started July 8, 2006", sut.DateString())
+
+	// given
+	sut = CatalogSeri{
+		Name:      "SERIES",
+		StartDate: MustParseDateOnly("2006-07-08"),
+		StopDate:  MustParseDateOnly("2006-09-01"),
+	}
+	sut.Initialize()
+	t.Equal("July 8 - September 1, 2006", sut.DateString())
+
+	// given
+	sut = CatalogSeri{
+		Name:      "SERIES",
+		StartDate: MustParseDateOnly("2006-07-08"),
+		StopDate:  MustParseDateOnly("2008-09-01"),
+	}
+	sut.Initialize()
+	t.Equal("July 8, 2006 - September 1, 2008", sut.DateString())
+}
+
+func (t *CatalogSeriTestSuite) TestSpeakerString() {
+	// given
+	sut := CatalogSeri{
+		Name: "SERIES",
+	}
+	t.Equal("", sut.SpeakerString())
+
+	// given
+	sut.Speakers = append(sut.Speakers, "SVEN")
+	t.Equal("SVEN", sut.SpeakerString())
+
+	// given
+	sut.Speakers = append(sut.Speakers, "OLLIE")
+	t.Equal("SVEN, OLLIE", sut.SpeakerString())
 }
 
 // +---------------------------------------------------------------------------

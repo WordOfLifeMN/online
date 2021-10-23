@@ -98,6 +98,8 @@ func (s *CatalogIOTestSuite) TestJSONWrite() {
     {
       "id": "TEST-ID",
       "name": "TEST-NAME",
+      "start-date": "2021-01-01",
+      "end-date": "2021-01-08",
       "description": "TEST-DESCRIPTION",
       "booklets": [
         {
@@ -107,9 +109,7 @@ func (s *CatalogIOTestSuite) TestJSONWrite() {
       ],
       "visibility": "private",
       "jacket": "URL://JACKET",
-      "thumbnail": "URL://THUMB",
-      "start-date": "2021-01-01",
-      "end-date": "2021-01-08"
+      "thumbnail": "URL://THUMB"
     }
   ],
   "messages": [

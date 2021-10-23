@@ -122,15 +122,17 @@ func (cmd *catalogCmdStruct) catalog() error {
 		return err
 	}
 
+	// set up the output directory
+	if err := cmd.initializeOutputDir(); err != nil {
+		return err
+	}
+
 	// load our templates
 	if err := cmd.loadTemplates(); err != nil {
 		return fmt.Errorf("unable to load templates for generating the catalog: %w", err)
 	}
 
-	// set up the output directory with the static files
-	if err := cmd.initializeOutputDir(); err != nil {
-		return err
-	}
+	// set up the static files
 	if err := cmd.copyStaticFilesToOutputDir(ministries); err != nil {
 		return err
 	}
@@ -138,7 +140,7 @@ func (cmd *catalogCmdStruct) catalog() error {
 	// generate ministry styles
 	log.Printf("Generating style sheets")
 	for _, ministry := range ministries {
-		log.Printf("  Ministry %s", ministry.String())
+		log.Printf("  Ministry %s", ministry.Description())
 		if err := cmd.createStyleSheet(ministry); err != nil {
 			return err
 		}
@@ -148,7 +150,7 @@ func (cmd *catalogCmdStruct) catalog() error {
 	log.Printf("Generating seri pages")
 	for _, ministry := range ministries {
 		for _, view := range views {
-			log.Printf("  Ministry %s (%s)", ministry.String(), string(view))
+			log.Printf("  Ministry %s (%s)", ministry.Description(), string(view))
 			if err := cmd.createAllCatalogSeriPages(ministry, catalog.Public); err != nil {
 				return err
 			}
@@ -299,7 +301,14 @@ func (cmd *catalogCmdStruct) printCatalogStyle(ministry catalog.Ministry, output
 	if err := cmd.loadTemplates(); err != nil {
 		return err
 	}
-	return cmd.template.ExecuteTemplate(output, "catalog.css", ministry)
+
+	data := struct {
+		Ministry catalog.Ministry
+	}{
+		Ministry: ministry,
+	}
+
+	return cmd.template.ExecuteTemplate(output, "catalog.css", data)
 }
 
 // ----------------------------------------------------------------------------

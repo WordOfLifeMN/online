@@ -1,0 +1,52 @@
+{{/*
+Paramater map:
+. CatalogMessage
+*/ -}}
+
+<div class="message">
+
+    {{- /* message title */ -}}
+    <div class="title" title="{{.Description}}">
+        {{if .Series}}{{(index .Series 0).Index}}{{else}}1{{end}}.
+        <span class="name">{{.Name}}</span>
+        {{if .Speakers}}
+        <span class="speakers">- {{.SpeakerString}}</span>
+        {{end}}
+        {{if .Date}} <span class="date">({{.Date.String}})</span> {{end}}
+    </div>
+
+    {{- /* message title */ -}}
+    <div class="body">
+        <p class="description">{{.Description}}</p>
+        <table width="100%" class="player">
+            <tr>
+                <td width="15px" class="margin">&nbsp;</td>
+                {{if .Video}}
+                    <td width="70px" class="video">
+                        {{/* TODO - change video to online resource
+                        <a href="{{.Video.URL}}" target="wolmVideo">
+                            <img src="{{.Video.GetThumbnail}}" height="24px" alt="{{.Video.GetClassifier}}" />
+                        </a>
+                        */}}
+                        <a href="{{.Video}}" target="wolmVideo">
+                            <img src="https://s3-us-west-2.amazonaws.com/wordoflife.mn.catalog/YouTubeIcon.jpg" height="24px" alt="video" />
+                        </a>
+                    </td>
+                {{end}}
+                <td class="audio">
+                    {{if .Audio}}
+                        <audio controls style="width:100%;">
+                            {{/* TODO - change audio to online resource
+                                <source src="{{.Audio.URL}}" type="audio/mpeg" />
+                            */}}
+                            <source src="{{.Audio}}" type="audio/mpeg" />
+                        </audio>
+                    {{else}}
+                        no audio is available
+                    {{end}}
+                </td>
+                <td width="15px" class="margin">&nbsp;</td>
+            </tr>
+        </table>
+    </div>
+</div>

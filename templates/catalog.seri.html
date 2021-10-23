@@ -6,11 +6,30 @@
 
 {{template "catalog.pre-content.html" .}}
 
-Series Name: {{ .Seri.Name }}
+<h1>{{ .Seri.Name }}</h1>
+<table>
+    <tr>
+        {{/* Series artwork */}}
+        {{if .Seri.Thumbnail}}
+            <td valign="top">
+                <img src="{{.Seri.Thumbnail}}" width="128" alt="Series Thumbnail"/>
+            </td>
+        {{end}}
+        <td valign="top">
+            {{/* Series description */}}
+            <p>
+                {{.Seri.SpeakerString}}
+                /
+                {{.Seri.DateString}}
+            </p>
+            {{.Seri.Description}}
+        </td>
+    </tr>
+</table>
 
-Messages: 
+{{/* Messages */}}
 {{- range .Seri.Messages }} 
-    {{.Name}} ({{.Date}}) 
+    {{template "catalog.message.html" .}}
 {{- end }}
 
 {{template "catalog.post-content.html" .}}

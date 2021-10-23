@@ -36,11 +36,11 @@ func (c *Catalog) Initialize() error {
 	defer func() { c.initialized = true }()
 
 	// initialize series and messages
-	for _, seri := range c.Series {
-		seri.Initialize()
+	for index := range c.Series {
+		c.Series[index].Initialize()
 	}
-	for _, msg := range c.Messages {
-		msg.Initialize()
+	for index := range c.Messages {
+		c.Messages[index].Initialize()
 	}
 
 	// add series to the messages that they belong to
@@ -106,10 +106,11 @@ func (c *Catalog) createStandAloneMessageSeries() error {
 func (c *Catalog) FindSeriByName(seriesName string) (seri *CatalogSeri, ok bool) {
 	// search for the series
 	seriesNameUC := strings.ToUpper(seriesName)
-	for _, seri := range c.Series {
+	for index := range c.Series {
+		seri := &c.Series[index]
 		seri.Initialize()
 		if strings.ToUpper(seri.Name) == seriesNameUC {
-			return &seri, true
+			return seri, true
 		}
 	}
 	return nil, false
