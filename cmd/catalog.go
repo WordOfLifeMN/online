@@ -179,8 +179,26 @@ func (cmd *catalogCmdStruct) loadTemplates() error {
 		return err
 	}
 
-	// parse the templates
+	// create the template
 	cmd.template = template.New("catalog")
+	cmd.template.Funcs(template.FuncMap{
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("dict call must contain an even number of parameters")
+			}
+			dict := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict key %d is not a string: (%v)", i, values[i])
+				}
+				dict[key] = values[i+1]
+			}
+			return dict, nil
+		},
+	})
+
+	// parse the templates
 	log.Printf("  Templates %s", filepath.Join(templateDir, "catalog.css"))
 	cmd.template, err = cmd.template.ParseGlob(filepath.Join(templateDir, "catalog.css"))
 	if err != nil {

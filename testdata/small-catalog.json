@@ -9,7 +9,13 @@
             "jacket": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/Jackets/People+of+Conviction+or+Convenience.pdf",
             "thumbnail": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/CoverImage/People+of+Conviction+or+Convenience.jpg",
             "start-date": "2014-01-05",
-            "end-date": "2014-02-02"
+            "end-date": "2014-02-02",
+            "booklets": [
+                {
+                    "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/StudyGuide/Favor+and+Grace.pdf",
+                    "name": "Favor and Grace"
+                }
+            ]
         },
         {
             "id": "WOLS-4yeme1fzk6ttayy",
@@ -63,7 +69,6 @@
                     "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.video/2014/2014-07-19+Childrens+Service.wmv",
                     "name": "Childrens Service"
                 }
-
             ]
         },
         {

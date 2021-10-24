@@ -1,6 +1,15 @@
+{{/*
+Paramater map:
+. OnlineResource to output in this template
+*/ -}}
+
 <p class="resource">
-    <span class="filename">({{.GetFileName}})</span>
-    <img height="14px" src="{{.GetIcon}}"/>
-    <a href="{{.URL}}" target="wolmGuide">{{.Name}}</a>
+    {{/* File name on the right */}}
+    <span class="filename" style="float: right;">({{.GetFileName}})</span>
+
+    {{/* Resource name & link */}}
+    <img height="14px" src="{{.GetIcon}}" />
+    <a href="{{.URL}}" target="wolmGuide">{{or .Name .GetFileName}}</a>
+
     <span style="float:clear;" />
 </p>

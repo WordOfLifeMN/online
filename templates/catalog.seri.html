@@ -32,4 +32,20 @@
     {{template "catalog.message-div.html" .}}
 {{- end }}
 
+{{/* Series Booklets and Resources */}}
+<div class="seri">
+    {{if or .Seri.Booklets .Seri.Resources}}
+        <h2>Series Booklets</h2>
+        {{- range .Seri.Booklets}}
+            {{template "catalog.resource-p.html" .}}
+        {{- end}}
+    {{end}}
+    {{if .Seri.Resources}}
+        <h2>All Message Resources</h2>
+        {{- range .Seri.Resources}}
+            {{template "catalog.resource-p.html" .}}
+        {{- end}}
+    {{end}}
+</div>
+
 {{template "catalog.post-content.html" .}}

@@ -56,6 +56,7 @@ div.message table.player, div.message div.resources {
     margin-bottom: 12px;
 }
 
+/* message resources */
 div.message p.resource {
     padding-left: 15px;
     padding-right: 15px;
@@ -65,6 +66,19 @@ div.message p.resource {
 
 div.message p.resource span.filename {
     color: {{print $titleBackgroundColor}};
-    float: right;
     font-size: 75%;
 }
+
+/* series resources */
+div.seri p.resource {
+    padding-left: 15px;
+    padding-right: 15px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+div.seri p.resource span.filename {
+    color: {{print $titleBackgroundColor}};
+    font-size: 75%;
+}
+
