@@ -63,8 +63,18 @@
                 "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-01-26+Sustaining+the+Movement%2C+Part+1.mp3"
             },
             "video": {
-                "url": "http://youtu.be/mgXe7AXvN18"
-            }
+                "url": "https://rumble.com/vmgcvh-faith-and-freedom-critical-race-theory-in-the-schools.html"
+            },
+            "resources": [
+                {
+                    "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/StudyGuide/Names+of+God.pdf",
+                    "name": "Names of God"
+                },
+                {
+                    "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/StudyGuide/Names+of+God+-+Full+List.pdf",
+                    "name": "Names of God - Full List"
+                }
+            ]
         },
         {
             "date": "2014-02-02",
@@ -86,7 +96,7 @@
                 "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-02-02+Sustaining+the+Movement%2C+Part+2.mp3"
             },
             "video": {
-                "url": "http://youtu.be/sKuG53t_9LM"
+                "url": "https://www.bitchute.com/video/2BLmAvXID0DH/"
             }
         },
         {

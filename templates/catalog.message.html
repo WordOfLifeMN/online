@@ -22,24 +22,17 @@ Paramater map:
             <tr>
                 <td width="15px" class="margin">&nbsp;</td>
                 {{if .Video}}
-                    <td width="70px" class="video">
-                        {{/* TODO - change video to online resource
+                    <td width="160px" class="video">
                         <a href="{{.Video.URL}}" target="wolmVideo">
-                            <img src="{{.Video.GetThumbnail}}" height="24px" alt="{{.Video.GetClassifier}}" />
-                        </a>
-                        */}}
-                        <a href="{{.Video}}" target="wolmVideo">
-                            <img src="https://s3-us-west-2.amazonaws.com/wordoflife.mn.catalog/YouTubeIcon.jpg" height="24px" alt="video" />
+                            <img src="{{.Video.GetThumbnail}}" height="36px" alt="{{.Video.GetClassifier}}" />
                         </a>
                     </td>
+                    <td width="15px" class="margin">&nbsp;</td>
                 {{end}}
                 <td class="audio">
                     {{if .Audio}}
                         <audio controls style="width:100%;">
-                            {{/* TODO - change audio to online resource
-                                <source src="{{.Audio.URL}}" type="audio/mpeg" />
-                            */}}
-                            <source src="{{.Audio}}" type="audio/mpeg" />
+                            <source src="{{.Audio.URL}}" type="audio/mpeg" />
                         </audio>
                     {{else}}
                         no audio is available

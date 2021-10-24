@@ -110,3 +110,32 @@ func (r *OnlineResource) GetNameFromURL() string {
 
 	return name
 }
+
+// GetThumbnail returns the path to the thumbnail to use for this file type. The thumbnail is
+// bigger than the icon and can be use in place of the resource. For instance, the thumbnail is
+// an image the user can click on to go to the resource (as opposed to a decorator for the link)
+func (r *OnlineResource) GetThumbnail() string {
+	switch {
+	case strings.Contains(r.URL, "youtube"), strings.Contains(r.URL, "youtu.be"):
+		return "static/all.yt_logo_rgb_dark.png"
+	case strings.Contains(r.URL, "rumble"):
+		return "static/all.rumble_logo_dark.png"
+	case strings.Contains(r.URL, "bitchute"):
+		return "static/all.bitchute_logo.png"
+	}
+	return "static/all.video_thumb.png"
+}
+
+// GetIcon returns the path to the icon for this file type. The icon is very small and is a
+// suitable as a decorator for the link
+func (r *OnlineResource) GetIcon() string {
+	// TODO - complete implementation with cache
+	return "https://s3-us-west-2.amazonaws.com/wordoflife.mn.catalog/YouTubeIcon.jpg"
+}
+
+// GetClassifier returns a short description of the file type. Examples: YouTube video, PDF,
+// Microsoft Word, etc
+func (r *OnlineResource) GetClassifier() string {
+	// TODO - complete implementation with cache
+	return "YouTube video"
+}

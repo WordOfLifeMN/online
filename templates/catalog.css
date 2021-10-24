@@ -46,3 +46,8 @@ div.message div.title {
 div.message div.title span.name {
     font-weight: bold;
 }
+
+div.message table.player td.video {
+    text-align: center;
+    vertical-align: middle;
+}
