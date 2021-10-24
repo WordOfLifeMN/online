@@ -41,7 +41,30 @@
             },
             "video": {
                 "url": "http://youtu.be/DGXneD1ZANY"
-            }
+            },
+            "resources": [
+                {
+                    "url": "https://s3-us-west-2.amazonaws.com/thebridgeoutreach.mn.audio/2016/2016-03-19+Jake.mp3",
+                    "name": "Jake"
+                },
+                {
+                    "url": "https://rumble.com/vmly6n-faith-and-freedom-dr.-scott-jensen-q-and-a.html",
+                    "name": "Scott Jensen"
+                },
+                {
+                    "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/StudyGuide/Healing+the+Heart+Worksheets+2017+Revised.docx",
+                    "name": "Healing the Heart"
+                },
+                {
+                    "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.video/2014/2014-06-01+The+Truth+About+Dinosaurs%2C+Part+1.mov",
+                    "name": "Dinosaurs"
+                },
+                {
+                    "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.video/2014/2014-07-19+Childrens+Service.wmv",
+                    "name": "Childrens Service"
+                }
+
+            ]
         },
         {
             "date": "2014-01-26",

@@ -111,31 +111,63 @@ func (r *OnlineResource) GetNameFromURL() string {
 	return name
 }
 
+// GetFileName returs the file name of the URL
+func (r *OnlineResource) GetFileName() string {
+	url, err := url.Parse(r.URL)
+	if err != nil {
+		return r.URL
+	}
+
+	return filepath.Base(url.Path)
+}
+
 // GetThumbnail returns the path to the thumbnail to use for this file type. The thumbnail is
 // bigger than the icon and can be use in place of the resource. For instance, the thumbnail is
 // an image the user can click on to go to the resource (as opposed to a decorator for the link)
 func (r *OnlineResource) GetThumbnail() string {
 	switch {
 	case strings.Contains(r.URL, "youtube"), strings.Contains(r.URL, "youtu.be"):
-		return "static/all.yt_logo_rgb_dark.png"
+		return "static/all.thumbnail_youtube_dark.png"
 	case strings.Contains(r.URL, "rumble"):
-		return "static/all.rumble_logo_dark.png"
+		return "static/all.thumbnail_rumble_dark.png"
 	case strings.Contains(r.URL, "bitchute"):
-		return "static/all.bitchute_logo.png"
+		return "static/all.thumbnail_bitchute.png"
 	}
-	return "static/all.video_thumb.png"
+	return "static/all.thumbnail_video.png"
 }
 
 // GetIcon returns the path to the icon for this file type. The icon is very small and is a
 // suitable as a decorator for the link
 func (r *OnlineResource) GetIcon() string {
-	// TODO - complete implementation with cache
-	return "https://s3-us-west-2.amazonaws.com/wordoflife.mn.catalog/YouTubeIcon.jpg"
+	switch {
+	case strings.HasSuffix(r.URL, ".pdf"):
+		return "static/all.icon_pdf.png"
+	case strings.HasSuffix(r.URL, ".mp3"):
+		return "static/all.icon_mp3.png"
+	case strings.HasSuffix(r.URL, ".wmv"):
+		return "static/all.icon_wmv.png"
+	case strings.HasSuffix(r.URL, ".mov"):
+		return "static/all.icon_mov.png"
+	case strings.HasSuffix(r.URL, ".doc"), strings.HasSuffix(r.URL, ".docx"):
+		return "static/all.icon_word.png"
+	case strings.Contains(r.URL, "youtube"), strings.Contains(r.URL, "youtu.be"):
+		return "static/all.icon_youtube.png"
+	}
+	return "static/all.icon_web.png"
 }
 
 // GetClassifier returns a short description of the file type. Examples: YouTube video, PDF,
 // Microsoft Word, etc
 func (r *OnlineResource) GetClassifier() string {
-	// TODO - complete implementation with cache
-	return "YouTube video"
+	switch {
+	case strings.HasSuffix(r.URL, ".pdf"):
+		return "PDF file"
+	case strings.Contains(r.URL, "youtube"), strings.Contains(r.URL, "youtu.be"):
+		return "YouTube video"
+	case strings.Contains(r.URL, "rumble"):
+		return "Rumble video"
+	case strings.Contains(r.URL, "bitchute"):
+		return "BitChute video"
+	}
+	return "Internet link"
 }

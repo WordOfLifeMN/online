@@ -18,6 +18,8 @@ Paramater map:
     {{- /* message title */ -}}
     <div class="body">
         <p class="description">{{.Description}}</p>
+
+        {{- /* Playback */}}
         <table width="100%" class="player">
             <tr>
                 <td width="15px" class="margin">&nbsp;</td>
@@ -41,5 +43,14 @@ Paramater map:
                 <td width="15px" class="margin">&nbsp;</td>
             </tr>
         </table>
+
+        {{- /* Resources */}}
+        {{if .Resources}}
+            <div class="resources">
+                {{range .Resources}}
+                    {{template "catalog.resource-p.html" .}}
+                {{end}}
+            </div>
+        {{end}}
     </div>
 </div>

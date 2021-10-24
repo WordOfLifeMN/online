@@ -51,3 +51,20 @@ div.message table.player td.video {
     text-align: center;
     vertical-align: middle;
 }
+
+div.message table.player, div.message div.resources {
+    margin-bottom: 12px;
+}
+
+div.message p.resource {
+    padding-left: 15px;
+    padding-right: 15px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+div.message p.resource span.filename {
+    color: {{print $titleBackgroundColor}};
+    float: right;
+    font-size: 75%;
+}
