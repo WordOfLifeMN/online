@@ -16,6 +16,10 @@
     {{$borderColor = "#840"}}
     {{$hiliteColor = "#5b2d00"}}
     {{$titleBackgroundColor = "#452209"}}
+{{else if eq .Ministry "faith-freedom"}}
+    {{$borderColor = "rgb(189,40,43)"}}
+    {{$hiliteColor = "rgb(224,108,110)"}}
+    {{$titleBackgroundColor = "rgb(126,27,28)"}}
 {{end -}}
 
 /* full page */
@@ -30,11 +34,24 @@ a {
     color: #999;
 }
 
+p.clear {
+    clear: both;
+    display: none;
+}
+
+span.visibility {
+    font-size: 75%;
+}
+
 /* messages */
 div.message {
     border: 2px solid {{print $borderColor}};
     border-radius: 5px;
     margin-bottom: 8px;
+}
+
+div.message span.visibility {
+    color: #aaa;
 }
 
 div.message div.title {
@@ -85,10 +102,18 @@ div.seri p.resource span.filename {
 }
 
 /* series list */
+
+div.series-seri a { color: {{print $borderColor}}; }
+div.series-seri a:hover { color: {{print $hiliteColor}}; }
+
 div.series-seri {
     border: 2px solid {{print $borderColor}};
     border-radius: 5px;
     margin-bottom: 8px;
+}
+
+div.series-seri span.visibility {
+    color: #666;
 }
 
 div.thumbnail {
@@ -129,7 +154,3 @@ div.series-seri span.longtext {
     font-size: smaller;
 }
 
-div.series-seri p.clear {
-    clear: both;
-    display: none;
-}

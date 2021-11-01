@@ -109,6 +109,14 @@ func (m *CatalogMessage) SpeakerString() string {
 	return strings.Join(m.Speakers, ", ")
 }
 
+func (m *CatalogMessage) HasAudio() bool {
+	return m != nil && m.Audio != nil && strings.Contains(m.Audio.URL, "://")
+}
+
+func (m *CatalogMessage) HasVideo() bool {
+	return m != nil && m.Video != nil && strings.Contains(m.Video.URL, "://")
+}
+
 // GetAudioSize gets the size of the audio file in bytes. Returns -1 on error,
 // or 0 if no audio URL. Note this makes network calls to get the content size
 func (m *CatalogMessage) GetAudioSize() int {

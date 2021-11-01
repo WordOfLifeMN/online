@@ -30,6 +30,8 @@ Paramater map:
     </tr>
 </table>
 
+<p>&nbsp;</p>
+
 {{/* Messages */}}
 {{- range .Seri.Messages }} 
     {{template "catalog.message-div.html" .}}
@@ -37,7 +39,7 @@ Paramater map:
 
 {{/* Series Booklets and Resources */}}
 <div class="seri">
-    {{if or .Seri.Booklets .Seri.Resources}}
+    {{if or .Seri.Booklets}}
         <h2>Series Booklets</h2>
         {{- range .Seri.Booklets}}
             {{template "catalog.resource-p.html" .}}

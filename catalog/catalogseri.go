@@ -135,15 +135,7 @@ func (s *CatalogSeri) Initialize() error {
 		s.View = s.Visibility
 	}
 
-	if s.State == State_Unknown {
-		s.State = State_HasNotStarted
-		if !s.StartDate.IsZero() {
-			s.State = State_InProgress
-			if !s.StopDate.IsZero() {
-				s.State = State_Complete
-			}
-		}
-	}
+	s.ComputeState()
 
 	return nil
 }
@@ -197,6 +189,23 @@ func (s *CatalogSeri) Normalize() {
 		// update resources
 		for _, resource := range msg.Resources {
 			s.AddResourceToSeries(resource)
+		}
+	}
+
+	// recalculate the current state since we might have just changed the dates
+	s.State = State_Unknown
+	s.ComputeState()
+}
+
+// ComputeState looks at the dates for the series and determines what state the message is in
+func (s *CatalogSeri) ComputeState() {
+	if s.State == State_Unknown {
+		s.State = State_HasNotStarted
+		if !s.StartDate.IsZero() {
+			s.State = State_InProgress
+			if !s.StopDate.IsZero() {
+				s.State = State_Complete
+			}
 		}
 	}
 }
@@ -265,17 +274,29 @@ func (s *CatalogSeri) GetCatalogFileName(view View) string {
 // DateString gets the date of the series in a displayable string
 func (s *CatalogSeri) DateString() string {
 	if s.State == State_Unknown || s.State == State_HasNotStarted {
+		// hasn't started
 		return "Coming Soon"
 	}
 
 	if s.State == State_InProgress {
+		// started, but not finished
 		return "Started " + s.StartDate.Time.Format("Jan 2, 2006")
 	}
 
 	if s.StartDate.Year() == s.StopDate.Year() {
+		if s.StartDate.Month() == s.StopDate.Month() {
+			if s.StartDate.Time == s.StopDate.Time {
+				// started & stopped on the same day
+				return s.StartDate.Time.Format("Jan 2, 2006")
+			}
+			// started & stopped in same month
+			return s.StartDate.Time.Format("Jan 2") + "-" + s.StopDate.Time.Format("2, 2006")
+		}
+		// started & stopped in same year
 		return s.StartDate.Time.Format("Jan 2") + " - " + s.StopDate.Time.Format("Jan 2, 2006")
 	}
 
+	// spans multiple years
 	return s.StartDate.Time.Format("Jan 2, 2006") + " - " + s.StopDate.Time.Format("Jan 2, 2006")
 }
 

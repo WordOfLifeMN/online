@@ -47,6 +47,7 @@ func (t *CatalogSeriTestSuite) TestNewSeriesFromStandAloneMessage() {
 	t.Equal("A DESCRIPTION", sut.Description)
 	t.Equal([]string{"OLLIE", "SVEN"}, sut.Speakers)
 	t.Equal(Partner, sut.Visibility)
+	t.Equal(State_Complete, sut.State)
 
 	// resources
 	t.Nil(sut.Booklets)
@@ -419,38 +420,56 @@ func (t *CatalogSeriTestSuite) TestSeriesViewID() {
 }
 
 func (t *CatalogSeriTestSuite) TestDateString() {
-	// given
+	// given message in the future
 	sut := CatalogSeri{
 		Name: "SERIES",
 	}
 	sut.Initialize()
 	t.Equal("Coming Soon", sut.DateString())
 
-	// given
+	// given message with start date
 	sut = CatalogSeri{
 		Name:      "SERIES",
 		StartDate: MustParseDateOnly("2006-07-08"),
 	}
 	sut.Initialize()
-	t.Equal("Started July 8, 2006", sut.DateString())
+	t.Equal("Started Jul 8, 2006", sut.DateString())
 
-	// given
-	sut = CatalogSeri{
-		Name:      "SERIES",
-		StartDate: MustParseDateOnly("2006-07-08"),
-		StopDate:  MustParseDateOnly("2006-09-01"),
-	}
-	sut.Initialize()
-	t.Equal("July 8 - September 1, 2006", sut.DateString())
-
-	// given
+	// given message with start/end date
 	sut = CatalogSeri{
 		Name:      "SERIES",
 		StartDate: MustParseDateOnly("2006-07-08"),
 		StopDate:  MustParseDateOnly("2008-09-01"),
 	}
 	sut.Initialize()
-	t.Equal("July 8, 2006 - September 1, 2008", sut.DateString())
+	t.Equal("Jul 8, 2006 - Sep 1, 2008", sut.DateString())
+
+	// given message completed in same year
+	sut = CatalogSeri{
+		Name:      "SERIES",
+		StartDate: MustParseDateOnly("2006-07-08"),
+		StopDate:  MustParseDateOnly("2006-09-01"),
+	}
+	sut.Initialize()
+	t.Equal("Jul 8 - Sep 1, 2006", sut.DateString())
+
+	// given message completed in same month
+	sut = CatalogSeri{
+		Name:      "SERIES",
+		StartDate: MustParseDateOnly("2006-07-08"),
+		StopDate:  MustParseDateOnly("2006-07-21"),
+	}
+	sut.Initialize()
+	t.Equal("Jul 8-21, 2006", sut.DateString())
+
+	// given message completed on same day
+	sut = CatalogSeri{
+		Name:      "SERIES",
+		StartDate: MustParseDateOnly("2006-07-08"),
+		StopDate:  MustParseDateOnly("2006-07-08"),
+	}
+	sut.Initialize()
+	t.Equal("Jul 8, 2006", sut.DateString())
 }
 
 func (t *CatalogSeriTestSuite) TestSpeakerString() {

@@ -7,7 +7,7 @@
 */ -}}
 
 <div class="series-seri">
-    <table>
+    <table width="100%">
         <tr>
             <td class="thumbnail" width="10%">
                 <div class="thumbnail">
@@ -16,6 +16,9 @@
                 </div>
             </td>
             <td class="info" width="90%">
+                {{if ne .Visibility "public"}}
+                    <span class="visibility" style="float: right;">[{{.Visibility}}]</span>
+                {{end}}
                 <a class="title" href={{.GetCatalogFileName .View}}>{{.Name}}</a>
                 <br>
                 <span class="label">Messages:</span>
@@ -26,6 +29,7 @@
                 <br>
                 <span class="label">Speaker:</span>
                 <span class="text">{{.SpeakerString}}</span>
+                <p class="clear"/>
             </td>
         </tr>
     </table>

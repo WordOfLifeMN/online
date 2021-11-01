@@ -168,7 +168,7 @@
             ],
             "ministry": "wol",
             "type": "special-event",
-            "visibility": "private",
+            "visibility": "partner",
             "series": [
                 {
                     "name": "Summerfest 2014"

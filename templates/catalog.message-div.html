@@ -10,12 +10,16 @@
 
     {{- /* message title */ -}}
     <div class="title" title="{{.Description}}">
+        {{if ne .Visibility "public"}}
+            <span class="visibility" style="float: right;">[{{.Visibility}}]</span>
+        {{end}}
         {{if .Series}}{{(index .Series 0).Index}}{{else}}1{{end}}.
         <span class="name">{{.Name}}</span>
         {{if .Speakers}}
         <span class="speakers">- {{.SpeakerString}}</span>
         {{end}}
         {{if .Date}} <span class="date">({{.DateString}})</span> {{end}}
+        <p class="clear"/>
     </div>
 
     {{- /* message title */ -}}

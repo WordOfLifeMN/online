@@ -104,7 +104,7 @@ func (cmd *catalogCmdStruct) catalog() error {
 		views = []catalog.View{
 			catalog.Public,
 			catalog.Partner,
-			catalog.Private,
+			// catalog.Private,
 		}
 	} else {
 		return fmt.Errorf("unknown view '%s'", cmd.View)
@@ -152,7 +152,7 @@ func (cmd *catalogCmdStruct) catalog() error {
 	for _, ministry := range ministries {
 		for _, view := range views {
 			log.Printf("  Ministry %s (%s)", ministry.Description(), string(view))
-			if err := cmd.createAllCatalogSeriPages(ministry, catalog.Public); err != nil {
+			if err := cmd.createAllCatalogSeriPages(ministry, view); err != nil {
 				return err
 			}
 		}
@@ -163,7 +163,7 @@ func (cmd *catalogCmdStruct) catalog() error {
 	for _, ministry := range ministries {
 		for _, view := range views {
 			log.Printf("  Ministry %s (%s)", ministry.Description(), string(view))
-			if err := cmd.createAllCatalogSeriesPages(ministry, catalog.Public); err != nil {
+			if err := cmd.createAllCatalogSeriesPages(ministry, view); err != nil {
 				return err
 			}
 		}
