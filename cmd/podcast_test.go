@@ -101,3 +101,33 @@ func (t *PodcastCmdTestSuite) TestSingleMessagePodcastCharacters() {
 	t.Contains(s, "<title>MSG&lt;TITLE&gt;<")
 	t.Contains(s, "<description>MSG&lt;TITLE&gt; (Feb 3, 2001)<")
 }
+
+func (t *PodcastCmdTestSuite) TestPodcastWithMessageThatShouldBeIgnored() {
+	cmd := podcastCmdStruct{}
+
+	data := map[string]interface{}{
+		"Title":         "TITLE",
+		"Description":   "DESC",
+		"CopyrightYear": 1000,
+		"Messages": []catalog.CatalogMessage{
+			{
+				Date:        catalog.MustParseDateOnly("2001-02-03"),
+				Name:        "MSG-TITLE",
+				Description: "MSG-DESC",
+				Audio:       catalog.NewResourceFromString("in progress"), // message in-progress
+			},
+		},
+	}
+
+	b := bytes.Buffer{}
+	err := cmd.printPodcast(data, &b)
+	t.NoError(err)
+
+	s := b.String()
+	t.T().Logf("Single MessageString:\n%s", s)
+
+	t.Contains(s, "<title>TITLE<")
+	t.Contains(s, "<description>DESC<")
+	t.Contains(s, "Copyright 1000 ")
+	t.NotContains(s, "<item>")
+}
