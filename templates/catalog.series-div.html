@@ -1,0 +1,38 @@
+{{/* 
+    HTML <div></div> that describes one seri
+    USAGE: To be used in a list of series
+
+    Paramater map:
+        . CatalogSeri
+*/ -}}
+
+<div class="series-seri">
+    <table>
+        <tr>
+            <td class="thumbnail" width="10%">
+                <div class="thumbnail">
+                    {{$defaultThumbnail := printf "static/%s.default.thumbnail.png" .GetMinistry}}
+                    <img src="{{or .Thumbnail $defaultThumbnail}}" alt="{{printf "%s Cover" .Name}}"/>
+                </div>
+            </td>
+            <td class="info" width="90%">
+                <a class="title" href={{.GetCatalogFileName .View}}>{{.Name}}</a>
+                <br>
+                <span class="label">Messages:</span>
+                <span class="text">{{len .Messages}}</span>
+                <br>
+                <span class="label">Date:</span>
+                <span class="text">{{.DateString}}</span>
+                <br>
+                <span class="label">Speaker:</span>
+                <span class="text">{{.SpeakerString}}</span>
+            </td>
+        </tr>
+    </table>
+    <p class="clear">&nbsp;</p>
+
+    {{/* Description */}}
+    {{if .Description}}
+        <span class="longtext">{{.Description}}</span>
+    {{end}}
+</div>

@@ -46,6 +46,31 @@ const (
 	State_Complete      SeriesState = 3
 )
 
+// sort by name
+type SortSeriByName []CatalogSeri
+
+func (a SortSeriByName) Len() int           { return len(a) }
+func (a SortSeriByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a SortSeriByName) Less(i, j int) bool { return a[i].Name < a[j].Name }
+
+// sort oldest to newest
+type SortSeriOldestToNewest []CatalogSeri
+
+func (a SortSeriOldestToNewest) Len() int      { return len(a) }
+func (a SortSeriOldestToNewest) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a SortSeriOldestToNewest) Less(i, j int) bool {
+	return a[i].StartDate.Time.Before(a[j].StartDate.Time)
+}
+
+// sort newest to oldest
+type SortSeriNewestToOldest []CatalogSeri
+
+func (a SortSeriNewestToOldest) Len() int      { return len(a) }
+func (a SortSeriNewestToOldest) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a SortSeriNewestToOldest) Less(i, j int) bool {
+	return a[i].StartDate.Time.After(a[j].StartDate.Time)
+}
+
 // +---------------------------------------------------------------------------
 // | Constructors
 // +---------------------------------------------------------------------------
@@ -232,6 +257,11 @@ func (s *CatalogSeri) GetViewID(view View) string {
 	return id + "-" + util.ComputeHash(id+string(view))
 }
 
+// GetCatalogFileName returns the file name of this seri with the specified view
+func (s *CatalogSeri) GetCatalogFileName(view View) string {
+	return s.GetViewID(view) + ".html"
+}
+
 // DateString gets the date of the series in a displayable string
 func (s *CatalogSeri) DateString() string {
 	if s.State == State_Unknown || s.State == State_HasNotStarted {
@@ -239,14 +269,14 @@ func (s *CatalogSeri) DateString() string {
 	}
 
 	if s.State == State_InProgress {
-		return "Started " + s.StartDate.Time.Format("January 2, 2006")
+		return "Started " + s.StartDate.Time.Format("Jan 2, 2006")
 	}
 
 	if s.StartDate.Year() == s.StopDate.Year() {
-		return s.StartDate.Time.Format("January 2") + " - " + s.StopDate.Time.Format("January 2, 2006")
+		return s.StartDate.Time.Format("Jan 2") + " - " + s.StopDate.Time.Format("Jan 2, 2006")
 	}
 
-	return s.StartDate.Time.Format("January 2, 2006") + " - " + s.StopDate.Time.Format("January 2, 2006")
+	return s.StartDate.Time.Format("Jan 2, 2006") + " - " + s.StopDate.Time.Format("Jan 2, 2006")
 }
 
 // Gets the Ministry of a series
@@ -344,8 +374,6 @@ func FilterSeriesByMinistry(corpus []CatalogSeri, ministry Ministry) []CatalogSe
 // will be removed from the series before returning
 func FilterSeriesByView(corpus []CatalogSeri, view View) []CatalogSeri {
 	var series []CatalogSeri
-
-	// TODO - IMHERE
 
 	for _, seri := range corpus {
 		// rule out any seri that doesn't have an acceptable visibilty

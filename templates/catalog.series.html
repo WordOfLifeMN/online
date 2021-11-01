@@ -1,0 +1,35 @@
+{{/* HTML page that displays a list of series. Consists of a brief ministry introduction and a
+list of the series for that ministry
+    
+Paramater map:
+    .Series   Slice of series to display
+    .Ministry CatalogMinistry
+    .View     CatalogView
+    .Order    string - sort order of this page: az, za, 09, 90
+    .Date     NewDateToday
+*/ -}}
+
+{{template "catalog.pre-content.html" .}}
+
+<h1>{{ .Ministry.Description }} Catalog</h1>
+
+{{/* Sorting */}}
+<div class="sort">
+    <p>
+	<span class="label">Sort by: </span>
+        <select class="sortingSelect" onchange="javascript:location.href = this.value;">
+            <option value="{{GetCatalogFileNameForSeriList .Ministry .View "az"}}" {{if eq .Order "az"}}selected{{end}}>Title</option>
+            <option value="{{GetCatalogFileNameForSeriList .Ministry .View "09"}}" {{if eq .Order "09"}}selected{{end}}>Date - Oldest first</option>
+            <option value="{{GetCatalogFileNameForSeriList .Ministry .View "90"}}" {{if eq .Order "90"}}selected{{end}}>Date - Recent first</option>
+        </select>
+    </p>
+</div>
+
+{{/* Series */}}
+<div class="series">
+    {{- range .Series }} 
+        {{template "catalog.series-div.html" .}}
+    {{- end }}
+</div>
+
+{{template "catalog.post-content.html" .}}

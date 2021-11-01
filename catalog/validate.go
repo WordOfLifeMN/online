@@ -16,6 +16,7 @@ var possibleAudioVideoStates = []string{
 	"-",           // permanent - doesn't exist
 	"n/a",         // permanent - not available
 	"n/e",         // permanent - not edited
+	"n/u",         // permanent - not uploaded
 	"abrogated",   // permanent
 	"in progress", // temporary
 	"exporting",   // temporary

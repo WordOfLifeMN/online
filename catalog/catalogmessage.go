@@ -100,6 +100,10 @@ func (m *CatalogMessage) normalizeSpeakerName(speaker string) string {
 // | Accessors
 // +---------------------------------------------------------------------------
 
+func (m *CatalogMessage) DateString() string {
+	return m.Date.Time.Format("Jan 2, 2006")
+}
+
 // SpeakerString gets all the speakers in a descriptive string
 func (m *CatalogMessage) SpeakerString() string {
 	return strings.Join(m.Speakers, ", ")

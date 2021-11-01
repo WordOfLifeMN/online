@@ -1,6 +1,9 @@
-{{/*
-Paramater map:
-. CatalogMessage
+{{/* 
+    HTML <div></div> that describes a single message.
+    USAGE: To be included in a list of messages.
+
+    Paramater map:
+        . CatalogMessage
 */ -}}
 
 <div class="message">
@@ -12,7 +15,7 @@ Paramater map:
         {{if .Speakers}}
         <span class="speakers">- {{.SpeakerString}}</span>
         {{end}}
-        {{if .Date}} <span class="date">({{.Date.String}})</span> {{end}}
+        {{if .Date}} <span class="date">({{.DateString}})</span> {{end}}
     </div>
 
     {{- /* message title */ -}}

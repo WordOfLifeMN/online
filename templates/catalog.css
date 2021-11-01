@@ -18,6 +18,7 @@
     {{$titleBackgroundColor = "#452209"}}
 {{end -}}
 
+/* full page */
 body {
     background-color: black;
     margin: 15px;
@@ -29,6 +30,7 @@ a {
     color: #999;
 }
 
+/* messages */
 div.message {
     border: 2px solid {{print $borderColor}};
     border-radius: 5px;
@@ -69,7 +71,7 @@ div.message p.resource span.filename {
     font-size: 75%;
 }
 
-/* series resources */
+/* seri resources */
 div.seri p.resource {
     padding-left: 15px;
     padding-right: 15px;
@@ -82,3 +84,52 @@ div.seri p.resource span.filename {
     font-size: 75%;
 }
 
+/* series list */
+div.series-seri {
+    border: 2px solid {{print $borderColor}};
+    border-radius: 5px;
+    margin-bottom: 8px;
+}
+
+div.thumbnail {
+    float: left;
+    margin-right: 3px;
+    width: 72px;
+    height: 128px; 
+    position: relative;
+}
+
+div.thumbnail img {
+    /* scale to fit */
+    max-width: 100%;
+    max-height: 100%;
+    /* center */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+div.series-seri a.title {
+    font-size:20px;
+    font-weight: bold;
+}
+
+div.series-seri span.label {
+    display: inline-block;
+    font-weight: bolder;
+    vertical-align: top;
+}
+
+div.series-seri span.longtext {
+    display: inline-block;
+    margin: 10px 8px 4px 8px;
+    height: 3em;
+    line-height: 1.0;
+    font-size: smaller;
+}
+
+div.series-seri p.clear {
+    clear: both;
+    display: none;
+}

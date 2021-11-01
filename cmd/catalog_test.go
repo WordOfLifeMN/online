@@ -123,7 +123,9 @@ func (t *CatalogCmdTestSuite) TestSeriPage() {
 	}
 
 	seri := catalog.CatalogSeri{
-		Name: "SERIES",
+		Name:       "SERIES",
+		Visibility: catalog.Public,
+		View:       catalog.Public,
 		Messages: []catalog.CatalogMessage{
 			{
 				Name:     "MESSAGE-A",
@@ -142,7 +144,7 @@ func (t *CatalogCmdTestSuite) TestSeriPage() {
 	if t.NoError(err) {
 		err := sut.copyStaticFilesToOutputDir([]catalog.Ministry{catalog.WordOfLife})
 		t.NoError(err)
-		err = sut.createCatalogSeriPage(&seri, catalog.Public)
+		err = sut.createCatalogSeriPage(&seri)
 		//	defer os.RemoveAll(testDir)
 		t.NoError(err)
 	}

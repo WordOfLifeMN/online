@@ -14,6 +14,14 @@ test:
 build:
 	go build
 
-dryrun:
+dryrun-test:
 	go run main.go -i testdata/small-catalog.json catalog --view=public -o /tmp/t -v
+
+dryrun: dryrun-dump, dryrun-catalog
+
+dryrun-dump:
+	go run main.go -v --sheet-id=1z4XIiEPMFPpeRgGpdhshiQpmY7A45KzCyZzQ7Ohe85E dump >/tmp/online-catalog.json
+
+dryrun-catalog:
+	go run main.go -v -i /tmp/online-catalog.json catalog -o /tmp/t
 	

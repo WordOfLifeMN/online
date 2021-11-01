@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -799,4 +800,103 @@ func (t *CatalogSeriTestSuite) TestFilterByView_SeriesAreInitialized() {
 	t.Equal("MSG-A", seri.Messages[1].Name)
 	t.Equal("MSG-B", seri.Messages[2].Name)
 
+}
+
+func (t *CatalogSeriTestSuite) TestSortByName() {
+	// given
+	corpus := []CatalogSeri{
+		{
+			Name:       "CHARLIE-SERIES",
+			Visibility: Public,
+			Speakers:   []string{"NANA"},
+			StartDate:  MustParseDateOnly("2001-01-01"),
+			StopDate:   MustParseDateOnly("2001-01-02"),
+		},
+		{
+			Name:       "ALFA-SERIES",
+			Visibility: Public,
+			Speakers:   []string{"NANA"},
+			StartDate:  MustParseDateOnly("2001-02-01"),
+			StopDate:   MustParseDateOnly("2001-02-02"),
+		},
+		{
+			Name:       "BRAVO-SERIES",
+			Visibility: Public,
+			Speakers:   []string{"NANA"},
+			StartDate:  MustParseDateOnly("2001-03-01"),
+			StopDate:   MustParseDateOnly("2001-03-02"),
+		},
+	}
+
+	// when
+	sort.Sort(SortSeriByName(corpus))
+	t.Equal("ALFA-SERIES", corpus[0].Name)
+	t.Equal("BRAVO-SERIES", corpus[1].Name)
+	t.Equal("CHARLIE-SERIES", corpus[2].Name)
+}
+
+func (t *CatalogSeriTestSuite) TestSortOldestToNewest() {
+	// given
+	corpus := []CatalogSeri{
+		{
+			Name:       "CHARLIE-SERIES",
+			Visibility: Public,
+			Speakers:   []string{"NANA"},
+			StartDate:  MustParseDateOnly("2001-01-01"),
+			StopDate:   MustParseDateOnly("2001-01-02"),
+		},
+		{
+			Name:       "ALFA-SERIES",
+			Visibility: Public,
+			Speakers:   []string{"NANA"},
+			StartDate:  MustParseDateOnly("2001-02-01"),
+			StopDate:   MustParseDateOnly("2001-02-02"),
+		},
+		{
+			Name:       "BRAVO-SERIES",
+			Visibility: Public,
+			Speakers:   []string{"NANA"},
+			StartDate:  MustParseDateOnly("2001-03-01"),
+			StopDate:   MustParseDateOnly("2001-03-02"),
+		},
+	}
+
+	// when
+	sort.Sort(SortSeriOldestToNewest(corpus))
+	t.Equal("CHARLIE-SERIES", corpus[0].Name)
+	t.Equal("ALFA-SERIES", corpus[1].Name)
+	t.Equal("BRAVO-SERIES", corpus[2].Name)
+}
+
+func (t *CatalogSeriTestSuite) TestSortNewestToOldest() {
+	// given
+	corpus := []CatalogSeri{
+		{
+			Name:       "CHARLIE-SERIES",
+			Visibility: Public,
+			Speakers:   []string{"NANA"},
+			StartDate:  MustParseDateOnly("2001-01-01"),
+			StopDate:   MustParseDateOnly("2001-01-02"),
+		},
+		{
+			Name:       "ALFA-SERIES",
+			Visibility: Public,
+			Speakers:   []string{"NANA"},
+			StartDate:  MustParseDateOnly("2001-02-01"),
+			StopDate:   MustParseDateOnly("2001-02-02"),
+		},
+		{
+			Name:       "BRAVO-SERIES",
+			Visibility: Public,
+			Speakers:   []string{"NANA"},
+			StartDate:  MustParseDateOnly("2001-03-01"),
+			StopDate:   MustParseDateOnly("2001-03-02"),
+		},
+	}
+
+	// when
+	sort.Sort(SortSeriNewestToOldest(corpus))
+	t.Equal("BRAVO-SERIES", corpus[0].Name)
+	t.Equal("ALFA-SERIES", corpus[1].Name)
+	t.Equal("CHARLIE-SERIES", corpus[2].Name)
 }
