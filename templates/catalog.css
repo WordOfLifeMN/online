@@ -54,6 +54,11 @@ div.message span.visibility {
     color: #aaa;
 }
 
+div.message p.description {
+    display: inline-block;
+    margin: 10px 8px 4px 8px;
+}
+
 div.message div.title {
     padding:1px;
     border: 0px solid;

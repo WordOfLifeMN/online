@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // CatalogMessage describes one message. The message may be part of a series or not. A message
@@ -101,6 +102,14 @@ func (m *CatalogMessage) normalizeSpeakerName(speaker string) string {
 // +---------------------------------------------------------------------------
 
 func (m *CatalogMessage) DateString() string {
+	if m.Date.IsZero() {
+		return ""
+	}
+
+	if m.Date.After(time.Now()) {
+		return "Scheduled for " + m.Date.Time.Format("Jan 2, 2006")
+	}
+
 	return m.Date.Time.Format("Jan 2, 2006")
 }
 

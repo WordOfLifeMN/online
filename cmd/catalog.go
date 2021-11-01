@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
@@ -38,6 +39,7 @@ type catalogCmdStruct struct {
 	Ministry  string // which ministry to generate catalog for, "all" or "*" for all
 	View      string // which view to generate catalog for, "all" or "*" for all
 	OutputDir string // directory to write output to
+	Days      int    // number of days to include in recent messages
 
 	// internal reference
 	cat           *catalog.Catalog   // the catalog to process
@@ -72,6 +74,7 @@ be limited with the parameters.`,
 	catalogCmd.Flags().StringVar(&catalogCmd.Ministry, "ministry", "all", "Ministry to generate catalog for: all (default), wol, core, tbo, ask-pastor, or faith-freedom")
 	catalogCmd.Flags().StringVar(&catalogCmd.View, "view", "all", "View for catalog: all (default), public, partner, private")
 	catalogCmd.Flags().StringVarP(&catalogCmd.OutputDir, "output", "o", "~/.wolm/online", "Output directory. Defaults to $HOME/.wolm/online")
+	catalogCmd.Flags().IntVar(&catalogCmd.Days, "days", 60, "Number of days to include in the recent message pages. Defaults to 60")
 }
 
 func (cmd *catalogCmdStruct) catalog() error {
@@ -166,6 +169,15 @@ func (cmd *catalogCmdStruct) catalog() error {
 			if err := cmd.createAllCatalogSeriesPages(ministry, view); err != nil {
 				return err
 			}
+		}
+	}
+
+	// generate recent messages
+	log.Printf("Generating recent message pages")
+	for _, ministry := range ministries {
+		log.Printf("  Ministry %s", ministry.Description())
+		if err := cmd.createRecentMessagePage(ministry); err != nil {
+			return err
 		}
 	}
 
@@ -367,7 +379,6 @@ func (cmd *catalogCmdStruct) createAllCatalogSeriesPages(ministry catalog.Minist
 	}
 
 	for _, order := range []string{ALPHABETICAL_ASC, CHRONOLOGICAL_ASC, CHRONOLOGICAL_DESC} {
-		// TODO should generateSeriListPageName be a global func that can be added to the template?
 		filePath := cmd.getOutputFilePath(GetCatalogFileNameForSeriList(ministry, view, order))
 		log.Printf("    series for (%s,%s,%s) --> %s", ministry, view, "series name", filePath)
 
@@ -489,6 +500,79 @@ func (cmd *catalogCmdStruct) printCatalogSeri(seri *catalog.CatalogSeri, output 
 		Date:     catalog.NewDateToday(),
 		Ministry: seri.GetMinistry(),
 		Seri:     seri,
+	}
+
+	return cmd.template.ExecuteTemplate(output, "catalog.seri.html", data)
+}
+
+// ----------------------------------------------------------------------------
+// | Pages containing recent messages
+// ----------------------------------------------------------------------------
+
+// createRecentMessagePage a page that contains recent messages.
+func (cmd *catalogCmdStruct) createRecentMessagePage(ministry catalog.Ministry) error {
+	cutoff := time.Now().AddDate(0, 0, -1*cmd.Days)
+
+	// get recent messages for this ministry
+	messages := []catalog.CatalogMessage{}
+	for index := range cmd.cat.Messages {
+		msg := cmd.cat.Messages[index]
+		if msg.Ministry != ministry ||
+			msg.Visibility != catalog.Public ||
+			msg.Date.Before(cutoff) {
+			continue
+		}
+
+		messages = append(messages, msg.Copy())
+	}
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].Date.Time.After(messages[j].Date.Time)
+	})
+	for index := range messages {
+		messages[index].Series = []catalog.SeriesReference{
+			{Name: "Recent Messages", Index: index + 1},
+		}
+	}
+
+	// figure out the file name
+	filePath := cmd.getOutputFilePath(fmt.Sprintf("catalog.%s-recent.html", string(ministry)))
+	log.Printf("    recent messages for %s --> %s", ministry, filePath)
+
+	// create the file name
+	f, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("cannot create output file %s: %w", filePath, err)
+	}
+	defer f.Close()
+
+	// write the series list
+	err = cmd.printRecentMessages(ministry, messages, f)
+	if err != nil {
+		return fmt.Errorf("cannot print series list to %s: %w", filePath, err)
+	}
+
+	return nil
+}
+
+// printRecentMessages Creates a page with the specified messages. This creates a fake series
+// containing the messages and prints the seri page with the messages
+func (cmd *catalogCmdStruct) printRecentMessages(ministry catalog.Ministry, messages []catalog.CatalogMessage, output io.Writer) error {
+	// create the series
+	seri := catalog.CatalogSeri{
+		Name:     fmt.Sprintf("Recent messages from %s", ministry.Description()),
+		Messages: messages,
+	}
+	seri.Initialize()
+	seri.Normalize()
+
+	data := struct {
+		Date     catalog.DateOnly
+		Ministry catalog.Ministry
+		Seri     *catalog.CatalogSeri
+	}{
+		Date:     catalog.NewDateToday(),
+		Ministry: ministry,
+		Seri:     &seri,
 	}
 
 	return cmd.template.ExecuteTemplate(output, "catalog.seri.html", data)
