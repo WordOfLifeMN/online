@@ -1,0 +1,41 @@
+{{/* HTML page that displays a list of resources
+    
+Paramater map:
+    .Title      string: title of page
+    .Type       string: "booklet" or "online"
+    .Resources  []OnlineResource
+    .Ministry   CatalogMinistry
+    .Date       NewDateToday
+*/ -}}
+
+{{template "catalog.pre-content.html" .}}
+
+<h1>{{ .Title }}</h1>
+
+{{if eq .Type "booklet"}}
+    <p>
+        This is an index of all booklets that Word of Life Ministries has produced.
+        <br/>
+        These booklets are cross-referenced with the series that it was produced for, although
+        some booklets are not associated with any series, but are intended to be independent
+        resources.
+    </p>
+{{else}}
+    <p>
+        This is an index of handouts and reference materials that Word of Life Ministries has
+        produced to accompany messages.
+        <br/>
+        Each resources is cross-referenced with the message that it was produced for.
+        In many cases, the material in these resources contains limited explanations, and you
+        will need to listen or watch the associated message to get the most out of them.
+    </p>
+{{end}}
+
+{{/* Resources */}}
+<div class="series">
+    {{- range .Resources }} 
+        {{template "catalog.online-resource-div.html" .}}
+    {{- end }}
+</div>
+
+{{template "catalog.post-content.html" .}}

@@ -181,6 +181,20 @@ func (cmd *catalogCmdStruct) catalog() error {
 		}
 	}
 
+	{
+		log.Printf("Creating booklet reference page")
+		if err := cmd.createBookletPage(catalog.WordOfLife); err != nil {
+			return err
+		}
+	}
+
+	{
+		log.Printf("Creating resource reference page")
+		if err := cmd.createResourcePage(catalog.WordOfLife); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -576,4 +590,125 @@ func (cmd *catalogCmdStruct) printRecentMessages(ministry catalog.Ministry, mess
 	}
 
 	return cmd.template.ExecuteTemplate(output, "catalog.seri.html", data)
+}
+
+// ----------------------------------------------------------------------------
+// | Pages containing online resources
+// ----------------------------------------------------------------------------
+
+// createBookletPage creates a page that lists all the booklets that we have, whether they are
+// attached to a series or not.
+func (cmd *catalogCmdStruct) createBookletPage(ministry catalog.Ministry) error {
+	// get the list of resources
+	resources := []catalog.OnlineResource{}
+
+	// find all the appropriate series
+	seriList := []catalog.CatalogSeri{}
+	for _, seri := range cmd.cat.Series {
+		if (seri.IsBooklet() || seri.GetMinistry() == ministry) &&
+			catalog.IsVisibleInView(seri.Visibility, catalog.Public) {
+			seriList = append(seriList, seri)
+		}
+	}
+
+	// extract all the booklets
+	for _, seri := range seriList {
+		for _, booklet := range seri.Booklets {
+			if !seri.IsBooklet() {
+				copy := seri.Copy()
+				booklet.Seri = &copy
+			}
+			resources = append(resources, booklet)
+		}
+	}
+
+	// sort by name
+	sort.Slice(resources, func(i, j int) bool { return resources[i].Name < resources[j].Name })
+
+	// file name is just the View ID
+	filePath := cmd.getOutputFilePath(fmt.Sprintf("catalog.%s-booklets.html", string(ministry)))
+	log.Printf("    %s --> %s", string(ministry), filePath)
+
+	f, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("cannot create output file %s: %w", filePath, err)
+	}
+	defer f.Close()
+
+	return cmd.printOnlineResources("booklet", ministry, resources, f)
+}
+
+// createResourcePage creates a page that lists all the resources that we have associated with
+// public messages
+func (cmd *catalogCmdStruct) createResourcePage(ministry catalog.Ministry) error {
+	// get the list of resources
+	resources := []catalog.OnlineResource{}
+
+	// find all the appropriate series
+	seriList := cmd.cat.FindSeriesByMinistry(ministry)
+	seriList = catalog.FilterSeriesByView(seriList, catalog.Public)
+
+	// extract all the booklets
+	for _, seri := range seriList {
+		for _, message := range seri.Messages {
+			for _, resource := range message.Resources {
+				seriCopy := seri.Copy()
+				resource.Seri = &seriCopy
+
+				msgCopy := message.Copy()
+				resource.Message = &msgCopy
+
+				resources = append(resources, resource)
+			}
+		}
+	}
+
+	// sort by name
+	sort.Slice(resources, func(i, j int) bool { return resources[i].Name < resources[j].Name })
+
+	// file name is just the View ID
+	filePath := cmd.getOutputFilePath(fmt.Sprintf("catalog.%s-resources.html", string(ministry)))
+	log.Printf("    %s --> %s", string(ministry), filePath)
+
+	f, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("cannot create output file %s: %w", filePath, err)
+	}
+	defer f.Close()
+
+	return cmd.printOnlineResources("online", ministry, resources, f)
+}
+
+func (cmd *catalogCmdStruct) printOnlineResources(
+	resourceType string, // "booklet" or "online"
+	ministry catalog.Ministry,
+	resources []catalog.OnlineResource,
+	output io.Writer,
+) error {
+	// generate the template
+	var title string
+	switch resourceType {
+	case "booklet":
+		title = ministry.Description() + " Booklets"
+	case "online":
+		title = ministry.Description() + " Online Resources"
+	default:
+		title = ministry.Description() + " Resources"
+	}
+
+	data := struct {
+		Title     string
+		Type      string
+		Date      catalog.DateOnly
+		Ministry  catalog.Ministry
+		Resources []catalog.OnlineResource
+	}{
+		Title:     title,
+		Type:      resourceType,
+		Date:      catalog.NewDateToday(),
+		Ministry:  ministry,
+		Resources: resources,
+	}
+
+	return cmd.template.ExecuteTemplate(output, "catalog.resources.html", data)
 }

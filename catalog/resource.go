@@ -15,6 +15,12 @@ type OnlineResource struct {
 	// generate one from the URL
 	Name string `json:"name,omitempty"`
 
+	// special references. these are only used for generating independent resources that need to
+	// reference back to the series or message that they came from. in every other instance,
+	// these will be nil
+	Seri    *CatalogSeri    `json:"-"`
+	Message *CatalogMessage `json:"-"`
+
 	// cached or generated data
 
 	// URL of small thumbnail for the resource, optional. this is generated

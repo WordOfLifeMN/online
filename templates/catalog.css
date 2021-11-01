@@ -167,3 +167,23 @@ div.series-seri span.longtext {
     font-size: smaller;
 }
 
+/* Resource lists */
+div.resource-list p.resource {
+    margin-top: 6px;
+    margin-bottom: 0px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #222;
+}
+
+div.resource-list p.resource span.filename {
+    color: {{print $borderColor}};
+    font-size: 75%;
+}
+
+div.resource-list p.resource span.source {
+    display: inline-block;
+    padding-left: 42px;
+    font-size: smaller;
+    font-style: italic;
+}
+

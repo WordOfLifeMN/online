@@ -379,9 +379,11 @@ func FilterSeriesByMinistry(corpus []CatalogSeri, ministry Ministry) []CatalogSe
 	var series []CatalogSeri
 
 	for _, seri := range corpus {
-		if seri.GetMinistry() == ministry {
-			series = append(series, seri)
+		seriMinistry := seri.GetMinistry()
+		if seriMinistry != ministry {
+			continue
 		}
+		series = append(series, seri)
 	}
 
 	return series

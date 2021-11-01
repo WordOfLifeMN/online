@@ -1,0 +1,29 @@
+{{/* HTML div that displays information about one booklet or online resource
+
+Paramater map:
+    . OnlineResource
+*/ -}}
+
+<div class="resource-list">
+    <p class="resource">
+        {{/* File name on the right */}}
+        <span class="filename" style="float: right;">({{.GetFileName}})</span>
+
+        {{/* Resource name & link */}}
+        <img height="14px" src="{{.GetIcon}}" />
+        <a href="{{.URL}}" target="wolmGuide">{{or .Name .GetFileName}}</a>
+
+        <span style="float:clear;"></span>
+
+        {{if .Seri}}
+            <br/>
+            <span class="source">
+                From <a href="{{.Seri.GetCatalogFileName .Seri.View}}">{{.Seri.Name}}</a>
+                {{if .Message}}
+                    : {{.Message.Name}}
+                {{end}}
+                ({{.Seri.DateString}})
+            </span>
+        {{end}}
+    </p>
+</div>
