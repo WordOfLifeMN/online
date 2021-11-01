@@ -20,6 +20,10 @@
     {{$borderColor = "rgb(189,40,43)"}}
     {{$hiliteColor = "rgb(224,108,110)"}}
     {{$titleBackgroundColor = "rgb(126,27,28)"}}
+{{else if eq .Ministry "ask-pastor"}}
+    {{$borderColor = "#04b"}}
+    {{$hiliteColor = "#38f"}}
+    {{$titleBackgroundColor = "#036"}}
 {{end -}}
 
 /* full page */
@@ -89,7 +93,7 @@ div.message p.resource {
 }
 
 div.message p.resource span.filename {
-    color: {{print $titleBackgroundColor}};
+    color: {{print $borderColor}};
     font-size: 75%;
 }
 
@@ -102,11 +106,15 @@ div.seri p.resource {
 }
 
 div.seri p.resource span.filename {
-    color: {{print $titleBackgroundColor}};
+    color: {{print $borderColor}};
     font-size: 75%;
 }
 
 /* series list */
+
+div.ministry-blurb {
+    margin: 0px 24px 0px 8px;
+}
 
 div.series-seri a { color: {{print $borderColor}}; }
 div.series-seri a:hover { color: {{print $hiliteColor}}; }
