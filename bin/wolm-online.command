@@ -38,8 +38,7 @@ online --input $CACHE catalog -o catalog
 #       Note that the signature of the URLs is required so that we can set the
 #       Content-Disposition to 'attachment' (even though the file is public).
 # UPDATE: Since then, I have removed the download link, so the signatures are no
-# longer required.
+#         longer required.
 echo "Syncing the files to S3 ..."
-aws --profile=wolm s3 sync --size-only --acl=public-read catalog/ s3://$BUCKET_NAME/
-# TODO - update to this when everything is done
-#aws --profile=wolm s3 sync --size-only --delete --acl=public-read catalog/ s3://$BUCKET_NAME/
+#aws --profile=wolm s3 sync --size-only --acl=public-read catalog/ s3://$BUCKET_NAME/
+aws --profile=wolm s3 sync --size-only --delete --acl=public-read catalog/ s3://$BUCKET_NAME/
