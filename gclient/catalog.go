@@ -52,7 +52,7 @@ const (
 	seriesVisibility  string = "Visibility"
 	seriesCDJacket    string = "CD Jacket"
 	seriesDVDJacket   string = "DVD Jacket"
-	seriesThumbnail   string = "Cover Image"
+	seriesThumbnail   string = "Cover Art"
 )
 
 var requiredSeriesColumns []string = []string{

@@ -159,6 +159,10 @@ div.series-seri span.label {
     vertical-align: top;
 }
 
+div.series-seri span.message-list {
+    font-size: small;
+}
+
 div.series-seri span.longtext {
     display: inline-block;
     margin: 10px 8px 4px 8px;

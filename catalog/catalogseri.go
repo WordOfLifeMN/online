@@ -313,6 +313,21 @@ func (s *CatalogSeri) SpeakerString() string {
 	return strings.Join(s.Speakers, ", ")
 }
 
+// MessageTitlesString gets the list of message titles as a display string. This is for display
+// and only produces output if the list of message titles is different than the series name
+// (i.e. if this isn't a stand-alone message)
+func (s *CatalogSeri) MessageTitlesString() string {
+	if len(s.Messages) == 1 && s.Messages[0].Name == s.Name {
+		return ""
+	}
+
+	titles := []string{}
+	for index := range s.Messages {
+		titles = append(titles, s.Messages[index].Name)
+	}
+	return strings.Join(titles, "; ")
+}
+
 // AddSpeakerToSeries adds a speaker to the list of series and message speakers if they aren't
 // already in the list
 func (s *CatalogSeri) AddSpeakerToSeries(speaker string) {

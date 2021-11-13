@@ -21,14 +21,19 @@
                 {{end}}
                 <a class="title" href={{.GetCatalogFileName .View}}>{{.Name}}</a>
                 <br>
-                <span class="label">Messages:</span>
-                <span class="text">{{len .Messages}}</span>
-                <br>
                 <span class="label">Date:</span>
                 <span class="text">{{.DateString}}</span>
                 <br>
                 <span class="label">Speaker:</span>
                 <span class="text">{{.SpeakerString}}</span>
+                <br>
+                <span class="label">Messages:</span>
+                <span class="text">{{len .Messages}}</span>
+                {{if .MessageTitlesString}}
+                    <span class="text message-list">
+                        : {{.MessageTitlesString}}
+                    </span>
+                {{end}}
                 <p class="clear"/>
             </td>
         </tr>
