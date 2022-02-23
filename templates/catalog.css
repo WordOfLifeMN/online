@@ -76,13 +76,26 @@ div.message div.title span.name {
 }
 
 div.message table.player td.video {
+    text-align: center;
     vertical-align: middle;
+    border: 1px solid {{print $borderColor}};
+    padding: 4px;
+}
+
+div.message table.player td.audio {
+    text-align: center;
+    vertical-align: middle;
+    border: 1px solid {{print $borderColor}};
+    padding: 4px;
 }
 
 div.message table.player td.label {
+    color: #ccc;
+    background-color: {{print $titleBackgroundColor}};
     text-align: center;
-    color: #777;
+    text-transform: uppercase;
     font-size: small;
+    font-weight: bold;
     writing-mode: vertical-lr;
     text-orientation: sideways;
 }
