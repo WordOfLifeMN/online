@@ -76,8 +76,15 @@ div.message div.title span.name {
 }
 
 div.message table.player td.video {
-    text-align: center;
     vertical-align: middle;
+}
+
+div.message table.player td.label {
+    text-align: center;
+    color: #777;
+    font-size: small;
+    writing-mode: vertical-lr;
+    text-orientation: sideways;
 }
 
 div.message table.player, div.message div.resources {

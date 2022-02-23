@@ -31,6 +31,9 @@
             <tr>
                 <td width="15px" class="margin">&nbsp;</td>
                 {{if .Video}}
+                    <td width="10px" class="label">
+                        ↑&nbsp;video&nbsp;
+                    </td>
                     <td width="160px" class="video">
                         <a href="{{.Video.URL}}" target="wolmVideo">
                             <img src="{{.Video.GetThumbnail}}" height="36px" alt="{{.Video.GetClassifier}}" />
@@ -38,6 +41,9 @@
                     </td>
                     <td width="15px" class="margin">&nbsp;</td>
                 {{end}}
+                <td width="10px" class="label">
+                    ↑&nbsp;audio&nbsp;
+                </td>
                 <td class="audio">
                     {{if .Audio}}
                         <audio controls style="width:100%;">
