@@ -211,3 +211,7 @@ div.resource-list p.resource span.source {
     font-style: italic;
 }
 
+span.small {
+    font-size: small;
+    font-style: italic;
+}
