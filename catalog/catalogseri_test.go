@@ -569,38 +569,6 @@ func (t *CatalogSeriTestSuite) TestFilterByMinistry_None() {
 	t.Nil(FilterSeriesByMinistry(corpus, TheBridgeOutreach))
 }
 
-// func (t *CatalogSeriTestSuite) TestFilterByMinistry() {
-// 	// given
-// 	corpus := []CatalogSeri{
-// 		{
-// 			Name: "SERIES-1",
-// 			Messages: []CatalogMessage{
-// 				{Name: "MSG-A", Ministry: WordOfLife},
-// 			},
-// 		},
-// 		{
-// 			Name: "SERIES-2",
-// 			Messages: []CatalogMessage{
-// 				{Name: "MSG-B", Ministry: AskThePastor},
-// 			},
-// 		},
-// 		{
-// 			Name: "SERIES-3",
-// 			Messages: []CatalogMessage{
-// 				{Name: "MSG-C", Ministry: WordOfLife},
-// 			},
-// 		},
-// 	}
-
-// 	// when
-// 	result := FilterSeriesByMinistry(corpus, WordOfLife)
-
-// 	// then
-// 	t.Len(result, 2)
-// 	t.Equal("SERIES-1", result[0].Name)
-// 	t.Equal("SERIES-3", result[1].Name)
-// }
-
 func (t *CatalogSeriTestSuite) TestFilterByMinistry() {
 	cat, err := NewCatalogFromJSON("../testdata/small-catalog.json")
 	t.NoError(err)
@@ -627,6 +595,22 @@ func (t *CatalogSeriTestSuite) TestFilterByMinistry() {
 
 	// then
 	t.Len(result, 0)
+}
+
+func (t *CatalogSeriTestSuite) TestFilterByMinistries() {
+	cat, err := NewCatalogFromJSON("../testdata/small-catalog.json")
+	t.NoError(err)
+	t.NoError(cat.Initialize())
+
+	// when
+	result := FilterSeriesByMinistry(cat.Series, WordOfLife, CenterOfRelationshipExperience)
+
+	// then
+	t.Len(result, 4)
+	t.Equal("A People of Conviction, or Convenience?", result[0].Name)
+	t.Equal("Summerfest 2014", result[1].Name)
+	t.Equal("Word (Feb 2, 2014)", result[2].Name)
+	t.Equal("Attachment Disorder", result[3].Name)
 }
 
 func (t *CatalogSeriTestSuite) TestFilterByView_Series() {

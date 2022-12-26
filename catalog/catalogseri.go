@@ -388,17 +388,19 @@ func (s *CatalogSeri) IsMessageRelevant(msg *CatalogMessage) bool {
 // +---------------------------------------------------------------------------
 
 // FilterSeriesByMinistry takes a slice of series and returns another slice that only contains
-// the series that are in the specified ministry. Returns nil slice if none of the series in the
-// input slice is in the ministry
-func FilterSeriesByMinistry(corpus []CatalogSeri, ministry Ministry) []CatalogSeri {
+// the series that are in any of the specified ministries. Returns nil slice if none of the
+// series in the input slice is in the ministries
+func FilterSeriesByMinistry(corpus []CatalogSeri, ministries ...Ministry) []CatalogSeri {
 	var series []CatalogSeri
 
 	for _, seri := range corpus {
 		seriMinistry := seri.GetMinistry()
-		if seriMinistry != ministry {
-			continue
+		for _, ministry := range ministries {
+			if seriMinistry == ministry {
+				series = append(series, seri)
+				break
+			}
 		}
-		series = append(series, seri)
 	}
 
 	return series

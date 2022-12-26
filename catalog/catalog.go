@@ -118,8 +118,8 @@ func (c *Catalog) FindSeriByName(seriesName string) (seri *CatalogSeri, ok bool)
 
 // FindSeriesByMinistry searches the catalog for all series that are in a specific ministry.
 // Returns a copy of those series, or nil slice if no series with the ministry can be found
-func (c *Catalog) FindSeriesByMinistry(ministry Ministry) []CatalogSeri {
-	return FilterSeriesByMinistry(c.Series, ministry)
+func (c *Catalog) FindSeriesByMinistry(ministries ...Ministry) []CatalogSeri {
+	return FilterSeriesByMinistry(c.Series, ministries...)
 }
 
 // Given a series name, finds all the messages that are in that series. This returns a slice of
