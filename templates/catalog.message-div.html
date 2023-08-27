@@ -41,18 +41,18 @@
                     </td>
                     <td width="15px" class="margin">&nbsp;</td>
                 {{end}}
-                <td width="10px" class="label">
-                    audio
-                </td>
-                <td class="audio">
-                    {{if .Audio}}
+                {{if .Audio}}
+                    <td width="10px" class="label">
+                        audio
+                    </td>
+                    <td class="audio">
                         <audio controls style="width:100%;">
                             <source src="{{.Audio.URL}}" type="audio/mpeg" />
                         </audio>
-                    {{else}}
-                        no audio is available
-                    {{end}}
-                </td>
+                    </td>
+                {{else}}
+                    <td style="width:100%">&nbsp;</td>
+                {{end}}
                 <td width="15px" class="margin">&nbsp;</td>
             </tr>
         </table>
