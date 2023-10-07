@@ -23,6 +23,11 @@ func TestParsing(t *testing.T) {
 	assert.Equal(t, FaithAndFreedom, NewMinistryFromString("faith-freedom"))
 	assert.Equal(t, FaithAndFreedom, NewMinistryFromString("FaithAndFreedom"))
 
+	assert.Equal(t, CORE_HopeDealers, NewMinistryFromString("CORE: Hope Dealers"))
+	assert.Equal(t, CORE_HealthMatters, NewMinistryFromString("CORE: Health Matters"))
+	assert.Equal(t, CORE_CounselingClasses, NewMinistryFromString("CORE: Counseling"))
+	assert.Equal(t, CORE_RecoveryClasses, NewMinistryFromString("CORE: Recovery"))
+
 	assert.Equal(t, UnknownMinistry, NewMinistryFromString("Open Heavens"))
 }
 

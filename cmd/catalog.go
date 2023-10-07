@@ -71,7 +71,7 @@ be limited with the parameters.`,
 
 	rootCmd.AddCommand(&catalogCmd.Command)
 
-	catalogCmd.Flags().StringVar(&catalogCmd.Ministry, "ministry", "all", "Ministry to generate catalog for: all (default), wol, core, tbo, ask-pastor, or faith-freedom")
+	catalogCmd.Flags().StringVar(&catalogCmd.Ministry, "ministry", "all", "Ministry to generate catalog for: all (default), wol, core (with sub-ministry), tbo, ask-pastor, or faith-freedom")
 	catalogCmd.Flags().StringVar(&catalogCmd.View, "view", "all", "View for catalog: all (default), public, partner, private")
 	catalogCmd.Flags().StringVarP(&catalogCmd.OutputDir, "output", "o", "~/.wolm/online", "Output directory. Defaults to $HOME/.wolm/online")
 	catalogCmd.Flags().IntVar(&catalogCmd.Days, "days", 60, "Number of days to include in the recent message pages. Defaults to 60")
@@ -87,13 +87,7 @@ func (cmd *catalogCmdStruct) catalog() error {
 	if ministry != catalog.UnknownMinistry {
 		ministries = append(ministries, ministry)
 	} else if cmd.Ministry == "all" || cmd.Ministry == "*" {
-		ministries = []catalog.Ministry{
-			catalog.WordOfLife,
-			catalog.AskThePastor,
-			catalog.CenterOfRelationshipExperience,
-			catalog.FaithAndFreedom,
-			catalog.TheBridgeOutreach,
-		}
+		ministries = append([]catalog.Ministry{}, catalog.AllMinistries...)
 	} else {
 		return fmt.Errorf("unknown ministry '%s'", cmd.Ministry)
 	}

@@ -27,5 +27,5 @@ make dryrun-dump
 Generate a local copy of the website
 ```
 make dryrun-catalog
-open /tmp/t/catlog.*-az-*.html
+open /tmp/t/catalog.*-az-*.html
 ```
