@@ -106,7 +106,8 @@ func (c *Catalog) IsMessageSeriesValid(report *util.IndentingReport) bool {
 // Validates that all the series referenced by messages have consistent track
 // indexes. Checks for duplicate or skipped track numbers. Allows any number of
 // track "0" though (which flags a message as part of a series that should not
-// be displayed)
+// be displayed). Skipped track numbers are ok as long as the next group is a
+// multiple of 100
 func (c *Catalog) IsMessageSeriesIndexValid(report *util.IndentingReport) bool {
 	report.StartSection("Series Index Checks")
 	defer report.StopSection()
@@ -133,7 +134,7 @@ func (c *Catalog) IsMessageSeriesIndexValid(report *util.IndentingReport) bool {
 				valid = false
 				report.Printf("Series '%s' has at least two messages with index %d: '%s' and '%s'\n",
 					seri.Name, seriesIndex1, msgs[index].Name, msgs[index+1].Name)
-			} else if seriesIndex2 > seriesIndex1+1 {
+			} else if seriesIndex2 > seriesIndex1+1 && seriesIndex2%100 != 0 {
 				valid = false
 				report.Printf("Series '%s' has a gap between indexes %d ('%s') and %d ('%s')\n",
 					seri.Name, seriesIndex1, msgs[index].Name, seriesIndex2, msgs[index+1].Name)

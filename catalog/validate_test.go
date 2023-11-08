@@ -7,14 +7,14 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type ValidateTestSuite struct {
-	suite.Suite
-	Report *util.IndentingReport
-}
-
 // Runs the test suite as a test
 func TestValidateTestSuite(t *testing.T) {
 	suite.Run(t, new(ValidateTestSuite))
+}
+
+type ValidateTestSuite struct {
+	suite.Suite
+	Report *util.IndentingReport
 }
 
 func (t *ValidateTestSuite) SetupTest() {
@@ -367,6 +367,45 @@ func (t *ValidateTestSuite) TestValidateMessageSeriesIndex_IndexGap() {
 
 	// then
 	t.False(sut.IsMessageSeriesIndexValid(t.Report))
+}
+
+func (t *ValidateTestSuite) TestValidateMessageSeriesIndex_IndexGapWithGroupAt100() {
+	sut := Catalog{
+		Series: []CatalogSeri{
+			{
+				Name: "SERIES",
+			},
+		},
+		Messages: []CatalogMessage{
+			{Name: "MESSAGE-1", Series: []SeriesReference{{Name: "SERIES", Index: 1}}},
+			{Name: "MESSAGE-2", Series: []SeriesReference{{Name: "SERIES", Index: 2}}},
+			{Name: "MESSAGE-3", Series: []SeriesReference{{Name: "SERIES", Index: 100}}},
+			{Name: "MESSAGE-4", Series: []SeriesReference{{Name: "SERIES", Index: 101}}},
+		},
+	}
+
+	// then
+	t.True(sut.IsMessageSeriesIndexValid(t.Report))
+}
+
+func (t *ValidateTestSuite) TestValidateMessageSeriesIndex_IndexGapWithMultipleGroups() {
+	sut := Catalog{
+		Series: []CatalogSeri{
+			{
+				Name: "SERIES",
+			},
+		},
+		Messages: []CatalogMessage{
+			{Name: "MESSAGE-1", Series: []SeriesReference{{Name: "SERIES", Index: 1}}},
+			{Name: "MESSAGE-2", Series: []SeriesReference{{Name: "SERIES", Index: 2}}},
+			{Name: "MESSAGE-3", Series: []SeriesReference{{Name: "SERIES", Index: 100}}},
+			{Name: "MESSAGE-4", Series: []SeriesReference{{Name: "SERIES", Index: 101}}},
+			{Name: "MESSAGE-5", Series: []SeriesReference{{Name: "SERIES", Index: 700}}},
+		},
+	}
+
+	// then
+	t.True(sut.IsMessageSeriesIndexValid(t.Report))
 }
 
 func (t *ValidateTestSuite) TestValidateMessageSeriesIndex_Index1Missing() {
