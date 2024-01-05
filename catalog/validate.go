@@ -137,7 +137,8 @@ func (c *Catalog) IsMessageSeriesIndexValid(report *util.IndentingReport) bool {
 					seri.Name, seriesIndex1, msgs[index].Name, msgs[index+1].Name)
 			} else if seriesIndex2 > seriesIndex1+1 && seriesIndex2%100 != 0 {
 				valid = false
-				report.Printf("Series '%s' has a gap between indexes %d ('%s') and %d ('%s')\n",
+				report.Printf("Series '%s' has a gap between indexes %d ('%s') and %d ('%s'). "+
+					"Gaps are only ok if the next batch starts with a multiple of 100.\n",
 					seri.Name, seriesIndex1, msgs[index].Name, seriesIndex2, msgs[index+1].Name)
 			}
 		}
