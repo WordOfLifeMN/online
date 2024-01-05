@@ -13,6 +13,7 @@ import (
 // List of states that audio and video's can be in. Most of these should be temporary states
 // during editing, but some are permanent
 var possibleAudioVideoStates = []string{
+	"",            // permanent - doesn't exist
 	"-",           // permanent - doesn't exist
 	"n/a",         // permanent - not available
 	"n/e",         // permanent - not edited
