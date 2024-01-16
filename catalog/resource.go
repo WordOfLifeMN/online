@@ -1,6 +1,9 @@
 package catalog
 
 import (
+	"encoding/json"
+	"fmt"
+	"html/template"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -11,9 +14,10 @@ import (
 type OnlineResource struct {
 	// URL of the resource, required
 	URL string `json:"url"`
-	// name of the resource, optional. if undefined, then GetDisplayName() will
-	// generate one from the URL
+	// name of the resource, optional. if undefined, then GetDisplayName() will generate one from the URL
 	Name string `json:"name,omitempty"`
+	// Metadata contains miscellaneous metadata
+	Metadata map[string]string `json:"metadata,omitempty"`
 
 	// special references. these are only used for generating independent resources that need to
 	// reference back to the series or message that they came from. in every other instance,
@@ -25,27 +29,26 @@ type OnlineResource struct {
 
 	// URL of small thumbnail for the resource, optional. this is generated
 	// dynamically for the current context of the resource display
-	thumbnail string `json:"-"`
+	thumbnail string `json:"-"` // TODO(km) delete?
 	// short string to clarify the type of the resource. generated dynamically to help the user
 	// identify what will happen when they click on it, like "video", "pdf"
-	classifier string `json:"-"`
+	classifier string `json:"-"` // TODO(km) delete?
 }
 
-// NewResourceFromString creates a new OnlineResource from a string definition.
-// If the input string is empty or only whitespace, returns an unititialized
-// Online Resource
+// NewResourceFromString creates a new OnlineResource from a string definition. If the input
+// string is empty or only whitespace, returns an unititialized Online Resource
 //
 // String definitions can be in multiple formats:
-//
-// Raw URL: "http://blah/path+to+file.doc", in which case the name is the
-// file name without the extension
-//
-// Markdown: "[name](url)"
-//
-// Wiki: "name|url"
+//  - Raw URL: "http://blah/path+to+file.doc", in which case the name is the file name without the extension
+//  - Markdown: "[name](url)"
+//  - Wiki: "name|url"
+//  - Metadata can be included as a JSON object, like `{"iframe":"https://rumble.com/embed/vjrceb/?pub=r095p"}`.
+//    This can be embedded anywhere in the string, everything from the first to last brace will be treated as
+//    metadata.
 func NewResourceFromString(s string) *OnlineResource {
 	r := OnlineResource{}
 
+	s, r.Metadata = extractResourceMetadata(s)
 	s = strings.TrimSpace(s)
 
 	switch {
@@ -94,6 +97,45 @@ func NewResourcesFromString(s string) []OnlineResource {
 	return results
 }
 
+// extractResourceMetadata looks at the string and extracts any resource metadata. This will
+// return the string without the metadata and the extracted metadata. If there are any errors
+// then (s, nil) is returned and s will not be modified
+//
+// Example: If the input string is `https://youtu.be/999 {"id":"999"}`, then the output will
+// be ("https://youtu.be/999 ", map[string]string{"id": "999"})
+func extractResourceMetadata(s string) (string, map[string]string) {
+	if !strings.Contains(s, "{") {
+		// no metadata
+		return s, nil
+	}
+	if !strings.Contains(s, "}") {
+		// has metadata, but without closing brace, it is invalid
+		return s, nil
+	}
+
+	// parse the JSON into a map of interfaces
+	p1 := strings.Index(s, "{")
+	p2 := strings.LastIndex(s, "}") + 1
+
+	minterface := map[string]interface{}{}
+	err := json.Unmarshal([]byte(s[p1:p2]), &minterface)
+	if err != nil {
+		// return the unmodified string
+		return s, nil
+	}
+
+	// convert the interfaces to strings
+	mstrings := map[string]string{}
+	for k, v := range minterface {
+		mstrings[k] = fmt.Sprintf("%v", v)
+	}
+
+	// remove the metadata from the string
+	s = s[0:p1] + s[p2:]
+
+	return s, mstrings
+}
+
 // GetNameFromURL creates a human-readable name from the resource's URL. It does this by
 // extracting the last field of the URL and trying to eliminate any URL encoding or markup
 func (r *OnlineResource) GetNameFromURL() string {
@@ -133,9 +175,9 @@ func (r *OnlineResource) GetFileName() string {
 func (r *OnlineResource) GetThumbnail() string {
 	switch {
 	case strings.Contains(r.URL, "youtube"), strings.Contains(r.URL, "youtu.be"):
-		return "static/all.thumbnail_youtube_dark.png"
+		return "static/all.thumbnail_youtube_light.png"
 	case strings.Contains(r.URL, "rumble"):
-		return "static/all.thumbnail_rumble_dark.png"
+		return "static/all.thumbnail_rumble_light.png"
 	case strings.Contains(r.URL, "bitchute"):
 		return "static/all.thumbnail_bitchute.png"
 	}
@@ -176,4 +218,44 @@ func (r *OnlineResource) GetClassifier() string {
 		return "BitChute video"
 	}
 	return "Internet link"
+}
+
+// GetEmbeddedURL returns a version of the URL used for embedding the resource in an iframe. For
+// example, the format for a YouTube URL is different depending on whether it's a clickable link
+// or a reference to a video to play in an iframe.
+func (r *OnlineResource) GetEmbeddedURL() string {
+	switch {
+	case strings.Contains(r.URL, "//youtu.be/"):
+		return strings.ReplaceAll(r.URL, "//youtu.be/", "//www.youtube.com/embed/")
+	case strings.Contains(r.URL, "//rumble.com/"):
+		// rumble videos have different IDs for embedded vs. direct links. The URL should be for
+		// the direct link, but the embedded URL can be in an "iframe" metadata field
+		if v, ok := r.Metadata["iframe"]; ok {
+			return v
+		}
+		return r.URL
+	}
+	return r.URL
+}
+
+func (r *OnlineResource) GetEmbeddedVideo(width int) template.HTML {
+	switch {
+	case strings.Contains(r.URL, "//youtu.be/"):
+		return template.HTML(
+			fmt.Sprintf(
+				`<iframe width="%dpx" src="%s" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`,
+				width, r.GetEmbeddedURL()),
+		)
+	case strings.Contains(r.URL, "rumble"):
+		return template.HTML(
+			fmt.Sprintf(
+				`<iframe width="%dpx" src="%s" title="Rumble video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`,
+				width, r.GetEmbeddedURL()),
+		)
+	}
+	return template.HTML(
+		fmt.Sprintf(
+			`<a href="%s" target="wolmVideo"><img src="%s" height="64px" alt="%s" /></a>`,
+			r.URL, r.GetThumbnail(), r.GetClassifier()),
+	)
 }

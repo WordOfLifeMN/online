@@ -24,4 +24,7 @@ dryrun-dump:
 
 dryrun-catalog:
 	go run main.go -v -i /tmp/online-catalog.json catalog -o /tmp/t
-	
+
+run-refresh:
+	# Add this to catalog.pre-content.html: <meta http-equiv="refresh" content="5" />
+	{ find templates -type f && find . -name '*.go'; } | entr make dryrun-catalog

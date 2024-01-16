@@ -9,25 +9,32 @@
 <div class="series-seri">
     <table width="100%">
         <tr>
-            <td class="thumbnail" width="10%">
-                <div class="thumbnail">
-                    {{$defaultThumbnail := printf "static/%s.default.thumbnail.png" .GetMinistry}}
-                    <img src="{{or .Thumbnail $defaultThumbnail}}" alt="{{printf "%s Cover" .Name}}"/>
-                </div>
-            </td>
-            <td class="info" width="90%">
+            <td colspan="99">
                 {{if ne .Visibility "public"}}
                     <span class="visibility" style="float: right;">[{{.Visibility}}]</span>
                 {{end}}
                 <a class="title" href={{.GetCatalogFileName .View}}>{{.Name}}</a>
-                <br>
+                <hr />
+            </td>
+        </tr>
+        <tr>
+            <td class="thumbnail" width="10%">
+                <div class="thumbnail">
+                    {{$defaultThumbnail := printf "static/%s.default.thumbnail.png" .GetMinistry}}
+                    <a class="title" href={{.GetCatalogFileName .View}}>
+                        <img src="{{or .Thumbnail $defaultThumbnail}}" alt="{{printf "%s Cover" .Name}}"/>
+                    </a>
+                </div>
+            </td>
+            <td class="info" width="90%">
                 <span class="label">Date:</span>
                 <span class="text">{{.DateString}}</span>
                 <br>
                 <span class="label">Speaker:</span>
                 <span class="text">{{.SpeakerString}}</span>
                 {{if .MessageTitlesString}}
-                    <br>
+                    <br />
+                    <br />
                     <span class="label">{{len .Messages}} Messages:</span>
                     <span class="text message-list">
                         {{.MessageTitlesString}}
@@ -37,10 +44,10 @@
             </td>
         </tr>
     </table>
-    <p class="clear">&nbsp;</p>
 
     {{/* Description */}}
     {{if .Description}}
+        <p class="clear">&nbsp;</p>
         <span class="longtext">{{.Description}}</span>
     {{end}}
 </div>

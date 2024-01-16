@@ -4,12 +4,12 @@ Paramater map:
 */ -}}
 
 <p class="resource">
-    {{/* File name on the right */}}
-    <span class="filename" style="float: right;">({{.GetFileName}})</span>
-
     {{/* Resource name & link */}}
     <img height="14px" src="{{.GetIcon}}" />
     <a href="{{.URL}}" target="wolmGuide">{{or .Name .GetFileName}}</a>
+
+    {{/* File name on the right */}}
+    <span class="filename" style="float: right;">({{.GetFileName}})</span>
 
     <span style="float:clear;" />
 </p>

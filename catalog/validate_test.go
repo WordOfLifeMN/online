@@ -123,11 +123,30 @@ func (t *ValidateTestSuite) TestMessageVideo() {
 func (t *ValidateTestSuite) TestMessageResource() {
 	sut := getValidTestMessage()
 	sut.Resources = []OnlineResource{
+		{URL: "https://youtu.be/id", Name: "valid URL"},
+	}
+
+	t.True(sut.IsValid(t.Report))
+}
+
+func (t *ValidateTestSuite) TestMessageResource_WhenInvaledURL() {
+	sut := getValidTestMessage()
+	sut.Resources = []OnlineResource{
 		{URL: "not a url", Name: "broken"},
 	}
 
 	t.False(sut.IsValid(t.Report))
 	t.Contains(t.Report.String(), "not contain a valid URL")
+}
+
+func (t *ValidateTestSuite) TestMessageResource_WhenInvalidMetadata() {
+	sut := getValidTestMessage()
+	sut.Resources = []OnlineResource{
+		{URL: `http://youtu.be/id {"id":"id"}`, Name: "invalid metadata"},
+	}
+
+	t.False(sut.IsValid(t.Report))
+	t.Contains(t.Report.String(), "improperly formatted metadata")
 }
 
 // +---------------------------------------------------------------------------

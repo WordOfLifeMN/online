@@ -6,53 +6,58 @@
         . CatalogMessage
 */ -}}
 
+{{$maxEmbeddedVideosPerPage := 8}}
+
 <div class="message">
 
-    {{- /* message title */ -}}
-    <div class="title" title="{{.Description}}">
-        {{if ne .Visibility "public"}}
-            <span class="visibility" style="float: right;">[{{.Visibility}}]</span>
-        {{end}}
-        {{if .Series}}{{(index .Series 0).Index}}{{else}}1{{end}}.
-        <span class="name">{{.Name}}</span>
-        {{if .Speakers}}
-        <span class="speakers">- {{.SpeakerString}}</span>
-        {{end}}
-        {{if .Date}} <span class="date">({{.DateString}})</span> {{end}}
-        <p class="clear"/>
-    </div>
-
-    {{- /* message title */ -}}
+    {{- /* message */ -}}
     <div class="body">
-        <p class="description">{{.Description}}</p>
-
-        {{- /* Playback */}}
         <table width="100%" class="player">
             <tr>
+                <td colspan="99">
+                    <div class="title" title="{{.Description}}">
+                        {{if ne .Visibility "public"}}
+                            <span class="visibility" style="float: right;">[{{.Visibility}}]</span>
+                        {{end}}
+                        <span class="name">{{.Name}}</span>
+                    </div>
+                    <hr />
+                </td>
+            </tr>
+            <tr>
                 <td width="15px" class="margin">&nbsp;</td>
-                {{if .Video}}
-                    <td width="10px" class="label">
-                        video
-                    </td>
-                    <td width="160px" class="video">
-                        <a href="{{.Video.URL}}" target="wolmVideo">
-                            <img src="{{.Video.GetThumbnail}}" height="36px" alt="{{.Video.GetClassifier}}" />
-                        </a>
-                    </td>
-                    <td width="15px" class="margin">&nbsp;</td>
-                {{end}}
-                {{if .Audio}}
-                    <td width="10px" class="label">
-                        audio
-                    </td>
-                    <td class="audio">
+                <td width="320px" class="video">
+                    {{if .Video}}
+                        {{if le (index .Series 0).Index $maxEmbeddedVideosPerPage}}
+                            {{.Video.GetEmbeddedVideo 320}}
+                        {{else}}
+                            <a href="{{.Video.URL}}" target="wolmVideo">
+                                <img src="{{.Video.GetThumbnail}}" height="64px" alt="{{.Video.GetClassifier}}" />
+                            </a>
+                        {{end}}
+                    {{else}}
+                        <span class="small">no video<br/>available</span>
+                    {{end}}
+                </td>
+                <td width="15px" class="margin">&nbsp;</td>
+                <td class="audio">
+                    {{if .Speakers}}
+                        <span class="speakers">{{.SpeakerString}}</span>
+                        <br />
+                        {{end}}
+                        {{if .Date}} 
+                        <span class="date">Date: {{.DateString}}</span>
+                        <br />
+                    {{end}}
+                    <p class="description">{{.Description}}</p>
+                    {{if .Audio}}
                         <audio controls style="width:100%;">
                             <source src="{{.Audio.URL}}" type="audio/mpeg" />
                         </audio>
-                    </td>
-                {{else}}
-                    <td style="width:100%">&nbsp;</td>
-                {{end}}
+                    {{else}}
+                        &nbsp;
+                    {{end}}
+                </td>
                 <td width="15px" class="margin">&nbsp;</td>
             </tr>
         </table>
