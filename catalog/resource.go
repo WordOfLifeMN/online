@@ -159,7 +159,7 @@ func (r *OnlineResource) GetNameFromURL() string {
 	return name
 }
 
-// GetFileName returs the file name of the URL
+// GetFileName returns the file name of the URL
 func (r *OnlineResource) GetFileName() string {
 	url, err := url.Parse(r.URL)
 	if err != nil {

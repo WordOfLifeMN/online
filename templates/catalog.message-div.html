@@ -8,67 +8,63 @@
 
 {{$maxEmbeddedVideosPerPage := 8}}
 
+{{- /* message */ -}}
 <div class="message">
+    {{/* Title Bar */}}
+    {{if ne .Visibility "public"}}
+        <p class="visibility">[{{.Visibility}}]</p>
+    {{end}}
+    <p class="title">{{.Name}}</p>
+    <p class="clear" />
+    <hr />
 
-    {{- /* message */ -}}
-    <div class="body">
-        <table width="100%" class="player">
-            <tr>
-                <td colspan="99">
-                    <div class="title" title="{{.Description}}">
-                        {{if ne .Visibility "public"}}
-                            <span class="visibility" style="float: right;">[{{.Visibility}}]</span>
-                        {{end}}
-                        <span class="name">{{.Name}}</span>
-                    </div>
-                    <hr />
-                </td>
-            </tr>
-            <tr>
-                <td width="15px" class="margin">&nbsp;</td>
-                <td width="320px" class="video">
-                    {{if .Video}}
-                        {{if le (index .Series 0).Index $maxEmbeddedVideosPerPage}}
-                            {{.Video.GetEmbeddedVideo 320}}
-                        {{else}}
-                            <a href="{{.Video.URL}}" target="wolmVideo">
-                                <img src="{{.Video.GetThumbnail}}" height="64px" alt="{{.Video.GetClassifier}}" />
-                            </a>
-                        {{end}}
-                    {{else}}
-                        <span class="small">no video<br/>available</span>
-                    {{end}}
-                </td>
-                <td width="15px" class="margin">&nbsp;</td>
-                <td class="audio">
-                    {{if .Speakers}}
-                        <span class="speakers">{{.SpeakerString}}</span>
-                        <br />
-                        {{end}}
-                        {{if .Date}} 
-                        <span class="date">Date: {{.DateString}}</span>
-                        <br />
-                    {{end}}
-                    <p class="description">{{.Description}}</p>
-                    {{if .Audio}}
-                        <audio controls style="width:100%;">
-                            <source src="{{.Audio.URL}}" type="audio/mpeg" />
-                        </audio>
-                    {{else}}
-                        &nbsp;
-                    {{end}}
-                </td>
-                <td width="15px" class="margin">&nbsp;</td>
-            </tr>
-        </table>
+    {{/* Message playback and info */}}
+    <div class="video">
+        {{if .Video}}
+            {{if le (index .Series 0).Index $maxEmbeddedVideosPerPage}}
+                {{.Video.GetEmbeddedVideo 320}}
+            {{else}}
+                <a href="{{.Video.URL}}" target="wolmVideo">
+                    {{/*<img src="{{.Video.GetThumbnail}}" width="160px;" alt="{{.Video.GetClassifier}}" style="margin-left:80px;"/>*/}}
+                    <span class="click-for-video">click for video</span>
+                </a>
+            {{end}}
 
-        {{- /* Resources */}}
-        {{if .Resources}}
-            <div class="resources">
-                {{range .Resources}}
-                    {{template "catalog.resource-p.html" .}}
-                {{end}}
-            </div>
+        {{else}}
+            <p class="no-video">no video available</p>
+
         {{end}}
+        <div class="audio">
+            {{if .Audio}}
+                <audio controls style="width:100%;">
+                    <source src="{{.Audio.URL}}" type="audio/mpeg" />
+                    Your browser does not support audio playback.
+                </audio>
+            {{end}}
+        </div>
     </div>
+    <div class="info">
+        <p>
+            {{if .Speakers}}
+                <span class="speakers">{{.SpeakerString}}</span>
+                <br />
+            {{end}}
+            {{if .Date}} 
+                <span class="date">{{.DateString}}</span>
+                <br />
+            {{end}}
+            <br/>
+            <span class="description">{{.Description}}</span>
+        </p>
+    </div>
+    <div class="clear" />
+
+    {{- /* Resources */}}
+    {{if .Resources}}
+        <div class="resources">
+            {{range .Resources}}
+                {{template "catalog.resource-p.html" .}}
+            {{end}}
+        </div>
+    {{end}}
 </div>
