@@ -232,8 +232,8 @@ func (cmd *catalogCmdStruct) loadTemplates() error {
 	})
 
 	// parse the templates
-	log.Printf("  Templates %s", filepath.Join(templateDir, "catalog.css"))
-	cmd.template, err = cmd.template.ParseGlob(filepath.Join(templateDir, "catalog.css"))
+	log.Printf("  Templates %s", filepath.Join(templateDir, "catalog.v3.css"))
+	cmd.template, err = cmd.template.ParseGlob(filepath.Join(templateDir, "catalog.v3.css"))
 	if err != nil {
 		return err
 	}
@@ -339,7 +339,7 @@ func (cmd *catalogCmdStruct) getOutputFilePath(fileName string) string {
 // createStyleSheet creates the style sheet for the specified ministry in the output directory
 func (cmd *catalogCmdStruct) createStyleSheet(ministry catalog.Ministry) error {
 	// create the file
-	filePath := cmd.getOutputFilePath(fmt.Sprintf("catalog.%s.css", string(ministry)))
+	filePath := cmd.getOutputFilePath(fmt.Sprintf("catalog.%s.v3.css", string(ministry)))
 	f, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("cannot create style sheet file %s", filePath)
@@ -362,7 +362,7 @@ func (cmd *catalogCmdStruct) printCatalogStyle(ministry catalog.Ministry, output
 		Ministry: ministry,
 	}
 
-	return cmd.template.ExecuteTemplate(output, "catalog.css", data)
+	return cmd.template.ExecuteTemplate(output, "catalog.v3.css", data)
 }
 
 // ----------------------------------------------------------------------------
