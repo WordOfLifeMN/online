@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -20,71 +21,104 @@ func (t *OnlineResourceTestSuite) TestEmptyString() {
 }
 
 func (t *OnlineResourceTestSuite) TestNewWikiString() {
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString("Hi|http://hi"))
+	testCases := []struct {
+		resourceString string
+		expectedName   string
+		expectedURL    string
+	}{
+		{"Hi|http://hi", "Hi", "http://hi"},
+		{" Hi|http://hi", "Hi", "http://hi"},
+		{"Hi|http://hi ", "Hi", "http://hi"},
+		{"Hi | http://hi", "Hi", "http://hi"},
+		{"Hi | http://hi", "Hi", "http://hi"},
+		{"Hi | http://hi.doc", "Hi", "http://hi.doc"},
+		{"http://hi|Hi", "Hi", "http://hi"},
+		{" http://hi|Hi", "Hi", "http://hi"},
+		{"http://hi|Hi ", "Hi", "http://hi"},
+		{"http://hi | Hi", "Hi", "http://hi"},
+	}
 
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString(" Hi|http://hi"))
+	for index, tc := range testCases {
+		expected := OnlineResource{
+			URL:  tc.expectedURL,
+			Name: tc.expectedName,
+		}
+		actual := NewResourceFromString(tc.resourceString)
+		if t.NotNil(actual) {
+			t.Equal(expected, *actual, fmt.Sprintf("Test case #%d failed", index))
+		}
+	}
+}
+func (t *OnlineResourceTestSuite) TestNewWikiString_WithMetadata() {
+	testCases := []struct {
+		resourceString   string
+		expectedName     string
+		expectedURL      string
+		expectedMetadata map[string]string
+	}{
+		{`{"id":"hi"}Hi|http://hi.doc`, "Hi", "http://hi.doc", map[string]string{"id": "hi"}},
+		{`Hi|{"id":"hi"}http://hi.doc`, "Hi", "http://hi.doc", map[string]string{"id": "hi"}},
+		{`Hi|http://hi.doc {"id":"hi"}`, "Hi", "http://hi.doc", map[string]string{"id": "hi"}},
+		{`[Hi]{"id":"hi"}(http://hi)`, "Hi", "http://hi", map[string]string{"id": "hi"}},
+	}
 
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString("Hi|http://hi "))
-
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString("Hi | http://hi"))
-
-	t.Equal(
-		OnlineResource{URL: "http://hi.doc", Name: "Hi"},
-		*NewResourceFromString("Hi | http://hi.doc"))
-
-	t.Equal(
-		OnlineResource{URL: "http://hi.doc", Name: "Hi", Metadata: map[string]string{"id": "hi"}},
-		*NewResourceFromString(`{"id":"hi"}Hi|http://hi.doc`))
-
-	t.Equal(
-		OnlineResource{URL: "http://hi.doc", Name: "Hi", Metadata: map[string]string{"id": "hi"}},
-		*NewResourceFromString(`Hi|{"id":"hi"}http://hi.doc`))
-
-	t.Equal(
-		OnlineResource{URL: "http://hi.doc", Name: "Hi", Metadata: map[string]string{"id": "hi"}},
-		*NewResourceFromString(`Hi|http://hi.doc {"id":"hi"}`))
-
+	for index, tc := range testCases {
+		expected := OnlineResource{
+			URL:      tc.expectedURL,
+			Name:     tc.expectedName,
+			Metadata: tc.expectedMetadata,
+		}
+		actual := NewResourceFromString(tc.resourceString)
+		if t.NotNil(actual) {
+			t.Equal(expected, *actual, fmt.Sprintf("Test case #%d failed", index))
+		}
+	}
 }
 
 func (t *OnlineResourceTestSuite) TestNewMarkdownString() {
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString("[Hi](http://hi)"))
+	testCases := []struct {
+		resourceString string
+		expectedName   string
+		expectedURL    string
+	}{
+		{"[Hi](http://hi)", "Hi", "http://hi"},
+		{"[ Hi ](http://hi)", "Hi", "http://hi"},
+		{"[Hi]( http://hi )", "Hi", "http://hi"},
+	}
 
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString("[ Hi ](http://hi)"))
-
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString("[Hi]( http://hi )"))
-
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi", Metadata: map[string]string{"id": "hi"}},
-		*NewResourceFromString(`[Hi]{"id":"hi"}(http://hi)`))
-
+	for index, tc := range testCases {
+		expected := OnlineResource{
+			URL:  tc.expectedURL,
+			Name: tc.expectedName,
+		}
+		actual := NewResourceFromString(tc.resourceString)
+		if t.NotNil(actual) {
+			t.Equal(expected, *actual, fmt.Sprintf("Test case #%d failed", index))
+		}
+	}
 }
 
 func (t *OnlineResourceTestSuite) TestNewRawURL() {
-	t.Equal(
-		OnlineResource{URL: "http://hi.doc", Name: "hi"},
-		*NewResourceFromString("http://hi.doc"))
+	testCases := []struct {
+		resourceString string
+		expectedName   string
+		expectedURL    string
+	}{
+		{"http://hi.doc", "hi", "http://hi.doc"},
+		{" http://hi.doc", "hi", "http://hi.doc"},
+		{"http://hi.doc ", "hi", "http://hi.doc"},
+	}
 
-	t.Equal(
-		OnlineResource{URL: "http://hi.doc", Name: "hi"},
-		*NewResourceFromString("http://hi.doc "))
-
-	t.Equal(
-		OnlineResource{URL: "http://hi.doc", Name: "hi"},
-		*NewResourceFromString(" http://hi.doc"))
+	for index, tc := range testCases {
+		expected := OnlineResource{
+			URL:  tc.expectedURL,
+			Name: tc.expectedName,
+		}
+		actual := NewResourceFromString(tc.resourceString)
+		if t.NotNil(actual) {
+			t.Equal(expected, *actual, fmt.Sprintf("Test case #%d failed", index))
+		}
+	}
 }
 
 func (t *OnlineResourceTestSuite) TestNameFromURL() {

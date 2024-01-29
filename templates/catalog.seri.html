@@ -39,7 +39,7 @@ Paramater map:
 
 {{/* Series Booklets and Resources */}}
 <div class="seri-resources">
-    {{if or .Seri.Booklets}}
+    {{if .Seri.Booklets}}
         <h2>Series Booklets</h2>
         {{- range .Seri.Booklets}}
             {{template "catalog.resource-p.html" .}}

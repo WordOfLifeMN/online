@@ -56,10 +56,13 @@ func NewResourceFromString(s string) *OnlineResource {
 		break
 
 	case strings.Contains(s, "|"):
-		// Wiki: "name|url"
+		// Wiki: "name|url" (preferred) or "url|name"
 		p := strings.Index(s, "|")
 		r.URL = strings.TrimSpace(s[p+1:])
 		r.Name = strings.TrimSpace(s[:p])
+		if strings.Contains(r.Name, "://") && !strings.Contains(r.URL, "://") {
+			r.URL, r.Name = r.Name, r.URL
+		}
 
 	case strings.HasPrefix(s, "[") && strings.Contains(s, "](") && strings.HasSuffix(s, ")"):
 		// Markdown: "[name](url)"
