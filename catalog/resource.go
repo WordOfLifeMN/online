@@ -244,10 +244,11 @@ func (r *OnlineResource) GetEmbeddedURL() string {
 func (r *OnlineResource) GetEmbeddedVideo(width int) template.HTML {
 	switch {
 	case strings.Contains(r.URL, "//youtu.be/"):
+		height := width * 9 / 16
 		return template.HTML(
 			fmt.Sprintf(
-				`<iframe width="%dpx" src="%s" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`,
-				width, r.GetEmbeddedURL()),
+				`<iframe width="%dpx" height="%dpx" src="%s" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`,
+				width, height, r.GetEmbeddedURL()),
 		)
 	case strings.Contains(r.URL, "rumble"):
 		return template.HTML(
