@@ -35,8 +35,7 @@ ECHO         to: %target:C:\Users\WordofLifeMNMedia\Documents\WOLMessages\=%
 ECHO   trimming: %trim% seconds
 ECHO: 
 
-REM ECHO ffmpeg -hide_banner -loglevel warning -stats -i "%source%"" -ss %trim% "%target%""
-"C:\Program Files\ffmpeg\ffmpeg-master-latest-win64-gpl\bin\ffmpeg.exe" -hide_banner -loglevel warning -stats -i "%source%" -ss %trim% "%target%"
+"C:\Program Files\ffmpeg-6.1.1\bin\ffmpeg.exe" -hide_banner -loglevel warning -stats -i "%source%" -ss %trim% "%target%"
 
 ECHO:
 REM Get the s3 target
@@ -47,7 +46,7 @@ SET s3url=https://s3.us-west-2.amazonaws.com/wordoflife.mn.audio/%s3name:~0,4%/%
 REM Prompt for upload
 ECHO Uploading: %target:C:\Users\WordofLifeMNMedia\Documents\WOLMessages\=%
 ECHO        to: %s3target%
-set /P isUpload="  Confirm: [Y/n]? "
+SET /P isUpload="  Confirm: [Y/n]? " || SET isUpload=y
 IF /I "%isUpload%" NEQ "y" (
   ECHO Aborting upload
   pause
