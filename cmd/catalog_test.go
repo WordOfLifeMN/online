@@ -5,21 +5,22 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
 	"github.com/stretchr/testify/suite"
 )
 
+func TestCatalogCmdTestSuite(t *testing.T) {
+	suite.Run(t, new(CatalogCmdTestSuite))
+}
+
 type CatalogCmdTestSuite struct {
 	suite.Suite
 }
 
 // Runs the test suite as a test
-func TestCatalogCmdTestSuite(t *testing.T) {
-	suite.Run(t, new(CatalogCmdTestSuite))
-}
-
 // +---------------------------------------------------------------------------
 // | Prepare the output directory
 // +---------------------------------------------------------------------------
@@ -38,6 +39,8 @@ func (t *CatalogCmdTestSuite) TestOutputDirectoryPrep_NewDir() {
 	// then
 	t.True(util.IsDirectory(testDir))
 	t.True(util.IsFile(filepath.Join(testDir, "is.online.catalog.dir")))
+
+	t.NoError(os.RemoveAll(testDir))
 }
 
 func (t *CatalogCmdTestSuite) TestOutputDirectoryPrep_DirIsOkToDelete() {
@@ -48,10 +51,13 @@ func (t *CatalogCmdTestSuite) TestOutputDirectoryPrep_DirIsOkToDelete() {
 	}
 	t.NoError(os.MkdirAll(testDir, os.FileMode(0777)))
 	defer os.RemoveAll(testDir)
-	_, err := os.Create(filepath.Join(testDir, "is.online.catalog.dir"))
+	f, err := os.Create(filepath.Join(testDir, "is.online.catalog.dir"))
 	t.NoError(err)
-	_, err = os.Create(filepath.Join(testDir, "actual-file.txt"))
+	f.Close()
+
+	f, err = os.Create(filepath.Join(testDir, "actual-file.txt"))
 	t.NoError(err)
+	f.Close()
 
 	// when
 	if t.NoError(sut.initializeOutputDir()) {
@@ -61,6 +67,8 @@ func (t *CatalogCmdTestSuite) TestOutputDirectoryPrep_DirIsOkToDelete() {
 		t.True(util.IsFile(filepath.Join(testDir, "is.online.catalog.dir")))
 		t.False(util.IsFile(filepath.Join(testDir, "actual-file.txt")))
 	}
+
+	t.NoError(os.RemoveAll(testDir))
 }
 
 func (t *CatalogCmdTestSuite) TestOutputDirectoryPrep_DirShouldNotBeDeleted() {
@@ -71,8 +79,9 @@ func (t *CatalogCmdTestSuite) TestOutputDirectoryPrep_DirShouldNotBeDeleted() {
 	}
 	t.NoError(os.MkdirAll(testDir, os.FileMode(0777)))
 	defer os.RemoveAll(testDir)
-	_, err := os.Create(filepath.Join(testDir, "actual-file.txt"))
+	f, err := os.Create(filepath.Join(testDir, "actual-file.txt"))
 	t.NoError(err)
+	f.Close()
 
 	// when
 	err = sut.initializeOutputDir()
@@ -148,4 +157,18 @@ func (t *CatalogCmdTestSuite) TestSeriPage() {
 		//	defer os.RemoveAll(testDir)
 		t.NoError(err)
 	}
+}
+
+func (t *CatalogCmdTestSuite) rmTestDir(dirName string) error {
+	var err error
+
+	for _ = range 5 {
+		err = os.RemoveAll(dirName)
+		if err == nil {
+			return nil
+		}
+		time.Sleep(2 * time.Second)
+	}
+
+	return err
 }

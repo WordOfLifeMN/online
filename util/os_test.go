@@ -4,85 +4,96 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestFileExists_FileExists(t *testing.T) {
-	testPath := "/tmp/testfile.txt"
-
-	_, err := os.Create(testPath)
-	defer os.Remove(testPath)
-	if assert.NoError(t, err) {
-		assert.True(t, DoesPathExist(testPath))
-	}
+func TestOSTestSuite(t *testing.T) {
+	suite.Run(t, new(OSTestSuite))
 }
 
-func TestFileExists_DirExists(t *testing.T) {
+type OSTestSuite struct {
+	suite.Suite
+}
+
+func (t *OSTestSuite) TestFileExists_FileExists() {
+	testPath := "/tmp/testfile.txt"
+
+	f, err := os.Create(testPath)
+	t.NoError(err)
+	f.Close()
+	defer os.Remove(testPath)
+
+	t.True(DoesPathExist(testPath))
+}
+
+func (t *OSTestSuite) TestFileExists_DirExists() {
 	testPath := "/tmp/testdir"
 
 	err := os.Mkdir(testPath, os.FileMode(0777))
 	defer os.Remove(testPath)
-	if assert.NoError(t, err) {
-		assert.True(t, DoesPathExist(testPath))
+	if t.NoError(err) {
+		t.True(DoesPathExist(testPath))
 	}
 }
 
-func TestFileExists_FileMissing(t *testing.T) {
+func (t *OSTestSuite) TestFileExists_FileMissing() {
 	testPath := "/tmp/testfile.txt"
 	os.Remove(testPath)
-	assert.False(t, DoesPathExist(testPath))
+	t.False(DoesPathExist(testPath))
 }
 
-func TestIsFile_File(t *testing.T) {
+func (t *OSTestSuite) TestIsFile_File() {
 	testPath := "/tmp/testfile.txt"
 
-	_, err := os.Create(testPath)
+	f, err := os.Create(testPath)
+	t.NoError(err)
+	f.Close()
 	defer os.Remove(testPath)
-	if assert.NoError(t, err) {
-		assert.True(t, IsFile(testPath))
-	}
+
+	t.True(IsFile(testPath))
 }
 
-func TestIsFile_Dir(t *testing.T) {
+func (t *OSTestSuite) TestIsFile_Dir() {
 	testPath := "/tmp/testdir"
 
 	err := os.Mkdir(testPath, os.FileMode(0777))
 	defer os.Remove(testPath)
-	if assert.NoError(t, err) {
-		assert.False(t, IsFile(testPath))
+	if t.NoError(err) {
+		t.False(IsFile(testPath))
 	}
 }
 
-func TestIsFile_Missing(t *testing.T) {
+func (t *OSTestSuite) TestIsFile_Missing() {
 	testPath := "/tmp/testfile.txt"
 
 	os.Remove(testPath)
-	assert.False(t, IsFile(testPath))
+	t.False(IsFile(testPath))
 }
 
-func TestIsDir_Dir(t *testing.T) {
+func (t *OSTestSuite) TestIsDir_Dir() {
 	testPath := "/tmp/testdir"
 
 	err := os.Mkdir(testPath, os.FileMode(0777))
 	defer os.Remove(testPath)
-	if assert.NoError(t, err) {
-		assert.True(t, IsDirectory(testPath))
+	if t.NoError(err) {
+		t.True(IsDirectory(testPath))
 	}
 }
 
-func TestIsDir_File(t *testing.T) {
+func (t *OSTestSuite) TestIsDir_File() {
 	testPath := "/tmp/testfile.txt"
 
-	_, err := os.Create(testPath)
+	f, err := os.Create(testPath)
+	t.NoError(err)
+	f.Close()
 	defer os.Remove(testPath)
-	if assert.NoError(t, err) {
-		assert.False(t, IsDirectory(testPath))
-	}
+
+	t.False(IsDirectory(testPath))
 }
 
-func TestIsDir_Missing(t *testing.T) {
+func (t *OSTestSuite) TestIsDir_Missing() {
 	testPath := "/tmp/testdir"
 
 	os.Remove(testPath)
-	assert.False(t, IsDirectory(testPath))
+	t.False(IsDirectory(testPath))
 }

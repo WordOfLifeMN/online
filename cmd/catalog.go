@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -281,9 +281,11 @@ before running again, either delete this directory or create the file
 	if err := os.MkdirAll(cmd.OutputDir, os.FileMode(0777)); err != nil {
 		return fmt.Errorf("cannot create the output directory %s: %w", cmd.OutputDir, err)
 	}
-	if _, err := os.Create(filepath.Join(cmd.OutputDir, FLAG_FILE_NAME)); err != nil {
+	flagFile, err := os.Create(filepath.Join(cmd.OutputDir, FLAG_FILE_NAME))
+	if err != nil {
 		return fmt.Errorf("unable to create file %s", filepath.Join(cmd.OutputDir, FLAG_FILE_NAME))
 	}
+	flagFile.Close()
 
 	return nil
 }
