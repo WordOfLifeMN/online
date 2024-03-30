@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,6 +21,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -73,15 +74,16 @@ func initConfig() {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
-		// Find home directory.
-		// home, err := os.UserHomeDir()
-		// cobra.CheckErr(err)
-
 		// Search config in $HOME/.wolm directory with name "online" (without extension).
 		viper.AddConfigPath(".")
 		viper.AddConfigPath("$HOME/.wolm")
 		viper.SetConfigType("yaml")
 		viper.SetConfigName("online-config")
+
+		// For windows
+		home, err := os.UserHomeDir()
+		cobra.CheckErr(err)
+		viper.AddConfigPath(path.Join(home, ".wolm"))
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

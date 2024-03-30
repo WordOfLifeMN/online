@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
@@ -157,18 +156,4 @@ func (t *CatalogCmdTestSuite) TestSeriPage() {
 		//	defer os.RemoveAll(testDir)
 		t.NoError(err)
 	}
-}
-
-func (t *CatalogCmdTestSuite) rmTestDir(dirName string) error {
-	var err error
-
-	for _ = range 5 {
-		err = os.RemoveAll(dirName)
-		if err == nil {
-			return nil
-		}
-		time.Sleep(2 * time.Second)
-	}
-
-	return err
 }
