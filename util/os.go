@@ -4,7 +4,7 @@ import (
 	"os"
 )
 
-// IsFileExists determines if a specific file or directory path exists or not
+// DoesPathExist determines if a specific file or directory path exists or not
 func DoesPathExist(path string) bool {
 	_, err := os.Stat(path)
 	return !os.IsNotExist(err)

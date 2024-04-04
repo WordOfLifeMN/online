@@ -3,3 +3,4 @@
 # Online catalog
 sheet-id: 1z4XIiEPMFPpeRgGpdhshiQpmY7A45KzCyZzQ7Ohe85E
 template-dir: /Users/kmurray/git/go/src/github.com/WordOfLifeMN/online/templates/
+openai-key: paste-openai-api-key-here

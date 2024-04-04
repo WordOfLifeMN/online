@@ -66,6 +66,8 @@ func init() {
 	rootCmd.PersistentFlags().StringP("input", "i", "", "Path to JSON file to read catalog from (overrides --sheet-id)")
 	viper.BindPFlag("input", rootCmd.PersistentFlags().Lookup("input"))
 
+	rootCmd.PersistentFlags().String("openai-key", "", "OpenAI API key")
+	viper.BindPFlag("openai-key", rootCmd.PersistentFlags().Lookup("openai-key"))
 }
 
 // initConfig reads in config file and ENV variables if set.
