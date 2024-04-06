@@ -31,13 +31,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-type MessageInfo struct {
-	SpeakerName     string
-	speakerPronouns string // "male" or "female"
-	Title           string
-	Summary         string
-}
-
 // audioSummarizeCmd represents the command to summarize the audio transcript to titles
 // and descriptions
 var audioSummarizeCmd = &cobra.Command{
@@ -93,15 +86,14 @@ func xscriptSummarize(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	speakerName, speakerPronouns := getXScriptSpeaker(xscriptPath)
+	speakerName, speakerPronouns := getSpeakerFromFileName(xscriptPath)
 	// fmt.Printf("TODO(km) XScript speaker %s\n XScript sample: %s\n",speakerName, xscriptSample)
 
-	// TODO(km)
 	info := &MessageInfo{
 		SpeakerName:     speakerName,
-		speakerPronouns: speakerPronouns,
+		SpeakerPronouns: speakerPronouns,
 	}
-	if info, err = generateMessageInfo(xscriptSample, info); err != nil {
+	if info, err = generateMessageSummary(xscriptSample, info); err != nil {
 		return err
 	}
 
@@ -110,9 +102,9 @@ func xscriptSummarize(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// generateMessageInfo takes a transcript and some basic message information,
+// generateMessageSummary takes a transcript and some basic message information,
 // and fills out the rest of the message information: title and summary
-func generateMessageInfo(xscript string, info *MessageInfo) (*MessageInfo, error) {
+func generateMessageSummary(xscript string, info *MessageInfo) (*MessageInfo, error) {
 	client := openai.NewClient(viper.GetString("openai-key"))
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
@@ -142,7 +134,7 @@ The summary will be three sentences and use a casual voice suitable for social m
 You will output the results formatted as a JSON object containing two fields named "title" and "summary"
 
 """ %s """
-`, info.SpeakerName, info.speakerPronouns, xscript),
+`, info.SpeakerName, info.SpeakerPronouns, xscript),
 				},
 			},
 		},
@@ -153,9 +145,25 @@ You will output the results formatted as a JSON object containing two fields nam
 	}
 
 	fmt.Println(resp.Choices[0].Message.Content)
-	fmt.Printf("\n\n%s\n", util.ToJSON(resp))
+	// fmt.Printf("\n\n%s\n", util.ToJSON(resp))
 
 	err = json.Unmarshal([]byte(resp.Choices[0].Message.Content), info)
+	if err != nil {
+		// sometimes the JSON isn't quite legal, so try a cheesy extraction
+		for _, line := range strings.Split(resp.Choices[0].Message.Content, "\n") {
+			if strings.Contains(line, `"title":`) {
+				tmp := line[strings.Index(line, ":"):]
+				info.Title = strings.Trim(tmp, `"' :,`)
+				continue
+			}
+			if strings.Contains(line, `"summary":`) {
+				tmp := line[strings.Index(line, ":"):]
+				info.Summary = strings.Trim(tmp, `"' :,`)
+				continue
+			}
+		}
+		err = nil
+	}
 	return info, err
 }
 
@@ -286,19 +294,27 @@ func findStartOfWord(str string, initPos int) int {
 	}
 }
 
-// getXScriptSpeaker attempts to infer the speaker name from the file name,
+// getSpeakerFromFileName attempts to infer the speaker name from the file name,
 // and prompts the user if necessary
-func getXScriptSpeaker(xscriptPath string) (name, gender string) {
-	// look for the magic tags "-v" or "-m" at the end of the file name for vern and mary,
+func getSpeakerFromFileName(filePath string) (name, pronouns string) {
 	switch {
-	case strings.Contains(strings.ToUpper(xscriptPath), "-V."):
+	// look for the magic tags at the end of the file name,
+	case strings.Contains(strings.ToUpper(filePath), "-V."):
 		return "Pastor Vern Peltz", "he/him"
-	case strings.Contains(strings.ToUpper(xscriptPath), "-M."):
+	case strings.Contains(strings.ToUpper(filePath), "-M."):
+		return "Pastor Mary Peltz", "she/her"
+	}
+
+	// look for the magic tags just after the date
+	if match, err := regexp.MatchString("-[0-9][0-9]-v", filePath); err == nil && match {
+		return "Pastor Vern Peltz", "he/him"
+	}
+	if match, err := regexp.MatchString("-[0-9][0-9]-m", filePath); err == nil && match {
 		return "Pastor Mary Peltz", "she/her"
 	}
 
 	defaultSpeaker := "Vern"
-	if match, err := regexp.MatchString("[0-9][0-9]p ", xscriptPath); err == nil && match {
+	if match, err := regexp.MatchString("-[0-9][0-9]p ", filePath); err == nil && match {
 		defaultSpeaker = "Mary"
 	}
 	return PromptUserForSpeakerAndGender(defaultSpeaker)

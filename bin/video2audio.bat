@@ -1,6 +1,11 @@
 ECHO off
 ECHO "WOL, F&F, and CORE Message Video-to-Audio Converter"
 
+C:\Users\WordofLifeMNMedia\Go\github.com\WordOfLifeMN\online\online.exe --verbose audio
+pause
+
+GOTO:eof
+
 REM Get the source file (without quotes)
 SET source=%1
 IF x%source% == x set /P source=Enter video file to convert: 

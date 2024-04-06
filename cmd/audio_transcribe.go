@@ -87,6 +87,8 @@ func audioTranscribe(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// transcribeAudio uses whisper to transcribe the audio and returns the .txt and .vtt
+// files
 func transcribeAudio(audioPath string) ([]string, error) {
 	// delete any existing transcription files and collect the names
 	var xscriptPaths []string
@@ -112,7 +114,9 @@ func transcribeAudio(audioPath string) ([]string, error) {
 	cmd := exec.Command("whisper",
 		"--output_dir", filepath.Dir(xscriptPaths[0]),
 		"--fp16", "False",
-		"--model", "small",
+		"--model", "tiny",
+		// "--model", "small",
+		// "--model", "medium",
 		"--output_format", "all",
 		"--language", "English",
 		audioPath,
@@ -123,6 +127,11 @@ func transcribeAudio(audioPath string) ([]string, error) {
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Unable to transcribe audio: %s\n", err)
 		return nil, err
+	}
+
+	// delete the files we don't use
+	for _, file := range xscriptPaths[2:] {
+		os.Remove(file)
 	}
 
 	return xscriptPaths[0:2], nil
