@@ -57,7 +57,7 @@ func dump(cmd *cobra.Command, args []string) error {
 	}
 
 	outFileName := viper.GetString("output")
-	fmt.Printf("TODO(km) outFileName = %s\n", outFileName)
+	// fmt.Printf("TODO(km) outFileName = %s\n", outFileName)
 	if outFileName == "" || strings.Contains(outFileName, "stdout") {
 		fmt.Print(string(bytes))
 	} else {
