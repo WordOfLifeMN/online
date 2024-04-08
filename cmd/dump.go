@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,8 +18,13 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+	"strings"
 
+	"github.com/WordOfLifeMN/online/util"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // dumpCmd represents the dump command
@@ -33,6 +38,9 @@ var dumpCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(dumpCmd)
+
+	dumpCmd.Flags().StringP("output", "o", "~/.wolm/online.cache.json", "File to output to")
+	viper.BindPFlag("output", dumpCmd.Flags().Lookup("output"))
 }
 
 func dump(cmd *cobra.Command, args []string) error {
@@ -48,7 +56,19 @@ func dump(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Print(string(bytes))
+	outFileName := viper.GetString("output")
+	fmt.Printf("TODO(km) outFileName = %s\n", outFileName)
+	if outFileName == "" || strings.Contains(outFileName, "stdout") {
+		fmt.Print(string(bytes))
+	} else {
+		outFile, err := os.Create(util.NormalizePath(outFileName))
+		if err != nil {
+			return err
+		}
+		defer outFile.Close()
+		log.Printf("Writing message data to %s\n", outFileName)
+		fmt.Fprint(outFile, string(bytes))
+	}
 
 	return nil
 }

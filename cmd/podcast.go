@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,10 +22,12 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 	"text/template"
 	"time"
 
 	"github.com/WordOfLifeMN/online/catalog"
+	"github.com/WordOfLifeMN/online/util"
 	"github.com/spf13/cobra"
 )
 
@@ -33,8 +35,9 @@ type podcastCmdStruct struct {
 	cobra.Command // the podcast command definition
 
 	// flags for this command
-	Days     int    // number of days of history the podcast should include
-	Ministry string // which ministry the podcast should be for
+	Days           int    // number of days of history the podcast should include
+	Ministry       string // which ministry the podcast should be for
+	OutputFileName string // where to write the podcast file to
 }
 
 // podcastCmd represents the podcast command
@@ -56,6 +59,7 @@ func init() {
 
 	podcastCmd.Flags().IntVarP(&podcastCmd.Days, "days", "d", 180, "How many days of history should be included in the podcast")
 	podcastCmd.Flags().StringVarP(&podcastCmd.Ministry, "ministry", "m", "wol", "Which ministry should the podcast be generated for?")
+	podcastCmd.Flags().StringVarP(&podcastCmd.OutputFileName, "output", "o", "", "Where to write the podcast file. Default is stdout.")
 }
 
 func (cmd *podcastCmdStruct) podcast() error {
@@ -110,15 +114,25 @@ func (cmd *podcastCmdStruct) podcast() error {
 		"Messages":      messages,
 	}
 
-	return cmd.printPodcast(data, os.Stdout)
+	var outFile io.Writer = os.Stdout
+	outFileName := cmd.OutputFileName
+	if outFileName != "" && !strings.Contains(outFileName, "stdout") {
+		f, err := os.Create(util.NormalizePath(outFileName))
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		outFile = f
+	}
+	return cmd.printPodcast(data, outFile)
 }
 
 // printPodcast prints a RSS podcast file to the writer. data contains the data
 // to use for the template rendering:
-//  - Title - string
-//  - Description - string
-//  - CopyrightYear - int - 4-digit copyright year
-//  - Messages - []CatalogMessage - list of messages to display (in order to display)
+//   - Title - string
+//   - Description - string
+//   - CopyrightYear - int - 4-digit copyright year
+//   - Messages - []CatalogMessage - list of messages to display (in order to display)
 func (cmd *podcastCmdStruct) printPodcast(data map[string]interface{}, output io.Writer) error {
 	// get the podcast template
 	templateName, err := getTemplatePath("podcast.xml")

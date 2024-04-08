@@ -122,8 +122,8 @@ func readOnlineContentFromInput(ctx context.Context) (*catalog.Catalog, error) {
 	// check if reading from file
 	inputFile := viper.GetString("input")
 	if inputFile != "" {
-		switch {
-		case strings.HasSuffix(strings.ToUpper(inputFile), ".JSON"):
+		inputFile = util.NormalizePath(inputFile)
+		if strings.HasSuffix(strings.ToUpper(inputFile), ".JSON") {
 			return catalog.NewCatalogFromJSON(inputFile)
 		}
 		return nil, fmt.Errorf("filetype %s is not supported", inputFile)
