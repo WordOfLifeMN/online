@@ -6,64 +6,65 @@
         . CatalogMessage
 */ -}}
 
+{{$maxEmbeddedVideosPerPage := 8}}
+
+{{- /* message */ -}}
 <div class="message">
+    {{/* Title Bar */}}
+    {{if ne .Visibility "public"}}
+        <p class="visibility">[{{.Visibility}}]</p>
+    {{end}}
+    <p class="title">{{.Name}}</p>
+    <p class="clear" />
+    <hr />
 
-    {{- /* message title */ -}}
-    <div class="title" title="{{.Description}}">
-        {{if ne .Visibility "public"}}
-            <span class="visibility" style="float: right;">[{{.Visibility}}]</span>
+    {{/* Message playback and info */}}
+    <div class="video">
+        {{if .Video}}
+            {{if le (index .Series 0).Index $maxEmbeddedVideosPerPage}}
+                {{.Video.GetEmbeddedVideo 320}}
+            {{else}}
+                <a href="{{.Video.URL}}" target="wolmVideo">
+                    {{/*<img src="{{.Video.GetThumbnail}}" width="160px;" alt="{{.Video.GetClassifier}}" style="margin-left:80px;"/>*/}}
+                    <span class="click-for-video">click for video</span>
+                </a>
+            {{end}}
+
+        {{else}}
+            <p class="no-video">no video available</p>
+
         {{end}}
-        {{if .Series}}{{(index .Series 0).Index}}{{else}}1{{end}}.
-        <span class="name">{{.Name}}</span>
-        {{if .Speakers}}
-        <span class="speakers">- {{.SpeakerString}}</span>
-        {{end}}
-        {{if .Date}} <span class="date">({{.DateString}})</span> {{end}}
-        <p class="clear"/>
+        <div class="audio">
+            {{if .Audio}}
+                <audio controls style="width:100%;">
+                    <source src="{{.Audio.URL}}" type="audio/mpeg" />
+                    Your browser does not support audio playback.
+                </audio>
+            {{end}}
+        </div>
     </div>
-
-    {{- /* message title */ -}}
-    <div class="body">
-        <p class="description">{{.Description}}</p>
-
-        {{- /* Playback */}}
-        <table width="100%" class="player">
-            <tr>
-                <td width="15px" class="margin">&nbsp;</td>
-                {{if .Video}}
-                    <td width="10px" class="label">
-                        video
-                    </td>
-                    <td width="160px" class="video">
-                        <a href="{{.Video.URL}}" target="wolmVideo">
-                            <img src="{{.Video.GetThumbnail}}" height="36px" alt="{{.Video.GetClassifier}}" />
-                        </a>
-                    </td>
-                    <td width="15px" class="margin">&nbsp;</td>
-                {{end}}
-                {{if .Audio}}
-                    <td width="10px" class="label">
-                        audio
-                    </td>
-                    <td class="audio">
-                        <audio controls style="width:100%;">
-                            <source src="{{.Audio.URL}}" type="audio/mpeg" />
-                        </audio>
-                    </td>
-                {{else}}
-                    <td style="width:100%">&nbsp;</td>
-                {{end}}
-                <td width="15px" class="margin">&nbsp;</td>
-            </tr>
-        </table>
-
-        {{- /* Resources */}}
-        {{if .Resources}}
-            <div class="resources">
-                {{range .Resources}}
-                    {{template "catalog.resource-p.html" .}}
-                {{end}}
-            </div>
-        {{end}}
+    <div class="info">
+        <p>
+            {{if .Speakers}}
+                <span class="speakers">{{.SpeakerString}}</span>
+                <br />
+            {{end}}
+            {{if .Date}} 
+                <span class="date">{{.DateString}}</span>
+                <br />
+            {{end}}
+            <br/>
+            <span class="description">{{.Description}}</span>
+        </p>
     </div>
+    <div class="clear" />
+
+    {{- /* Resources */}}
+    {{if .Resources}}
+        <div class="resources">
+            {{range .Resources}}
+                {{template "catalog.resource-p.html" .}}
+            {{end}}
+        </div>
+    {{end}}
 </div>

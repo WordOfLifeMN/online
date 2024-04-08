@@ -325,7 +325,7 @@ func (s *CatalogSeri) MessageTitlesString() string {
 	for index := range s.Messages {
 		titles = append(titles, s.Messages[index].Name)
 	}
-	return strings.Join(titles, "; ")
+	return strings.Join(titles, " • ")
 }
 
 // AddSpeakerToSeries adds a speaker to the list of series and message speakers if they aren't

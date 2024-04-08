@@ -1,74 +1,124 @@
 package catalog
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
 )
+
+func TestOnlineResourceestSuite(t *testing.T) {
+	suite.Run(t, new(OnlineResourceTestSuite))
+}
 
 type OnlineResourceTestSuite struct {
 	suite.Suite
 }
 
 // Runs the test suite as a test
-func TestOnlineResourceestSuite(t *testing.T) {
-	suite.Run(t, new(OnlineResourceTestSuite))
-}
-
 func (t *OnlineResourceTestSuite) TestEmptyString() {
 	t.Equal(OnlineResource{}, *NewResourceFromString(""))
 }
 
 func (t *OnlineResourceTestSuite) TestNewWikiString() {
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString("Hi|http://hi"))
+	testCases := []struct {
+		resourceString string
+		expectedName   string
+		expectedURL    string
+	}{
+		{"Hi|http://hi", "Hi", "http://hi"},
+		{" Hi|http://hi", "Hi", "http://hi"},
+		{"Hi|http://hi ", "Hi", "http://hi"},
+		{"Hi | http://hi", "Hi", "http://hi"},
+		{"Hi | http://hi", "Hi", "http://hi"},
+		{"Hi | http://hi.doc", "Hi", "http://hi.doc"},
+		{"http://hi|Hi", "Hi", "http://hi"},
+		{" http://hi|Hi", "Hi", "http://hi"},
+		{"http://hi|Hi ", "Hi", "http://hi"},
+		{"http://hi | Hi", "Hi", "http://hi"},
+	}
 
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString(" Hi|http://hi"))
+	for index, tc := range testCases {
+		expected := OnlineResource{
+			URL:  tc.expectedURL,
+			Name: tc.expectedName,
+		}
+		actual := NewResourceFromString(tc.resourceString)
+		if t.NotNil(actual) {
+			t.Equal(expected, *actual, fmt.Sprintf("Test case #%d failed", index))
+		}
+	}
+}
+func (t *OnlineResourceTestSuite) TestNewWikiString_WithMetadata() {
+	testCases := []struct {
+		resourceString   string
+		expectedName     string
+		expectedURL      string
+		expectedMetadata map[string]string
+	}{
+		{`{"id":"hi"}Hi|http://hi.doc`, "Hi", "http://hi.doc", map[string]string{"id": "hi"}},
+		{`Hi|{"id":"hi"}http://hi.doc`, "Hi", "http://hi.doc", map[string]string{"id": "hi"}},
+		{`Hi|http://hi.doc {"id":"hi"}`, "Hi", "http://hi.doc", map[string]string{"id": "hi"}},
+		{`[Hi]{"id":"hi"}(http://hi)`, "Hi", "http://hi", map[string]string{"id": "hi"}},
+	}
 
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString("Hi|http://hi "))
-
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString("Hi | http://hi"))
-
-	t.Equal(
-		OnlineResource{URL: "http://hi.doc", Name: "Hi"},
-		*NewResourceFromString("Hi | http://hi.doc"))
-
+	for index, tc := range testCases {
+		expected := OnlineResource{
+			URL:      tc.expectedURL,
+			Name:     tc.expectedName,
+			Metadata: tc.expectedMetadata,
+		}
+		actual := NewResourceFromString(tc.resourceString)
+		if t.NotNil(actual) {
+			t.Equal(expected, *actual, fmt.Sprintf("Test case #%d failed", index))
+		}
+	}
 }
 
 func (t *OnlineResourceTestSuite) TestNewMarkdownString() {
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString("[Hi](http://hi)"))
+	testCases := []struct {
+		resourceString string
+		expectedName   string
+		expectedURL    string
+	}{
+		{"[Hi](http://hi)", "Hi", "http://hi"},
+		{"[ Hi ](http://hi)", "Hi", "http://hi"},
+		{"[Hi]( http://hi )", "Hi", "http://hi"},
+	}
 
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString("[ Hi ](http://hi)"))
-
-	t.Equal(
-		OnlineResource{URL: "http://hi", Name: "Hi"},
-		*NewResourceFromString("[Hi]( http://hi )"))
-
+	for index, tc := range testCases {
+		expected := OnlineResource{
+			URL:  tc.expectedURL,
+			Name: tc.expectedName,
+		}
+		actual := NewResourceFromString(tc.resourceString)
+		if t.NotNil(actual) {
+			t.Equal(expected, *actual, fmt.Sprintf("Test case #%d failed", index))
+		}
+	}
 }
 
 func (t *OnlineResourceTestSuite) TestNewRawURL() {
-	t.Equal(
-		OnlineResource{URL: "http://hi.doc", Name: "hi"},
-		*NewResourceFromString("http://hi.doc"))
+	testCases := []struct {
+		resourceString string
+		expectedName   string
+		expectedURL    string
+	}{
+		{"http://hi.doc", "hi", "http://hi.doc"},
+		{" http://hi.doc", "hi", "http://hi.doc"},
+		{"http://hi.doc ", "hi", "http://hi.doc"},
+	}
 
-	t.Equal(
-		OnlineResource{URL: "http://hi.doc", Name: "hi"},
-		*NewResourceFromString("http://hi.doc "))
-
-	t.Equal(
-		OnlineResource{URL: "http://hi.doc", Name: "hi"},
-		*NewResourceFromString(" http://hi.doc"))
+	for index, tc := range testCases {
+		expected := OnlineResource{
+			URL:  tc.expectedURL,
+			Name: tc.expectedName,
+		}
+		actual := NewResourceFromString(tc.resourceString)
+		if t.NotNil(actual) {
+			t.Equal(expected, *actual, fmt.Sprintf("Test case #%d failed", index))
+		}
+	}
 }
 
 func (t *OnlineResourceTestSuite) TestNameFromURL() {
@@ -113,4 +163,59 @@ func (t *OnlineResourceTestSuite) TestNewResources() {
 		},
 		NewResourcesFromString("http://one.pdf; [2](http://two.pdf); Video|http://youtu.be/12368"),
 	)
+}
+
+/*
+ * Metadata
+ */
+
+func (t *OnlineResourceTestSuite) TestMetadata_WhenNone() {
+	s, m := extractResourceMetadata(`https://youtu.be/999`)
+
+	t.Equal(`https://youtu.be/999`, s)
+	t.Nil(m)
+}
+
+func (t *OnlineResourceTestSuite) TestMetadata_WhenValidString() {
+	s, m := extractResourceMetadata(`https://youtu.be/999 {"id":"999"}`)
+
+	t.Equal(`https://youtu.be/999 `, s)
+	t.Equal(map[string]string{"id": "999"}, m)
+}
+
+func (t *OnlineResourceTestSuite) TestMetadata_WhenValidInteger() {
+	s, m := extractResourceMetadata(`https://youtu.be/999 {"id":999}`)
+
+	t.Equal(`https://youtu.be/999 `, s)
+	t.Equal(map[string]string{"id": "999"}, m)
+}
+
+func (t *OnlineResourceTestSuite) TestMetadata_WhenValidBoolean() {
+	s, m := extractResourceMetadata(`https://youtu.be/999 {"id":true}`)
+
+	t.Equal(`https://youtu.be/999 `, s)
+	t.Equal(map[string]string{"id": "true"}, m)
+}
+
+func (t *OnlineResourceTestSuite) TestMetadata_WhenInvalidQuotes() {
+	s, m := extractResourceMetadata(`https://youtu.be/999 {"id":"999}`)
+
+	t.Equal(`https://youtu.be/999 {"id":"999}`, s)
+	t.Nil(m)
+}
+
+func (t *OnlineResourceTestSuite) TestMetadata_WhenInvalidBrace() {
+	s, m := extractResourceMetadata(`https://youtu.be/999 {"id":999`)
+
+	t.Equal(`https://youtu.be/999 {"id":999`, s)
+	t.Nil(m)
+}
+
+func (t *OnlineResourceTestSuite) TestMetadata() {
+	t.Equal(
+		OnlineResource{URL: "http://hi.doc", Name: "hi", Metadata: map[string]string{
+			"id":     "18",
+			"iframe": "https://rumble.com/hi",
+		}},
+		*NewResourceFromString(`http://hi.doc {"id":18, "iframe":"https://rumble.com/hi"}`))
 }

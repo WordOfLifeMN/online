@@ -1,0 +1,401 @@
+{{/* The html head section.
+    Parameters:
+    .Ministry: CatalogMinistry
+    .Date: NewDateToday()
+    */ -}}
+    
+{{$backgroundColor := "#eee" -}}
+{{$borderColor := "#528d54" -}}
+{{$hiliteColor := "#6082B6" -}}
+{{$titleBackgroundColor := $backgroundColor -}}
+{{$titleForegroundColor := "#555" -}}
+
+/* full page */
+body {
+    background-color: {{print $backgroundColor}};
+    margin: 4px 15px 4px 15px;
+    font-family: "Arial", sans-serif;
+    color: #777;
+}
+
+a {
+    color: #999;
+}
+
+p {
+    margin: 6px 0px 2px 0px;   
+    & .clear {
+        clear: both;
+        display: none;
+    }
+}
+
+span.visibility {
+    font-size: 75%;
+}
+
+/* messages */
+div.message {
+    margin-bottom: 24px;
+}
+
+div.message span.visibility {
+    color: #aaa;
+}
+
+div.message p.description {
+    display: inline-block;
+    margin: 10px 8px 4px 8px;
+}
+
+div.message div.title {
+    padding:1px;
+    border: 0px solid;
+    border-radius: 3px;
+    background-color: {{print $titleBackgroundColor}};
+    color: {{print $titleForegroundColor}};	
+}
+
+div.message div.title span.name {
+    font-weight: bold;
+}
+
+div.message table.player td.video {
+    text-align: center;
+    vertical-align: top;
+    padding: 4px;
+}
+
+div.message table.player td.audio {
+    text-align: left;
+    vertical-align: top;
+    padding: 4px;
+}
+
+/* TODO(km) delete? */
+div.message table.player td.label {
+    color: #ccc;
+    background-color: {{print $titleBackgroundColor}};
+    text-align: center;
+    text-transform: uppercase;
+    font-size: small;
+    font-weight: bold;
+    writing-mode: vertical-lr;
+    text-orientation: sideways;
+}
+
+div.message table.player, div.message div.resources {
+    margin-bottom: 12px;
+}
+
+/* message resources */
+div.message p.resource {
+    padding-left: 15px;
+    padding-right: 15px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+div.message p.resource span.filename {
+    color: {{print $borderColor}};
+    font-size: 75%;
+}
+
+div.message hr {
+    border-top: 1px groove silver;
+    margin-top: 0px;
+}
+
+/* seri resources */
+div.seri p.resource {
+    padding-left: 15px;
+    padding-right: 15px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+div.seri p.resource span.filename {
+    color: {{print $borderColor}};
+    font-size: 75%;
+}
+
+/* series list */
+
+div.ministry-blurb {
+    margin: 0px 24px 0px 8px;
+}
+
+div.series-seri a { 
+    color: {{print $titleForegroundColor}}; 
+    text-decoration: none;
+}
+div.series-seri a:hover { 
+    color: {{print $hiliteColor}}; 
+}
+
+div.series-seri {
+    margin-bottom: 24px;
+}
+
+div.series-seri span.visibility {
+    color: #666;
+}
+
+/*
+div.thumbnail {
+    float: left;
+    margin-right: 3px;
+    width: 72px;
+    height: 128px; 
+    position: relative;
+}
+div.thumbnail img {
+    max-width: 100%;
+    max-height: 100%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+*/
+
+div.series-seri a.title {
+    font-size:20px;
+    font-weight: bold;
+}
+
+div.series-seri span.label {
+    display: inline-block;
+    font-weight: bolder;
+    vertical-align: top;
+}
+
+div.series-seri span.message-list {
+    font-size: small;
+}
+
+div.series-seri span.longtext {
+    display: inline-block;
+    margin: 10px 8px 4px 8px;
+    height: 3em;
+    line-height: 1.0;
+    font-size: smaller;
+}
+
+div.series-seri hr {
+    border-top: 1px groove silver;
+    margin-top: 0px;
+}
+
+/* Resource lists */
+div.resource-list p.resource {
+    margin-top: 6px;
+    margin-bottom: 0px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #222;
+}
+
+div.resource-list p.resource span.filename {
+    color: {{print $borderColor}};
+    font-size: 75%;
+}
+
+div.resource-list p.resource span.source {
+    display: inline-block;
+    padding-left: 42px;
+    font-size: smaller;
+    font-style: italic;
+}
+
+span.small {
+    font-size: small;
+    font-style: italic;
+}
+
+/* floating styles */
+
+div.clear {
+    clear:both;
+}
+
+body.seri {
+    & div.wol-breadcrumb {
+        & a { text-decoration: none; }
+        & img { vertical-align: middle; }
+        & span { vertical-align: middle; }
+    }
+
+    & .ministry-blurb {
+        margin: 0px 24px 0px 8px;
+
+        & img {
+            float:left;
+            margin-right:12px;
+        }
+        & ul {
+            list-style-position: inside;
+        }
+    }
+
+    & .sort {
+        margin: 24px 0px 16px 0px;
+    }
+    
+    & div.seri-info {
+        & .title {
+            color:#36454F;
+            font-size:2.5em;
+            font-weight: bold;
+        }
+        & img { 
+            float:left;
+            margin-right:12px;
+        }
+    }
+
+    & .seri-messages {
+        margin-top:24px;
+
+        & .message {
+            & .title {
+                font-weight: bold;
+                font-size:1.2em;
+                margin-top:16px;
+            }
+            & .visibility {
+                float:right;
+                font-size: 0.7em;
+                margin: 0 0 0 0;
+            }
+            & hr {
+                border-top: 1px groove silver;
+                margin-top: 0px;            
+            }
+            
+            & .video {
+                vertical-align:center;
+                text-align:center;
+                float:left;
+                margin: 2px 15px 8px 15px;
+                width:320px;
+
+                & .no-video {
+                    width:320px;
+                    height:24px;
+                    font-size:0.8em;
+                    font-style: italic;
+                }
+
+                & .click-for-video {
+                    width:320px;
+                    height:24px;
+                    font-size:0.8em;
+                }
+            }
+            & .audio {
+                width:320px;
+                margin-top:4px;
+                /* float: right; */
+            }
+
+            & .info {
+                & .speakers {
+                    font-weight:bold;
+                    font-size:0.8em;
+                }
+                & .date {
+                    font-size:0.6em;
+                    font-style: italic;
+                }
+            }
+
+            & .resource .name {
+                float:left;
+                font-size:0.8em;
+                & a {
+                    color:midnightblue;
+                }
+            }
+            & .resource .file {
+                float:right;
+                font-size:0.6em;
+                font-style:italic;
+                color:steelblue;
+            }
+        }
+    }
+
+    & .seri-resources {
+        & h2 {
+            color:#36454F;
+        }
+    }
+
+    & .series-seri {
+        & .title {
+            font-weight: bold;
+            font-size:1.2em;
+            margin-top:16px;
+        }
+        & .visibility {
+            float:right;
+            font-size: 0.7em;
+            margin: 0 0 0 0;
+        }
+        & hr {
+            border-top: 1px groove silver;
+            margin-top: 0px;            
+        }
+
+        & .thumbnail {
+            vertical-align:center;
+            text-align:center;
+            float:left;
+            margin: 2px 15px 8px 15px;
+
+            & img {
+                width:72px;
+            }
+        }
+        & .info {
+            & .speakers {
+                font-weight:bold;
+                font-size:0.8em;
+            }
+            & .date {
+                font-size:0.6em;
+                font-style: italic;
+            }
+            & .messages-label {
+                font-weight:bold;
+                font-size:0.8em;
+            }
+            & .message-list {
+                font-style:italic;
+                font-size: 0.8em;
+            }
+            & .description {
+                font-size: 0.8em;
+            }
+        }
+}
+
+    & .footer {
+        & hr {
+            border-top:0.5px solid lightgray;
+            margin-bottom:2px;
+        }
+        & .update-info {
+            float:right;
+            color:#aaa;
+            font-size:0.8em;
+            margin-top:0px;
+        }
+        & .copyright {
+            float:left;
+            color:#888;
+            font-size:0.8em;
+            margin-top:0px;
+        }
+    }
+}

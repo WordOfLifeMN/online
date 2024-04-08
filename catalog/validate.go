@@ -360,5 +360,11 @@ func (r *OnlineResource) IsValid(report *util.IndentingReport) bool {
 		return false
 	}
 
+	// if the URL contains braces, then that means that we couldn't parse metadata
+	if strings.Contains(r.URL, "{") || strings.Contains(r.URL, "}") {
+		report.Printf("Resource '%s' (%s) contains improperly formatted metadata", r.Name, r.URL)
+		return false
+	}
+
 	return true
 }

@@ -9,37 +9,37 @@ Paramater map:
 
 {{template "catalog.pre-content.html" .}}
 
-<h1>{{ .Seri.Name }}</h1>
-<table>
-    <tr>
+<div class="seri-info">
+    <p class="title">{{ .Seri.Name }}</p>
+
+    <div class="header">
         {{/* Series artwork */}}
         {{if .Seri.Thumbnail}}
-            <td valign="top">
-                <img src="{{.Seri.Thumbnail}}" width="128" alt="Series Thumbnail"/>
-            </td>
+            <img src="{{.Seri.Thumbnail}}" width="128" alt="Series Thumbnail"/>
         {{end}}
-        <td valign="top">
-            {{/* Series description */}}
-            <p>
-                {{.Seri.SpeakerString}}
-                /
-                {{.Seri.DateString}}
-            </p>
-            {{.Seri.Description}}
-        </td>
-    </tr>
-</table>
+        
+        {{/* Series description */}}
+        <p class="attribution">
+            {{.Seri.SpeakerString}}
+            /
+            {{.Seri.DateString}}
+        </p>
+        <p class="description">{{.Seri.Description}}</p>
+        <div class="clear" />
+    </div>
+</div>
 
-<p>&nbsp;</p>
 
 {{/* Messages */}}
-{{- range .Seri.Messages }} 
-    {{template "catalog.message-div.html" .}}
-{{- end }}
+<div class="seri-messages">
+    {{- range .Seri.Messages }} 
+        {{template "catalog.message-div.html" .}}
+    {{- end }}
+</div>
 
 {{/* Series Booklets and Resources */}}
-<div class="seri">
-    {{if or .Seri.Booklets}}
+<div class="seri-resources">
+    {{if .Seri.Booklets}}
         <h2>Series Booklets</h2>
         {{- range .Seri.Booklets}}
             {{template "catalog.resource-p.html" .}}
