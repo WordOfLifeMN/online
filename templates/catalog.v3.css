@@ -9,6 +9,7 @@
 {{$hiliteColor := "#6082B6" -}}
 {{$titleBackgroundColor := $backgroundColor -}}
 {{$titleForegroundColor := "#555" -}}
+{{$sectionTitleForegroundColor := "#333355" -}}
 
 /* full page */
 body {
@@ -261,6 +262,12 @@ body.seri {
                 font-weight: bold;
                 font-size:1.2em;
                 margin-top:16px;
+            }
+            & .section-title {
+                font-weight: bold;
+                font-size:1.8em;
+                margin-top:32px;
+                color: {{$sectionTitleForegroundColor}};
             }
             & .visibility {
                 float:right;

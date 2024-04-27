@@ -10,12 +10,15 @@
 
 {{- /* message */ -}}
 <div class="message">
+    {{if eq (index .Series 0).Index 100}}
+        <p class="section-title">Post-service Ministry and Q&A</p>
+    {{end}}
     {{/* Title Bar */}}
     {{if ne .Visibility "public"}}
         <p class="visibility">[{{.Visibility}}]</p>
     {{end}}
     <p class="title">{{.Name}}</p>
-    <p class="clear" />
+    <p class="clear"></p>
     <hr />
 
     {{/* Message playback and info */}}
