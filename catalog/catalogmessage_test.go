@@ -143,6 +143,19 @@ func (t *CatalogMessageTestSuite) TestSpeakerNames_Dave() {
 	t.Equal("Pastor Dave Warren", sut.Speakers[2])
 }
 
+func (t *CatalogMessageTestSuite) TestSpeakerNames_Jim() {
+	// given
+	sut := CatalogMessage{
+		Speakers: []string{"Jim ", " jim", "Jim Isakson"},
+	}
+
+	// when-then
+	t.NoError(sut.Initialize())
+	t.Equal("Pastor Jim Isakson", sut.Speakers[0])
+	t.Equal("Pastor Jim Isakson", sut.Speakers[1])
+	t.Equal("Pastor Jim Isakson", sut.Speakers[2])
+}
+
 func (t *CatalogMessageTestSuite) TestSpeakerNames_MaryWOL() {
 	// given
 	sut := CatalogMessage{

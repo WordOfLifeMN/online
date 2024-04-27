@@ -303,6 +303,8 @@ func getSpeakerFromFileName(filePath string) (name, pronouns string) {
 		return "Pastor Vern Peltz", "he/him"
 	case strings.Contains(strings.ToUpper(filePath), "-M."):
 		return "Pastor Mary Peltz", "she/her"
+	case strings.Contains(strings.ToUpper(filePath), "-J."):
+		return "Jim Isakson", "he/him"
 	}
 
 	// look for the magic tags just after the date
@@ -311,6 +313,9 @@ func getSpeakerFromFileName(filePath string) (name, pronouns string) {
 	}
 	if match, err := regexp.MatchString("-[0-9][0-9]-m", filePath); err == nil && match {
 		return "Pastor Mary Peltz", "she/her"
+	}
+	if match, err := regexp.MatchString("-[0-9][0-9]-j", filePath); err == nil && match {
+		return "Jim Isakson", "he/him"
 	}
 
 	defaultSpeaker := "Vern"

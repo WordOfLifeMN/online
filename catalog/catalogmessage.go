@@ -48,10 +48,10 @@ func (m *CatalogMessage) Copy() CatalogMessage {
 }
 
 // initialize prepares the message for use. Performs the following checks:
-//  - If the audio/video URL isn't a URL, then deletes it (assumes it was one of the statuses,
-//    like "in progress", "rendering", etc)
-//  - If the speakers are one of the well-known ones (Vern, Mary, Dave), then make sure the name
-//    is correct
+//   - If the audio/video URL isn't a URL, then deletes it (assumes it was one of the statuses,
+//     like "in progress", "rendering", etc)
+//   - If the speakers are one of the well-known ones (Vern, Mary, Dave), then make sure the name
+//     is correct
 func (m *CatalogMessage) Initialize() error {
 	if m.initialized {
 		return nil
@@ -87,6 +87,8 @@ func (m *CatalogMessage) normalizeSpeakerName(speaker string) string {
 		speaker = "Pastor Vern Peltz"
 	case "dw", "dave", "dave warren":
 		speaker = "Pastor Dave Warren"
+	case "ji", "jim", "jim isakson":
+		speaker = "Pastor Jim Isakson"
 	case "mp", "mary", "mary peltz", "pastor mary peltz":
 		speaker = "Pastor Mary Peltz"
 		if m.Ministry == CenterOfRelationshipExperience {

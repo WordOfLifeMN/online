@@ -12,7 +12,10 @@ C:\Users\WordofLifeMNMedia\Go\github.com\WordOfLifeMN\online\online.exe --output
 ECHO:
 ECHO Validating online content...
 C:\Users\WordofLifeMNMedia\Go\github.com\WordOfLifeMN\online\online.exe --input %CACHE% check
-IF %errorlevel% NEQ 0 EXIT /b %errorlevel%
+IF %errorlevel% NEQ 0 (
+    pause
+    EXIT /b %errorlevel%
+)
 
 ECHO:
 ECHO Generating and uploading podcast...
