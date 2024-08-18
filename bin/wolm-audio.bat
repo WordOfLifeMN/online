@@ -6,6 +6,10 @@ pause
 
 GOTO:eof
 
+REM ===================================================================================
+REM Everything below is for refernece only, all operations were moved into Go
+REM ===================================================================================
+
 REM Get the source file (without quotes)
 SET source=%1
 IF x%source% == x set /P source=Enter video file to convert: 

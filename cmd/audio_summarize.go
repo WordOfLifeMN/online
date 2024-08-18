@@ -305,6 +305,8 @@ func getSpeakerFromFileName(filePath string) (name, pronouns string) {
 		return "Pastor Mary Peltz", "she/her"
 	case strings.Contains(strings.ToUpper(filePath), "-J."):
 		return "Jim Isakson", "he/him"
+	case strings.Contains(strings.ToUpper(filePath), "-I."):
+		return "Igor Kondratyuk", "he/him"
 	}
 
 	// look for the magic tags just after the date

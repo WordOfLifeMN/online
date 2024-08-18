@@ -83,13 +83,15 @@ func (m *CatalogMessage) normalizeSpeakerName(speaker string) string {
 	speaker = strings.TrimSpace(speaker)
 
 	switch strings.ToLower(speaker) {
-	case "vp", "vern", "vern peltz":
+	case "vp", "vern", "vern peltz", "pastor vern peltz", "pastor vern":
 		speaker = "Pastor Vern Peltz"
-	case "dw", "dave", "dave warren":
+	case "dw", "dave", "dave warren", "pastor dave", "pastor warren", "warren":
 		speaker = "Pastor Dave Warren"
-	case "ji", "jim", "jim isakson":
+	case "ji", "jim", "jim isakson", "isakson":
 		speaker = "Pastor Jim Isakson"
-	case "mp", "mary", "mary peltz", "pastor mary peltz":
+	case "ik", "igor", "igor kondratyuk", "pastor igor kondratyuk", "pastor igor", "pastor kondratyuk", "kondratyuk":
+		speaker = "Igor Kondratyuk"
+	case "mp", "mary", "mary peltz", "pastor mary peltz", "pastor mary":
 		speaker = "Pastor Mary Peltz"
 		if m.Ministry == CenterOfRelationshipExperience {
 			speaker = "Mary Peltz"
