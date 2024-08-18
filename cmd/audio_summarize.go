@@ -319,6 +319,9 @@ func getSpeakerFromFileName(filePath string) (name, pronouns string) {
 	if match, err := regexp.MatchString("-[0-9][0-9]-j", filePath); err == nil && match {
 		return "Jim Isakson", "he/him"
 	}
+	if match, err := regexp.MatchString("-[0-9][0-9]-i", filePath); err == nil && match {
+		return "Igor Kondratyuk", "he/him"
+	}
 
 	defaultSpeaker := "Vern"
 	if match, err := regexp.MatchString("-[0-9][0-9]p ", filePath); err == nil && match {
