@@ -246,7 +246,7 @@ func findPreviousSentenceStart(s string, pos, window int) int {
 	return sentStart
 }
 
-// findStartOfSentence returns the index of the first character of the sentence that p
+// findStartOfSentence returns the index of the first character of the sentence that initPos
 // is currently in.
 func findStartOfSentence(str string, initPos int) int {
 	// we want an array of runes to test
@@ -296,31 +296,46 @@ func findStartOfWord(str string, initPos int) int {
 
 // getSpeakerFromFileName attempts to infer the speaker name from the file name,
 // and prompts the user if necessary
-func getSpeakerFromFileName(filePath string) (name, pronouns string) {
-	switch {
-	// look for the magic tags at the end of the file name,
-	case strings.Contains(strings.ToUpper(filePath), "-V."):
-		return "Pastor Vern Peltz", "he/him"
-	case strings.Contains(strings.ToUpper(filePath), "-M."):
-		return "Pastor Mary Peltz", "she/her"
-	case strings.Contains(strings.ToUpper(filePath), "-J."):
-		return "Jim Isakson", "he/him"
-	case strings.Contains(strings.ToUpper(filePath), "-I."):
-		return "Igor Kondratyuk", "he/him"
+//   - supported initials are V (Vern Peltz), M (Mary Peltz), J (Jim Isakson), I
+//     (Igor Kondratyuk), A (Anthony Leong)
+//   - 2025-03-04 Message Title-[VMJIA].mp4
+//   - 2025-03-04-[vmjia] Message Title.mp4
+//   - 2025-03-04-p[vmjia] Message Title.mp4
+//   - 2025-03-04p-[vmjia] Message Title.mp4
+func getSpeakerFromFileName(filePath string) (speakerName, speakerPronouns string) {
+	names := map[string]string{
+		"V": "Pastor Vern Peltz",
+		"M": "Pastor Mary Peltz",
+		"J": "Jim Isakson",
+		"I": "Pastor Igor Kondratyuk",
+		"A": "Anthony Leong",
+	}
+	pronouns := map[string]string{
+		"Pastor Vern Peltz":      "he/him",
+		"Pastor Mary Peltz":      "she/her",
+		"Pastor Igor Kondratyuk": "he/him",
+		"Anthony Leong":          "he/him",
+		"Jim Isakson":            "he/him",
 	}
 
-	// look for the magic tags just after the date
-	if match, err := regexp.MatchString("-[0-9][0-9]-v", filePath); err == nil && match {
-		return "Pastor Vern Peltz", "he/him"
-	}
-	if match, err := regexp.MatchString("-[0-9][0-9]-m", filePath); err == nil && match {
-		return "Pastor Mary Peltz", "she/her"
-	}
-	if match, err := regexp.MatchString("-[0-9][0-9]-j", filePath); err == nil && match {
-		return "Jim Isakson", "he/him"
-	}
-	if match, err := regexp.MatchString("-[0-9][0-9]-i", filePath); err == nil && match {
-		return "Igor Kondratyuk", "he/him"
+	// test for each possible location of the initials
+	ucFilePath := strings.ToUpper(filePath)
+	for initials, n := range names {
+		// initial at end of file name: "2025-03-09 Title-v.mp4"
+		re := fmt.Sprintf("-%s\\....$", initials)
+		if match, err := regexp.MatchString(re, ucFilePath); err == nil && match {
+			return n, pronouns[n]
+		}
+		// initial following date with optional prayer "p": "2025-03-09-[p]v[p] Title.mp4"
+		re = fmt.Sprintf("-[0-9][0-9]-[0-9][0-9]-P?%sP? ", initials)
+		if match, err := regexp.MatchString(re, ucFilePath); err == nil && match {
+			return n, pronouns[n]
+		}
+		// initial following prayer "p": "2025-03-09pv Title.mp4"
+		re = fmt.Sprintf("-[0-9][0-9]-[0-9][0-9]P%s ", initials)
+		if match, err := regexp.MatchString(re, ucFilePath); err == nil && match {
+			return n, pronouns[n]
+		}
 	}
 
 	defaultSpeaker := "Vern"

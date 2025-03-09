@@ -81,7 +81,7 @@ func audioTranscribe(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("transcribing %s returned no output text", audioPath)
 	}
 
-	if err = uploadTranscriptionsToS3(textPaths); err != nil {
+	if _, err = uploadTranscriptionsToS3(textPaths); err != nil {
 		return err
 	}
 	return nil
@@ -137,13 +137,14 @@ func transcribeAudio(audioPath string) ([]string, error) {
 	return xscriptPaths[0:2], nil
 }
 
-func uploadTranscriptionsToS3(xscriptPaths []string) error {
+func uploadTranscriptionsToS3(xscriptPaths []string) ([]string, error) {
+	var xscriptURLs []string
 	s3Bucket := "wordoflife.mn.audio"
 
 	xscripts := []xscriptInfo{}
 	for _, p := range xscriptPaths {
 		if !util.DoesPathExist(p) {
-			return fmt.Errorf("cannot find file %s", p)
+			return xscriptURLs, fmt.Errorf("cannot find file %s", p)
 		}
 
 		// compute all the file references
@@ -174,9 +175,10 @@ func uploadTranscriptionsToS3(xscriptPaths []string) error {
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
 			fmt.Printf("Unable to upload file to S3: %s\n", err)
-			return err
+			return xscriptURLs, err
 		}
+		xscriptURLs = append(xscriptURLs, info.httpURL)
 	}
 
-	return nil
+	return xscriptURLs, nil
 }

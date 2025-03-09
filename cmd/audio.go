@@ -34,16 +34,18 @@ type MessageInfo struct {
 	AudioPath       string
 	AudioURL        string
 	TranscriptPath  string
+	TranscriptURLs  []string
 	SpeakerName     string
 	SpeakerPronouns string // "he/him", "she/her"
 	Title           string
 	Summary         string
 
 	// times
-	ExtractTime    util.StopWatch
-	UploadTime     util.StopWatch
-	TranscribeTime util.StopWatch
-	SummaryTime    util.StopWatch
+	ExtractTime          util.StopWatch
+	UploadTime           util.StopWatch
+	TranscribeTime       util.StopWatch
+	UploadTranscriptTime util.StopWatch
+	SummaryTime          util.StopWatch
 }
 
 // audioCmd represents the command to extract and process audio
@@ -201,7 +203,7 @@ func processOneAudio(info *MessageInfo) error {
 	return nil
 }
 
-// processAllVideosPriority handles processing all the videos in a way that makes best
+// processAllVideosInEditingPriority handles processing all the videos in a way that makes best
 // use of editing time. It first does all the extraction and uploading, outputting the
 // relevant links, then does the transcoding and summarization later since that takes
 // the most time
@@ -244,9 +246,10 @@ func processAllVideosInEditingPriority(infos []*MessageInfo) error {
 	// now transcribe and summarize everything
 
 	for _, info := range infos {
-		// transcribe the audio file if needed
+		// check if transcription needed
 		info.TranscriptPath = getTranscribePathFromAudioPath(info.AudioPath, ".txt")
 		if !util.IsFile(info.TranscriptPath) {
+			// transcribe the audio file
 			info.TranscribeTime = util.NewStopWatch()
 			xscripts, err := transcribeAudio(info.AudioPath)
 			info.TranscribeTime.Stop()
@@ -254,6 +257,15 @@ func processAllVideosInEditingPriority(infos []*MessageInfo) error {
 				return err
 			}
 			info.TranscriptPath = xscripts[0]
+
+			// upload the transcriptions
+			info.UploadTranscriptTime = util.NewStopWatch()
+			info.TranscriptURLs, err = uploadTranscriptionsToS3(xscripts)
+			info.UploadTranscriptTime.Stop()
+			if err != nil {
+				return err
+			}
+
 		}
 
 		// generate the message summary
@@ -284,8 +296,15 @@ func printMessageInfo(index int, info *MessageInfo) {
 	fmt.Printf("│ Summary  :\n")
 	fmt.Printf("%s\n", info.Summary)
 	fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-	log.Printf("Timeline: Extract = %s, Upload = %s, Transcribe = %s, Summarize = %s\n",
-		info.ExtractTime.Elapsed(), info.UploadTime.Elapsed(), info.TranscribeTime.Elapsed(),
+	fmt.Printf("╭───────────────────────────────────────────────────────────────────────────────────┄┄\n")
+	fmt.Printf("│ Transcript URLs:\n")
+	for _, u := range info.TranscriptURLs {
+		fmt.Printf("%s\n", u)
+	}
+	fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
+	log.Printf("Timeline: Extract = %s, Upload = %s, Transcribe = %s, UploadXscript = %s, Summarize = %s\n",
+		info.ExtractTime.Elapsed(), info.UploadTime.Elapsed(),
+		info.TranscribeTime.Elapsed(), info.UploadTranscriptTime.Elapsed(),
 		info.SummaryTime.Elapsed())
 	fmt.Println()
 }
