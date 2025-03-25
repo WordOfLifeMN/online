@@ -61,8 +61,10 @@ func NewSeriesReferencesFromStrings(names string, tracks string) []SeriesReferen
 
 		// build a reference for this name
 		seriesRef := SeriesReference{Name: name}
-		if len(trackList) > index {
+		if index < len(trackList) {
 			seriesRef.Index = trackList[index]
+		} else {
+			seriesRef.Index = trackList[len(trackList)-1]
 		}
 		seriesRefs = append(seriesRefs, seriesRef)
 	}
