@@ -92,7 +92,7 @@ func audioTranscribe(cmd *cobra.Command, args []string) error {
 func transcribeAudio(audioPath string) ([]string, error) {
 	// delete any existing transcription files and collect the names
 	var xscriptPaths []string
-	for _, ext := range []string{".txt", ".vtt", ".srt", ".tsv", ".json"} {
+	for _, ext := range []string{".text", ".vtt", ".srt", ".tsv", ".json"} {
 		xscriptPaths = append(xscriptPaths, getTranscribePathFromAudioPath(audioPath, ext))
 	}
 	for i, p := range xscriptPaths {
@@ -108,25 +108,38 @@ func transcribeAudio(audioPath string) ([]string, error) {
 
 	// output status
 	fmt.Printf("Transcribing: %s\n", filepath.Base(audioPath))
-	fmt.Printf("     to .txt: %s\n", "xscript\\"+filepath.Base(xscriptPaths[0]))
+	fmt.Printf("    to .text: %s\n", "xscript\\"+filepath.Base(xscriptPaths[0]))
 	fmt.Printf("    and .vtt: %s\n", "xscript\\"+filepath.Base(xscriptPaths[1]))
 
-	cmd := exec.Command("whisper",
+	cmd := exec.Command(
+		// parameters for whisper
+		// "whisper",
+		// "--fp16", "False",
+		// "--output_format", "all",
+
+		// parameters for fast-whisper
+		"C:/Users/WordofLifeMNMedia/bin/Faster-Whisper-XXL_r245.4_windows/Faster-Whisper-XXL/faster-whisper-xxl.exe",
+		"--output_format", "text", "vtt",
+
+		// parameters for both
 		"--output_dir", filepath.Dir(xscriptPaths[0]),
-		"--fp16", "False",
 		// "--model", "tiny",
 		"--model", "small",
 		// "--model", "medium",
-		"--output_format", "all",
-		"--language", "English",
+		"--language", "en",
 		audioPath,
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	log.Print(cmd.String())
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("Unable to transcribe audio: %s\n", err)
-		return nil, err
+	cmd.Run()
+
+	// faster-whisper always exits with an error, so check the output files
+	for _, file := range xscriptPaths[0:2] {
+		if _, err := os.Stat(file); err != nil {
+			fmt.Printf("Unable to transcribe audio: output files not found\n")
+			return nil, fmt.Errorf("unable to transcribe audio: output file %s not found", file)
+		}
 	}
 
 	// delete the files we don't use
