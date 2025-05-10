@@ -90,7 +90,9 @@ func (m *CatalogMessage) normalizeSpeakerName(speaker string) string {
 	case "ji", "jim", "jim isakson", "isakson":
 		speaker = "Pastor Jim Isakson"
 	case "ik", "igor", "igor kondratyuk", "pastor igor kondratyuk", "pastor igor", "pastor kondratyuk", "kondratyuk":
-		speaker = "Igor Kondratyuk"
+		speaker = "Pastor Igor Kondratyuk"
+	case "tk", "tania", "tania kondratyuk":
+		speaker = "Tania Kondratyuk"
 	case "mp", "mary", "mary peltz", "pastor mary peltz", "pastor mary":
 		speaker = "Pastor Mary Peltz"
 		if m.Ministry == CenterOfRelationshipExperience {

@@ -201,12 +201,26 @@ func (t *CatalogMessageTestSuite) TestSpeakerNames_Igor() {
 
 	// when-then
 	t.NoError(sut.Initialize())
-	t.Equal("Igor Kondratyuk", sut.Speakers[0])
-	t.Equal("Igor Kondratyuk", sut.Speakers[1])
-	t.Equal("Igor Kondratyuk", sut.Speakers[2])
-	t.Equal("Igor Kondratyuk", sut.Speakers[3])
-	t.Equal("Igor Kondratyuk", sut.Speakers[4])
-	t.Equal("Igor Kondratyuk", sut.Speakers[5])
+	t.Equal("Pastor Igor Kondratyuk", sut.Speakers[0])
+	t.Equal("Pastor Igor Kondratyuk", sut.Speakers[1])
+	t.Equal("Pastor Igor Kondratyuk", sut.Speakers[2])
+	t.Equal("Pastor Igor Kondratyuk", sut.Speakers[3])
+	t.Equal("Pastor Igor Kondratyuk", sut.Speakers[4])
+	t.Equal("Pastor Igor Kondratyuk", sut.Speakers[5])
+}
+
+func (t *CatalogMessageTestSuite) TestSpeakerNames_Tania() {
+	// given
+	sut := CatalogMessage{
+		Ministry: CenterOfRelationshipExperience,
+		Speakers: []string{"Tania ", " tania", "TK"},
+	}
+
+	// when-then
+	t.NoError(sut.Initialize())
+	t.Equal("Tania Kondratyuk", sut.Speakers[0])
+	t.Equal("Tania Kondratyuk", sut.Speakers[1])
+	t.Equal("Tania Kondratyuk", sut.Speakers[2])
 }
 
 // +---------------------------------------------------------------------------

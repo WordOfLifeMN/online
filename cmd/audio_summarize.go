@@ -61,7 +61,7 @@ func xscriptSummarize(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		xscriptPath = args[0]
 	}
-	xscriptPath = PromtUserForInputFile(xscriptPath, ".mp4", ".mp3", ".txt")
+	xscriptPath = PromtUserForInputFile(xscriptPath, ".mp4", ".mp3", ".text")
 	if xscriptPath == "" {
 		fmt.Printf("Aborting")
 		return nil
@@ -113,25 +113,16 @@ func generateMessageSummary(xscript string, info *MessageInfo) (*MessageInfo, er
 			Messages: []openai.ChatCompletionMessage{
 				{
 					Role: openai.ChatMessageRoleUser,
-					// Content: "I'm going to give you a transcript of a Christian church sermon " +
-					// 	"that is delimited by triple quotes." +
-					// 	"The speaker's name is " + info.SpeakerName +
-					// 	" and they use the " + info.speakerPronouns + " gender. " +
-					// 	"You will suggest a title no longer than 6 words " +
-					// 	"You will also suggest a three sentence summary suitable for social media. " +
-					// 	"You will output the results formatted as a JSON object " +
-					// 	"containing two fields named \"title\" and \"summary\"\n\n" +
-					// 	"\"\"\"" + xscript + "\"\"\"",
 					Content: fmt.Sprintf(`
 I'm going to give you a transcript of a Christian church sermon that is delimited by triple quotes.
-The speaker's name is %s and use the pronouns %s.
+The speaker's name is %s and they use the pronouns %s.
 
 You will suggest a single title and a single summary.
 
 The title will be no longer than 6 words.
-The summary will be three sentences and use a casual voice suitable for social media. 
+The summary should be 6 to 10 sentences in length and use a casual voice suitable for social media. 
 
-You will output the results formatted as a JSON object containing two fields named "title" and "summary"
+You will output the results formatted as a JSON object containing only two fields named "title" and "summary"
 
 """ %s """
 `, info.SpeakerName, info.SpeakerPronouns, xscript),
@@ -297,7 +288,7 @@ func findStartOfWord(str string, initPos int) int {
 // getSpeakerFromFileName attempts to infer the speaker name from the file name,
 // and prompts the user if necessary
 //   - supported initials are V (Vern Peltz), M (Mary Peltz), J (Jim Isakson), I
-//     (Igor Kondratyuk), A (Anthony Leong)
+//     (Igor Kondratyuk), A (Anthony Leong), T (Tania Kondratyuk)
 //   - 2025-03-04 Message Title-[VMJIA].mp4
 //   - 2025-03-04-[vmjia] Message Title.mp4
 //   - 2025-03-04-p[vmjia] Message Title.mp4
@@ -308,12 +299,14 @@ func getSpeakerFromFileName(filePath string) (speakerName, speakerPronouns strin
 		"M": "Pastor Mary Peltz",
 		"J": "Jim Isakson",
 		"I": "Pastor Igor Kondratyuk",
+		"T": "Tania Kondratyuk",
 		"A": "Anthony Leong",
 	}
 	pronouns := map[string]string{
 		"Pastor Vern Peltz":      "he/him",
 		"Pastor Mary Peltz":      "she/her",
 		"Pastor Igor Kondratyuk": "he/him",
+		"Tania Kondratyuk":       "she/her",
 		"Anthony Leong":          "he/him",
 		"Jim Isakson":            "he/him",
 	}
