@@ -16,6 +16,7 @@ const (
 	Testimony    MessageType = "testimony"     // someone testifying about something God has done
 	Training     MessageType = "training"      // general leadership training or specific ministry training
 	Word         MessageType = "word"          // a prophesy, encouragment, or other utterance under the Holy Spirit
+	MinistryTime MessageType = "ministry-time" // time of individual prayr, normally at the end of service
 )
 
 func NewMessageTypeFromString(s string) MessageType {
@@ -37,6 +38,8 @@ func NewMessageTypeFromString(s string) MessageType {
 		return Training
 	case "word":
 		return Word
+	case "ministry time":
+		return MinistryTime
 	}
 
 	// log.Printf("WARNING: Encountered unknown message type '%s'", s)
