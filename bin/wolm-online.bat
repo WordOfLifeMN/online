@@ -17,10 +17,10 @@ IF %errorlevel% NEQ 0 (
     EXIT /b %errorlevel%
 )
 
-ECHO:
-ECHO Generating and uploading podcast...
-C:\Users\WordofLifeMNMedia\Go\github.com\WordOfLifeMN\online\online.exe --input %CACHE% --output %PODCAST% podcast
-aws s3 cp --acl=public-read %USERPROFILE%\.wolm\online.podcast.rss.xml s3://wordoflife.mn.podcast/wolmn-service-podcast.rss.xml
+REM ECHO:
+REM ECHO Generating and uploading podcast...
+REM C:\Users\WordofLifeMNMedia\Go\github.com\WordOfLifeMN\online\online.exe --input %CACHE% --output %PODCAST% podcast
+REM aws s3 cp --acl=public-read %USERPROFILE%\.wolm\online.podcast.rss.xml s3://wordoflife.mn.podcast/wolmn-service-podcast.rss.xml
 
 ECHO:
 ECHO Generating and uploading online catalog...
