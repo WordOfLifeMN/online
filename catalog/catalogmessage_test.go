@@ -218,9 +218,9 @@ func (t *CatalogMessageTestSuite) TestSpeakerNames_Tania() {
 
 	// when-then
 	t.NoError(sut.Initialize())
-	t.Equal("Tania Kondratyuk", sut.Speakers[0])
-	t.Equal("Tania Kondratyuk", sut.Speakers[1])
-	t.Equal("Tania Kondratyuk", sut.Speakers[2])
+	t.Equal("Pastor Tania Kondratyuk", sut.Speakers[0])
+	t.Equal("Pastor Tania Kondratyuk", sut.Speakers[1])
+	t.Equal("Pastor Tania Kondratyuk", sut.Speakers[2])
 }
 
 // +---------------------------------------------------------------------------

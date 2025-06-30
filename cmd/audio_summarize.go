@@ -299,16 +299,16 @@ func getSpeakerFromFileName(filePath string) (speakerName, speakerPronouns strin
 		"M": "Pastor Mary Peltz",
 		"J": "Jim Isakson",
 		"I": "Pastor Igor Kondratyuk",
-		"T": "Tania Kondratyuk",
+		"T": "Pastor Tania Kondratyuk",
 		"A": "Anthony Leong",
 	}
 	pronouns := map[string]string{
-		"Pastor Vern Peltz":      "he/him",
-		"Pastor Mary Peltz":      "she/her",
-		"Pastor Igor Kondratyuk": "he/him",
-		"Tania Kondratyuk":       "she/her",
-		"Anthony Leong":          "he/him",
-		"Jim Isakson":            "he/him",
+		"Pastor Vern Peltz":       "he/him",
+		"Pastor Mary Peltz":       "she/her",
+		"Pastor Igor Kondratyuk":  "he/him",
+		"Pastor Tania Kondratyuk": "she/her",
+		"Anthony Leong":           "he/him",
+		"Jim Isakson":             "he/him",
 	}
 
 	// test for each possible location of the initials

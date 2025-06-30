@@ -119,11 +119,11 @@ func (t *AudioSummarizeCmdTestSuite) TestGetSpeakerFromFileName() {
 		{"2025-03-09-v Msg.mp4", "Pastor Vern Peltz", "he/him"},
 		{"2025-03-09-m Msg.mp4", "Pastor Mary Peltz", "she/her"},
 		{"2025-03-09-i Msg.mp4", "Pastor Igor Kondratyuk", "he/him"},
-		{"2025-03-09-t Msg.mp4", "Tania Kondratyuk", "she/her"},
+		{"2025-03-09-t Msg.mp4", "Pastor Tania Kondratyuk", "she/her"},
 		{"2025-03-09-a Msg.mp4", "Anthony Leong", "he/him"},
 		{"2025-03-09-j Msg.mp4", "Jim Isakson", "he/him"},
 
-		{"2025-03-09-pt Msg.mp4", "Tania Kondratyuk", "she/her"},
+		{"2025-03-09-pt Msg.mp4", "Pastor Tania Kondratyuk", "she/her"},
 	} {
 		speaker, pronouns := getSpeakerFromFileName(tc.FileName)
 		t.Equal(tc.Speaker, speaker, "Case %d failed: %s", i+1, tc.FileName)
