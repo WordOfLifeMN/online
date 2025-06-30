@@ -39,12 +39,12 @@ type OnlineResource struct {
 // string is empty or only whitespace, returns an unititialized Online Resource
 //
 // String definitions can be in multiple formats:
-//  - Raw URL: "http://blah/path+to+file.doc", in which case the name is the file name without the extension
-//  - Markdown: "[name](url)"
-//  - Wiki: "name|url"
-//  - Metadata can be included as a JSON object, like `{"iframe":"https://rumble.com/embed/vjrceb/?pub=r095p"}`.
-//    This can be embedded anywhere in the string, everything from the first to last brace will be treated as
-//    metadata.
+//   - Raw URL: "http://blah/path+to+file.doc", in which case the name is the file name without the extension
+//   - Markdown: "[name](url)"
+//   - Wiki: "name|url"
+//   - Metadata can be included as a JSON object, like `{"iframe":"https://rumble.com/embed/vjrceb/?pub=r095p"}`.
+//     This can be embedded anywhere in the string, everything from the first to last brace will be treated as
+//     metadata.
 func NewResourceFromString(s string) *OnlineResource {
 	r := OnlineResource{}
 
@@ -253,8 +253,8 @@ func (r *OnlineResource) GetEmbeddedVideo(width int) template.HTML {
 	case strings.Contains(r.URL, "rumble"):
 		return template.HTML(
 			fmt.Sprintf(
-				`<iframe width="%dpx" src="%s" title="Rumble video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`,
-				width, r.GetEmbeddedURL()),
+				`<iframe class="rumble" src="%s" style="width:%dpx;overflow:hidden" frameborder="0" allowfullscreen></iframe>`,
+				r.GetEmbeddedURL(), width),
 		)
 	}
 	return template.HTML(
