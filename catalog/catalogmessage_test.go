@@ -84,7 +84,6 @@ func (t *CatalogMessageTestSuite) TestCopy() {
 		Type:        Message,
 		Visibility:  Public,
 		Series:      []SeriesReference{{Name: "SERIES", Index: 12}},
-		Playlist:    []string{"Service"},
 		Audio:       NewResourceFromString("https://audio.mp3"),
 		Video:       NewResourceFromString("https://video.mp4"),
 		Resources:   []OnlineResource{{URL: "https://yes.pdf", Name: "Yes", thumbnail: "https://thumb", classifier: "pdf"}},
@@ -95,7 +94,6 @@ func (t *CatalogMessageTestSuite) TestCopy() {
 	t.Equal(msg.Date, cpy.Date)
 	t.Equal(msg.initialized, cpy.initialized)
 	t.NotSame(msg.Speakers, cpy.Speakers)
-	t.NotSame(msg.Playlist, cpy.Playlist)
 	t.NotSame(msg.Series, cpy.Series)
 	t.NotSame(&msg.Resources, &cpy.Resources)
 

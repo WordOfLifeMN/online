@@ -92,13 +92,6 @@ func TestReadMessageSheet(t *testing.T) {
 	assert.Equal(t, catalog.OnlineResource{URL: "https://s3/2021/audio.mp3", Name: "audio"}, *sut.Audio)
 	assert.Equal(t, catalog.OnlineResource{URL: "https://youtu.be/c/blahtyblah", Name: "blahtyblah"}, *sut.Video)
 
-	// validate playlists
-	sut = msgs[7]
-	assert.Equal(t, "Playlists", sut.Name)
-	assert.Len(t, sut.Playlist, 2)
-	assert.Equal(t, "service", sut.Playlist[0])
-	assert.Equal(t, "prayer", sut.Playlist[1])
-
 	// validate resources
 	sut = msgs[8]
 	assert.Equal(t, "Resources", sut.Name)

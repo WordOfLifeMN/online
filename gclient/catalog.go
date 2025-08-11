@@ -166,7 +166,6 @@ const (
 	msgVisibility  string = "Visibility"
 	msgSeries      string = "Series Name"
 	msgSeriesIndex string = "Track"
-	msgPlaylist    string = "Playlist"
 	msgDescription string = "Description"
 	msgAudio       string = "Audio Link"
 	msgVideo       string = "Video Link"
@@ -177,7 +176,7 @@ var requiredMessageColumns []string = []string{
 	msgDate, msgName, msgDescription,
 	msgSpeakers,
 	msgMinistry, msgType, msgVisibility,
-	msgSeries, msgSeriesIndex, msgPlaylist,
+	msgSeries, msgSeriesIndex,
 	msgAudio, msgVideo,
 	msgResources,
 }
@@ -297,16 +296,6 @@ func newCatalogMessageFromRow(columns map[string]int, rowData []interface{}) (ca
 		getCellString(rowData, columns[msgSeries]),
 		getCellString(rowData, columns[msgSeriesIndex]),
 	)
-
-	// playlist
-	s = getCellString(rowData, columns[msgPlaylist])
-	for _, playlist := range strings.Split(s, ";") {
-		playlist = strings.TrimSpace(playlist)
-		playlist = strings.ToLower(playlist)
-		if playlist != "" {
-			msg.Playlist = append(msg.Playlist, playlist)
-		}
-	}
 
 	// unpack resources
 	msg.Resources = catalog.NewResourcesFromString(getCellString(rowData, columns[msgResources]))
