@@ -239,11 +239,13 @@ body.seri {
     }
 
     & .sort {
-        margin: 24px 0px 16px 0px;
+        float: left;
+        margin: 0px;
     }
 
     & .search-bar {
-        margin: 0px 0px 16px 0px;
+        float: left;
+        margin: 0px 24px 0px 0px;
         & input[type="text"] {
             width: 150px;
             padding: 4px;

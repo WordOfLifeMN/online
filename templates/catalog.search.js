@@ -32,7 +32,7 @@ const searchAndHighlight = () => {
             div.innerHTML = originalContent.get(div);
         }
     });
-    resultsMessage.textContent = '';
+    resultsMessage.style.opacity = '0';
     clearSearchButton.style.display = 'none';
 
     const query = searchInput.value.trim();
@@ -116,6 +116,7 @@ searchInput.addEventListener('keydown', (event) => {
         searchAndHighlight();
     }
 });
+resultsMessage.style.opacity = '0';
 
 // Clear button logic
 clearSearchButton.addEventListener('click', () => {
@@ -128,6 +129,6 @@ clearSearchButton.addEventListener('click', () => {
     document.querySelectorAll('.series-seri').forEach(div => {
         div.style.display = '';
     });
-    resultsMessage.textContent = '';
+    resultsMessage.style.opacity = '0';
     clearSearchButton.style.display = 'none';
 });

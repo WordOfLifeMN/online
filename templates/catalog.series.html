@@ -18,17 +18,20 @@ Paramater map:
 {{/* Searching */}}
 <!-- Search Bar and Controls -->
 <div class="search-bar">
+    <span class="label">Search:</span>
+    <br/>
     <input type="text" id="searchInput" placeholder="Enter text to search..." class="">
     <button id="searchButton" class="search-button">Search</button>
     <button id="clearSearchButton" class="search-button" style="display:none;">Clear</button>
-    <span id="resultsMessage" class="search-results"></span>
+    <span id="resultsMessage" class="search-results">No results found</span>
 </div>
 
 {{/* Sorting */}}
 <!-- Sorting Controls -->
 <div class="sort">
     <p>
-        <span class="label">Sort by: </span>
+        <span class="label">Sort:</span>
+        <br/>
         <select class="sortingSelect" onchange="javascript:location.href = this.value;">
             <option value="{{GetCatalogFileNameForSeriList .Ministry .View "az"}}" {{if eq .Order "az"}}selected{{end}}>Title</option>
             <option value="{{GetCatalogFileNameForSeriList .Ministry .View "09"}}" {{if eq .Order "09"}}selected{{end}}>Date - Oldest first</option>
@@ -37,6 +40,7 @@ Paramater map:
         <br/>
     </p>
 </div>
+<div class="clear"></div>
 
 {{/* Series */}}
 <div class="series">
