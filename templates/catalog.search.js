@@ -3,6 +3,7 @@
 const searchInput = document.getElementById('searchInput');
 const searchButton = document.getElementById('searchButton');
 const resultsMessage = document.getElementById('resultsMessage');
+const clearSearchButton = document.getElementById('clearSearchButton');
 const contentDivs = document.querySelectorAll('p.searchable');
 let originalContent = new Map(); // Use a Map to store original content for resetting
 
@@ -33,6 +34,7 @@ const searchAndHighlight = () => {
         }
     });
     resultsMessage.textContent = '';
+    clearSearchButton.style.display = 'none';
 
     const query = searchInput.value.trim();
     const seriesDivs = document.querySelectorAll('.series-seri');
@@ -82,6 +84,12 @@ const searchAndHighlight = () => {
     // Display results and scroll to the first match if found
     if (foundCount > 0) {
         resultsMessage.textContent = `Found ${foundCount} matches.`;
+        resultsMessage.style.opacity = '1';
+        clearSearchButton.style.display = '';
+        setTimeout(() => {
+            resultsMessage.style.transition = 'opacity 0.5s';
+            resultsMessage.style.opacity = '0';
+        }, 2000);
         if (firstMatch) {
             setTimeout(() => {
                 firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -89,6 +97,12 @@ const searchAndHighlight = () => {
         }
     } else {
         resultsMessage.textContent = 'No matches found.';
+        resultsMessage.style.opacity = '1';
+        clearSearchButton.style.display = 'none';
+        setTimeout(() => {
+            resultsMessage.style.transition = 'opacity 0.5s';
+            resultsMessage.style.opacity = '0';
+        }, 2000);
         // Show all series divs if no matches found
         seriesDivs.forEach(div => {
             div.style.display = '';
@@ -102,5 +116,20 @@ searchInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
         searchAndHighlight();
     }
+});
+
+// Clear button logic
+clearSearchButton.addEventListener('click', () => {
+    searchInput.value = '';
+    contentDivs.forEach(div => {
+        if (originalContent.has(div)) {
+            div.innerHTML = originalContent.get(div);
+        }
+    });
+    document.querySelectorAll('.series-seri').forEach(div => {
+        div.style.display = '';
+    });
+    resultsMessage.textContent = '';
+    clearSearchButton.style.display = 'none';
 });
 </script>
