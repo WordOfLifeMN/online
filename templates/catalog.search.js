@@ -1,4 +1,3 @@
-<script>
 // Get references to the DOM elements
 const searchInput = document.getElementById('searchInput');
 const searchButton = document.getElementById('searchButton');
@@ -132,4 +131,3 @@ clearSearchButton.addEventListener('click', () => {
     resultsMessage.textContent = '';
     clearSearchButton.style.display = 'none';
 });
-</script>
