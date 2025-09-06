@@ -28,3 +28,15 @@ dryrun-catalog:
 run-refresh:
 	# Add this to catalog.pre-content.html: <meta http-equiv="refresh" content="5" />
 	{ find templates -type f && find . -name '*.go'; } | entr make dryrun-catalog
+
+win-build:
+	go build -o online.exe
+
+win-dump: ## Downloads the spreadsheet to a local JSON file
+	go run main.go -v --sheet-id=1z4XIiEPMFPpeRgGpdhshiQpmY7A45KzCyZzQ7Ohe85E dump
+
+win-local: ## Processes the cache created by win-dump and creates a local website in ~/.wolm/catalog
+	go run main.go -v -i  C:\Users\WordofLifeMNMedia\.wolm\online.cache.json catalog -o  C:\Users\WordofLifeMNMedia\.wolm\catalog
+
+win-test-local: ## Processes the testdata/small-catalog.json and creates a local website in ~/.wolm/catalog-test
+	go run main.go -v -i  C:\Users\WordofLifeMNMedia\Go\github.com\WordOfLifeMN\online\testdata\small-catalog.json catalog -o  C:\Users\WordofLifeMNMedia\.wolm\catalog-test
