@@ -242,6 +242,11 @@ func (cmd *catalogCmdStruct) loadTemplates() error {
 	if err != nil {
 		return err
 	}
+	log.Printf("  Templates %s", filepath.Join(templateDir, "catalog.*.js"))
+	cmd.template, err = cmd.template.ParseGlob(filepath.Join(templateDir, "catalog.*.js"))
+	if err != nil {
+		return err
+	}
 
 	log.Printf("Loaded templates%s", cmd.template.DefinedTemplates())
 

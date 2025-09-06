@@ -11,7 +11,7 @@
     {{if ne .Visibility "public"}}
         <p class="visibility">[{{.Visibility}}]</p>
     {{end}}
-    <p class="title">
+    <p class="title searchable">
         <a class="title" href={{.GetCatalogFileName .View}}>{{.Name}}</a>
     </p>
     <p class="clear" />
@@ -24,7 +24,7 @@
         </a>
     </div>
     <div class="info">
-        <p>
+        <p class="searchable">
             <span class="speakers">{{.SpeakerString}}</span>
             <span style="width:24px;">&nbsp;</span>
             <span class="date">{{.DateString}}</span>
@@ -40,7 +40,7 @@
 
         {{/* Description */}}
         {{if .Description}}
-            <p class="description">
+            <p class="description searchable">
                 <span>{{.Description}}</span>
             </p>
         {{end}}
