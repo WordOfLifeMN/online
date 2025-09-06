@@ -17,7 +17,7 @@ Configuration is first read from `online.yaml` in the current working directory.
 If that is not found, then `~/.wolm/online.yaml` is tried. Parameters on the
 command line override anything in the configuration file.
 
-# Testing
+# Testing - MacOS
 
 Create sample test data in /tmp/online-catalog.json
 ```
@@ -28,4 +28,16 @@ Generate a local copy of the website
 ```
 make dryrun-catalog
 open /tmp/t/catalog.*-az-*.html
+```
+
+# Testing - Windows
+
+Download the spreadsheet data
+```
+make win-dump
+```
+
+Create catalog from the spreadsheet data in ~/.wolm/catalog
+```
+make win-local
 ```
