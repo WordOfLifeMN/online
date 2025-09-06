@@ -221,8 +221,9 @@ div.clear {
 
 body.seri {
     & div.wol-breadcrumb {
+        text-align: center;
         & a { text-decoration: none; }
-        & img { vertical-align: middle; }
+        & img { vertical-align: middle; max-height: 18px;}
         & span { vertical-align: middle; }
     }
 
