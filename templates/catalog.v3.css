@@ -241,7 +241,27 @@ body.seri {
     & .sort {
         margin: 24px 0px 16px 0px;
     }
-    
+
+    & .search-bar {
+        margin: 0px 0px 16px 0px;
+        & input[type="text"] {
+            width: 150px;
+            padding: 4px;
+        }
+        & input[type="button"] {
+            font-size: 1.2em;
+            padding: 4px 8px 4px 8px;
+        }
+    }
+
+    /* Custom CSS for the highlight effect */
+    & span.search-highlight {
+        background-color: #fde047;
+        font-weight: bold;
+        border-radius: 4px;
+        /*padding: 2px 4px;*/
+    }
+
     & div.seri-info {
         & .title {
             color:#36454F;
