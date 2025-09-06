@@ -82,7 +82,7 @@ const searchAndHighlight = () => {
 
     // Display results and scroll to the first match if found
     if (foundCount > 0) {
-        resultsMessage.textContent = `Found ${foundCount} matches.`;
+        resultsMessage.textContent = `Found&nbsp;${foundCount}&nbsp;matches.`;
         resultsMessage.style.opacity = '1';
         clearSearchButton.style.display = '';
         setTimeout(() => {
@@ -95,7 +95,7 @@ const searchAndHighlight = () => {
             }, 500);
         }
     } else {
-        resultsMessage.textContent = 'No matches found.';
+        resultsMessage.textContent = 'No&nbsp;matches&nbsp;found.';
         resultsMessage.style.opacity = '1';
         clearSearchButton.style.display = 'none';
         setTimeout(() => {
