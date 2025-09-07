@@ -8,7 +8,9 @@ Parameters:
 <html lang="en">
 
 <head>
-    <title>Media Catalog - WORD OF LIFE MINISTRIES</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
     <meta property="og:site_name" content="WORD OF LIFE MINISTRIES" />
     <meta property="og:title" content="Media Catalog" />
     <meta property="og:description" content="{{.Ministry.Description}} - {{.Date}}" />
@@ -16,16 +18,39 @@ Parameters:
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <link rel="stylesheet" href="catalog.{{.Ministry}}.v3.css">
+    <!-- TODO(km) <link rel="stylesheet" href="catalog.{{.Ministry}}.v3.css"> -->
+     {{if eq .Ministry "core"}}
+        <link rel="stylesheet" href="static/css/pico.violet.min.css" />
+     {{else if eq .Ministry "core_health"}}
+        <link rel="stylesheet" href="static/css/pico.violet.min.css" />
+     {{else if eq .Ministry "core_hope"}}
+        <link rel="stylesheet" href="static/css/pico.violet.min.css" />
+     {{else if eq .Ministry "core_recovery"}}
+        <link rel="stylesheet" href="static/css/pico.violet.min.css" />
+     {{else if eq .Ministry "core_counseling"}}
+        <link rel="stylesheet" href="static/css/pico.violet.min.css" />
+     {{else if eq .Ministry "tbo"}}
+        <link rel="stylesheet" href="static/css/pico.orang.min.css" />
+     {{else if eq .Ministry "ask-pastor"}}
+        <link rel="stylesheet" href="static/css/pico.pumpkin.min.css" />
+     {{else if eq .Ministry "faith-freedom"}}
+        <link rel="stylesheet" href="static/css/pico.red.min.css" />
+     {{else}}
+        <link rel="stylesheet" href="static/css/pico.jade.min.css" />
+    {{end}}
+    <title>Media Catalog - WORD OF LIFE MINISTRIES</title>
 </head>
 
-<body class="seri">
-    <!-- icon -->
-    <div class="wol-breadcrumb">
-        <a href="http://www.wordoflifemn.org/catalog--resources.html">
-            <img src="static/all.wordoflife.logo-xxsmall-light.png" alt="WORD OF LIFE MINISTRIES" />
-            <span>Word Of Life Ministries</span>
-        </a>
-    </div>
+<body>
+    <header>
+        <!-- icon -->
+        <div style="text-align: center; margin-bottom: 12px;">
+            <a href="http://www.wordoflifemn.org/catalog--resources.html">
+                <img src="static/all.wordoflife.logo-xxsmall-light.png" alt="WORD OF LIFE MINISTRIES" style="max-height: 16px;"/>
+                <span>Word Of Life Ministries</span>
+            </a>
+        </div>
+    </header>
 
-    <div class="message-list">
+    <main class="container">
+        <div class="message-list">

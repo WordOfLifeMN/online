@@ -312,7 +312,7 @@ func (cmd *catalogCmdStruct) copyStaticFilesToOutputDir(ministries []catalog.Min
 	targetDir := filepath.Join(cmd.OutputDir, "static")
 
 	// build a list of the prefixes we need to copy
-	prefixesToCopy := []string{"all."}
+	prefixesToCopy := []string{"all.", "css", "pico."}
 	for _, ministry := range ministries {
 		prefixesToCopy = append(prefixesToCopy, string(ministry)+".")
 	}

@@ -15,32 +15,31 @@ Paramater map:
 
 {{template "catalog.ministry-div.html" .Ministry}}
 
-{{/* Searching */}}
-<!-- Search Bar and Controls -->
-<div class="search-bar">
-    <span class="label">Search:</span>
-    <br/>
-    <input type="text" id="searchInput" placeholder="Enter text to search..." class="">
-    <button id="searchButton" class="search-button">Search</button>
-    <button id="clearSearchButton" class="search-button" style="display:none;">Clear</button>
-    <span id="resultsMessage" class="search-results" style="white-space: nowrap;">No results found</span>
+<div class="grid">
+    {{/* Searching */}}
+    <!-- Search Bar and Controls -->
+    <div class="search-bar">
+        <input type="search" id="searchInput" placeholder="Search...">
+        <div style="white-space: nowrap; text-align: center; width: 100%;">
+            <span id="resultsMessage" style="opacity: 0;">No results found</span>
+        </div>
+    </div>
+
+    {{/* Sorting */}}
+    <!-- Sorting Controls -->
+    <div class="sort">
+        <p>
+            <select class="sortingSelect" onchange="javascript:location.href = this.value;">
+                <option value="{{GetCatalogFileNameForSeriList .Ministry .View "az"}}" {{if eq .Order "az"}}selected{{end}}>Sort by Title</option>
+                <option value="{{GetCatalogFileNameForSeriList .Ministry .View "09"}}" {{if eq .Order "09"}}selected{{end}}>Sort by Date - Oldest first</option>
+                <option value="{{GetCatalogFileNameForSeriList .Ministry .View "90"}}" {{if eq .Order "90"}}selected{{end}}>Sort by Date - Recent first</option>
+            </select>
+            <br/>
+        </p>
+    </div>
 </div>
 
-{{/* Sorting */}}
-<!-- Sorting Controls -->
-<div class="sort">
-    <p>
-        <span class="label">Sort:</span>
-        <br/>
-        <select class="sortingSelect" onchange="javascript:location.href = this.value;">
-            <option value="{{GetCatalogFileNameForSeriList .Ministry .View "az"}}" {{if eq .Order "az"}}selected{{end}}>Title</option>
-            <option value="{{GetCatalogFileNameForSeriList .Ministry .View "09"}}" {{if eq .Order "09"}}selected{{end}}>Date - Oldest first</option>
-            <option value="{{GetCatalogFileNameForSeriList .Ministry .View "90"}}" {{if eq .Order "90"}}selected{{end}}>Date - Recent first</option>
-        </select>
-        <br/>
-    </p>
-</div>
-<div class="clear"></div>
+<hr/>
 
 {{/* Series */}}
 <div class="series">

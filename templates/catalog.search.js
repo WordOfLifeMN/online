@@ -1,9 +1,7 @@
 // Get references to the DOM elements
 const searchInput = document.getElementById('searchInput');
-const searchButton = document.getElementById('searchButton');
 const resultsMessage = document.getElementById('resultsMessage');
-const clearSearchButton = document.getElementById('clearSearchButton');
-const contentDivs = document.querySelectorAll('p.searchable');
+const contentDivs = document.querySelectorAll('.searchable');
 let originalContent = new Map(); // Use a Map to store original content for resetting
 
 // Store the original innerHTML of each content div
@@ -33,7 +31,6 @@ const searchAndHighlight = () => {
         }
     });
     resultsMessage.style.opacity = '0';
-    clearSearchButton.style.display = 'none';
 
     const query = searchInput.value.trim();
     const seriesDivs = document.querySelectorAll('.series-seri');
@@ -61,12 +58,12 @@ const searchAndHighlight = () => {
                 // Highlight matches in this searchable
                 const originalHtml = originalContent.get(searchable);
                 if (originalHtml) {
-                    const newHtml = originalHtml.replace(regex, `<span class="search-highlight">$&</span>`);
+                    const newHtml = originalHtml.replace(regex, `<mark>$&</mark>`);
                     searchable.innerHTML = newHtml;
-                    const matchesInDiv = (newHtml.match(/<span class="search-highlight">/g) || []).length;
+                    const matchesInDiv = (newHtml.match(/<mark>/g) || []).length;
                     foundCount += matchesInDiv;
                     if (!firstMatch) {
-                        firstMatch = seriesDiv.querySelector('.search-highlight');
+                        firstMatch = seriesDiv.querySelector('mark');
                     }
                 }
             } else {
@@ -84,7 +81,6 @@ const searchAndHighlight = () => {
     if (foundCount > 0) {
         resultsMessage.textContent = `Found ${foundCount} matches.`;
         resultsMessage.style.opacity = '1';
-        clearSearchButton.style.display = '';
         setTimeout(() => {
             resultsMessage.style.transition = 'opacity 0.5s';
             resultsMessage.style.opacity = '0';
@@ -97,7 +93,6 @@ const searchAndHighlight = () => {
     } else {
         resultsMessage.textContent = 'No matches found.';
         resultsMessage.style.opacity = '1';
-        clearSearchButton.style.display = 'none';
         setTimeout(() => {
             resultsMessage.style.transition = 'opacity 0.5s';
             resultsMessage.style.opacity = '0';
@@ -109,17 +104,8 @@ const searchAndHighlight = () => {
     }
 };
 
-// Attach event listeners
-searchButton.addEventListener('click', searchAndHighlight);
-searchInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-        searchAndHighlight();
-    }
-});
-resultsMessage.style.opacity = '0';
-
-// Clear button logic
-clearSearchButton.addEventListener('click', () => {
+// Clear search logic extracted to a function
+function clearSearch() {
     searchInput.value = '';
     contentDivs.forEach(div => {
         if (originalContent.has(div)) {
@@ -130,5 +116,20 @@ clearSearchButton.addEventListener('click', () => {
         div.style.display = '';
     });
     resultsMessage.style.opacity = '0';
-    clearSearchButton.style.display = 'none';
+}
+
+// Attach event listeners
+searchInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        searchAndHighlight();
+    }
 });
+resultsMessage.style.opacity = '0';
+
+// Call clearSearch if searchInput becomes empty
+searchInput.addEventListener('input', function() {
+    if (searchInput.value.trim() === '') {
+        clearSearch();
+    }
+});
+

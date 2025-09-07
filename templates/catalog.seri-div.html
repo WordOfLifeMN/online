@@ -11,38 +11,46 @@
     {{if ne .Visibility "public"}}
         <p class="visibility">[{{.Visibility}}]</p>
     {{end}}
-    <p class="title searchable">
-        <a class="title" href={{.GetCatalogFileName .View}}>{{.Name}}</a>
-    </p>
-    <p class="clear" />
-    <hr />
+    <h2 class="searchable" style="margin-bottom: 4px;">
+        <a href={{.GetCatalogFileName .View}}>{{.Name}}</a>
+    </h2>
 
-    <div class="thumbnail">
-        {{$defaultThumbnail := printf "static/%s.default.thumbnail.png" .GetMinistry}}
-        <a class="title" href={{.GetCatalogFileName .View}}>
-            <img src="{{or .Thumbnail $defaultThumbnail}}" alt="{{printf "%s Cover" .Name}}"/>
-        </a>
-    </div>
-    <div class="info">
-        <p class="searchable">
-            <span class="speakers">{{.SpeakerString}}</span>
-            <span style="width:24px;">&nbsp;</span>
-            <span class="date">{{.DateString}}</span>
-            <br />
-            {{if .MessageTitlesString}}
-                <span class="messages-label">{{len .Messages}} Messages:</span>
-                <span class="text message-list">
-                    {{.MessageTitlesString}}
-                </span>
+    <div style="border-radius: 16px; border: 1px solid var(--pico-primary-border); margin-bottom:16px; padding: 8px;">
+        <div style="display: flex; margin-bottom: 8px;">
+            <div style="min-width: 72px; max-width: 72px; margin-right: 12px;">
+                {{$defaultThumbnail := printf "static/%s.default.thumbnail.png" .GetMinistry}}
+                <a href={{.GetCatalogFileName .View}}>
+                    <img src="{{or .Thumbnail $defaultThumbnail}}" alt="{{printf "%s Cover" .Name}}" style="min-width: 72px; height: auto;"/>
+                </a>
+            </div>
+            <div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    {{/* Speaker, Date */}}
+                    <div class="searchable">{{.SpeakerString}}</div>
+                    <div class="searchable" style="font-size: 0.7rem;">{{.DateString}}</div>
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <div class="searchable">
+                        {{/* Message Titles */}}
+                        {{if .MessageTitlesString}}
+                            <b>{{len .Messages}} Messages:</b>
+                            {{- range $i, $m := .Messages}}
+                                {{if ne $i 0}}<span style="color: var(--pico-primary-border);">&bull;</span>{{end}}
+                                {{$m.Name}}
+                            {{- end}}
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="searchable">
+            {{/* Description */}}
+            {{if .Description}}
+                <p class="description">
+                    <span>{{.Description}}</span>
+                </p>
             {{end}}
-        </p>
-        <div class="clear"></div>
-
-        {{/* Description */}}
-        {{if .Description}}
-            <p class="description searchable">
-                <span>{{.Description}}</span>
-            </p>
-        {{end}}
+        </div>
     </div>
 </div>
