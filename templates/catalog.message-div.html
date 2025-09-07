@@ -21,12 +21,13 @@
 <h3 style="margin-bottom: 4px;">{{.Name}}</h3>
 
 <div style="border: 1px solid var(--pico-primary-border); border-radius: 16px; padding: 8px; margin-bottom: 16px;">
-    <div style="display: flex; flex-flow: row wrap; gap: 8px; margin-bottom: 8px;">
         
         {{/* Message playback and info */}}
-        <div style="flex-grow: 1; min-width: 200px; max-width: 320px;">
+        <div style="float: left; min-width: 200px; max-width: 320px; margin-right: 12px; margin-bottom: 8px;">
+
+            {{/* Thumbnail */}}
             {{/* Video */}}
-            <div style="margin-bottom: 12px; min-height: 40px; min-width: 160px; text-align: center;">
+            <div style="margin-bottom: 12px; min-height: 40px; min-width: 200px; text-align: center;">
                 {{if .Video}}
                     {{if le (index .Series 0).Index $maxEmbeddedVideosPerPage}}
                         {{.Video.GetEmbeddedVideo 320}}
@@ -51,19 +52,23 @@
                 {{end}}
             </div>
         </div>
-        <div style="flex-grow: 4; min-width: 200px; max-width: 60%;">
-            <span>
-                {{/* Speaker, Date, Description */}}
-                {{if .Speakers}}
-                    {{.SpeakerString}}<br />
-                {{end}}
-                {{if .Date}} 
-                    <span style="font-size: 0.7rem;">{{.DateString}}</span><br />
-                {{end}}
+        <div>
+            {{/* Speaker, Date, Description */}}
+            {{if .Speakers}}
+                <p style="margin-bottom: 0px;">
+                    <b>{{.SpeakerString}}</b>
+                </p>
+            {{end}}
+            {{if .Date}} 
+                <p style="font-size: 0.7rem; margin-bottom: 18px;">
+                    {{.DateString}}
+                </p>
+            {{end}}
+            <p>
                 {{.Description}}
-            </span>
+            </p>
         </div>
-    </div>
+        <div style="clear: both;"></div>
 
     {{- /* Resources */}}
     {{if .Resources}}
