@@ -119,17 +119,32 @@ function clearSearch() {
 }
 
 // Attach event listeners
+let searchDebounceTimeout;
 searchInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
+        if (searchDebounceTimeout) {
+            clearTimeout(searchDebounceTimeout);
+        }
         searchAndHighlight();
     }
 });
-resultsMessage.style.opacity = '0';
 
-// Call clearSearch if searchInput becomes empty
+// Debounced search: call searchAndHighlight 2s after last input
 searchInput.addEventListener('input', function() {
     if (searchInput.value.trim() === '') {
         clearSearch();
+        if (searchDebounceTimeout) {
+            clearTimeout(searchDebounceTimeout);
+        }
+        return;
     }
+    if (searchDebounceTimeout) {
+        clearTimeout(searchDebounceTimeout);
+    }
+    searchDebounceTimeout = setTimeout(() => {
+        searchAndHighlight();
+    }, 2000);
 });
+resultsMessage.style.opacity = '0';
+
 
