@@ -143,7 +143,7 @@ searchInput.addEventListener('input', function() {
     }
     searchDebounceTimeout = setTimeout(() => {
         searchAndHighlight();
-    }, 2000);
+    }, 1500);
 });
 resultsMessage.style.opacity = '0';
 
