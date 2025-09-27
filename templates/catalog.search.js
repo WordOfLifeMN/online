@@ -115,7 +115,12 @@ function clearSearch() {
     document.querySelectorAll('.series-seri').forEach(div => {
         div.style.display = '';
     });
-    resultsMessage.style.opacity = '0';
+    resultsMessage.innerHTML = '<em>search cleared</em>';
+    resultsMessage.style.opacity = '1';
+    resultsMessage.style.transition = 'opacity 0.5s';
+    setTimeout(() => {
+        resultsMessage.style.opacity = '0';
+    }, 1500);
 }
 
 // Attach event listeners
