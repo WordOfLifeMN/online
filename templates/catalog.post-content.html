@@ -2,20 +2,26 @@
     Parameter Map:
     .Date: NewDateToday()
     */ -}}
-    </div> <!-- div.message-list -->
+        </div> <!-- div.message-list -->
+    </main>
 
-    <div class="footer">
+    <footer>
         <hr />
-        <p class="copyright">
-            &copy; Word of Life Ministries 2012-2024; All Rights Reserved
-        </p>
+        <div style="display: flex; flex-flow: row nowrap; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px;">
+            <div style="flex-grow: 1; font-size: 0.75rem; text-align: left;">
+                &copy; Word of Life Ministries 2012-2025;
+                <br/>All Rights Reserved
+            </div>
 
-        <p class="update-info">
-            Updated {{.Date}} (v3.0)
-        </p>
+            <div style="flex-grow: 1; font-size: 0.75rem; text-align: center;">
+                <a href="http://www.wordoflifemn.org">Home</a>
+                <br/><a href="http://www.wordoflifemn.org/contact-us.html">Contact Us</a>
+            </div>
 
-        <p class="clear" />
-    </div>
+            <div style="flex-grow: 1; font-size: 0.75rem; text-align: right;">
+                Updated {{.Date}} (v4.0)
+            </div>
+    </footer>
 </body>
 
 </html>

@@ -9,62 +9,70 @@
 {{$maxEmbeddedVideosPerPage := 18}}
 
 {{- /* message */ -}}
-<div class="message">
-    {{if eq (index .Series 0).Index 100}}
-        <p class="section-title">Post-service Ministry and Q&A</p>
-    {{end}}
-    {{/* Title Bar */}}
-    {{if ne .Visibility "public"}}
-        <p class="visibility">[{{.Visibility}}]</p>
-    {{end}}
-    <p class="title">{{.Name}}</p>
-    <p class="clear"></p>
-    <hr />
+{{/* Section Title for special messages */}}
+{{if eq (index .Series 0).Index 100}}
+    <h2>Post-service Ministry and Q&A</h2>
+{{end}}
 
-    {{/* Message playback and info */}}
-    <div class="video">
-        {{if .Video}}
-            {{if le (index .Series 0).Index $maxEmbeddedVideosPerPage}}
-                {{.Video.GetEmbeddedVideo 320}}
-            {{else}}
-                <a href="{{.Video.URL}}" target="wolmVideo">
-                    {{/*<img src="{{.Video.GetThumbnail}}" width="160px;" alt="{{.Video.GetClassifier}}" style="margin-left:80px;"/>*/}}
-                    <span class="click-for-video">click for video</span>
-                </a>
-            {{end}}
+{{/* Title Bar */}}
+{{if ne .Visibility "public"}}
+    <p style="color: var(--pico-muted-color); font-size: 0.7rem;">[{{.Visibility}}]</p>
+{{end}}
+<h3 style="margin-bottom: 4px;">{{.Name}}</h3>
 
-        {{else}}
-            <p class="no-video">no video available</p>
+<div style="border: 1px solid var(--pico-primary-border); border-radius: 16px; padding: 8px; margin-bottom: 16px;">
+        
+        {{/* Message playback and info */}}
+        <div style="float: left; min-width: 200px; max-width: 320px; margin-right: 12px; margin-bottom: 8px;">
 
-        {{end}}
-        <div class="audio">
-            {{if .Audio}}
-                <audio controls style="width:100%;">
-                    <source src="{{.Audio.URL}}" type="audio/mpeg" />
-                    Your browser does not support audio playback.
-                </audio>
-            {{end}}
+            {{/* Thumbnail */}}
+            {{/* Video */}}
+            <div style="margin-bottom: 12px; min-height: 40px; min-width: 200px; text-align: center;">
+                {{if .Video}}
+                    {{if le (index .Series 0).Index $maxEmbeddedVideosPerPage}}
+                        {{.Video.GetEmbeddedVideo 320}}
+                    {{else}}
+                        <a href="{{.Video.URL}}" target="wolmVideo">
+                            {{/*<img src="{{.Video.GetThumbnail}}" width="160px;" alt="{{.Video.GetClassifier}}" style="margin-left:80px;"/>*/}}
+                            <i style="font-size: 0.8rem; color: var(--pico-muted-color);">click for video</i>
+                        </a>
+                    {{end}}
+                {{else}}
+                    <i style="color: var(--pico-muted-color);">no video available</i>
+                {{end}}
+            </div>
+
+            {{/* Audio */}}
+            <div style="text-align: center;">
+                {{if .Audio}}
+                    <audio controls style="min-width: 200px;">
+                        <source src="{{.Audio.URL}}" type="audio/mpeg" />
+                        Your browser does not support audio playback.
+                    </audio>
+                {{end}}
+            </div>
         </div>
-    </div>
-    <div class="info">
-        <p>
+        <div>
+            {{/* Speaker, Date, Description */}}
             {{if .Speakers}}
-                <span class="speakers">{{.SpeakerString}}</span>
-                <br />
+                <p style="margin-bottom: 0px;">
+                    <b>{{.SpeakerString}}</b>
+                </p>
             {{end}}
             {{if .Date}} 
-                <span class="date">{{.DateString}}</span>
-                <br />
+                <p style="font-size: 0.7rem; margin-bottom: 18px;">
+                    {{.DateString}}
+                </p>
             {{end}}
-            <br/>
-            <span class="description">{{.Description}}</span>
-        </p>
-    </div>
-    <div class="clear" />
+            <p>
+                {{.Description}}
+            </p>
+        </div>
+        <div style="clear: both;"></div>
 
     {{- /* Resources */}}
     {{if .Resources}}
-        <div class="resources">
+        <div>
             {{range .Resources}}
                 {{template "catalog.resource-p.html" .}}
             {{end}}

@@ -3,17 +3,16 @@ Paramater map:
 . OnlineResource to output in this template
 */ -}}
 
-<div class="resource">
+<div style="display: flex; flex-flow: row wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
     {{/* Resource name & link */}}
-    <div class="name">
-        <img height="14px" src="{{.GetIcon}}" />
+    <div style="flex-grow: 4;">
+        <img src="{{.GetIcon}}" style="max-height: 14px;"/>
         <a href="{{.URL}}" target="wolmGuide">{{or .Name .GetFileName}}</a>
     </div>
 
     {{/* File name on the right */}}
-    <div class="file">
+    <div style="flex-grow: 1; text-align: right; color: var(--pico-muted-color); font-size: 0.8rem;">
         <span>({{.GetFileName}})</span>
     </div>
 
-    <div class="clear" />
 </div>
