@@ -120,9 +120,9 @@ The speaker's name is %s and they use the pronouns %s.
 You will suggest a single title and a single summary.
 
 The title will be no longer than 6 words.
-The summary should be 6 to 10 sentences in length and use a casual voice suitable for social media. 
+The summary should be 3 sentences in length and use a casual voice suitable for social media. 
 
-You will output the results formatted as a JSON object containing only two fields named "title" and "summary"
+You will output the results formatted as a JSON object containing only two string fields named "title" and "summary"
 
 """ %s """
 `, info.SpeakerName, info.SpeakerPronouns, xscript),
