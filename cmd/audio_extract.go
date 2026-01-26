@@ -84,7 +84,7 @@ func extractAudioFromVideo(videoPath string) (string, error) {
 	}
 
 	// compute trim length based on file name
-	trimLen := 9.95
+	trimLen := 9.8
 	if strings.Contains(audioPath, " FF ") {
 		trimLen = 9.9
 	} else if strings.Contains(audioPath, " CORE ") {
