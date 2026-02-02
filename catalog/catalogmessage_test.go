@@ -6,14 +6,14 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type CatalogMessageTestSuite struct {
-	suite.Suite
-	VariableThatShouldStartAtFive int
-}
-
 // Runs the test suite as a test
 func TestCatalogMessageTestSuite(t *testing.T) {
 	suite.Run(t, new(CatalogMessageTestSuite))
+}
+
+type CatalogMessageTestSuite struct {
+	suite.Suite
+	VariableThatShouldStartAtFive int
 }
 
 // +---------------------------------------------------------------------------
@@ -253,6 +253,72 @@ func (t *CatalogMessageTestSuite) TestGetAudioSize_ValidFile() {
 	}
 	// then
 	t.Equal(48458231, sut.GetAudioSize())
+}
+
+// +---------------------------------------------------------------------------
+// | Transcript
+// +---------------------------------------------------------------------------
+
+func (t *CatalogMessageTestSuite) TestHasTranscript_NoAudio() {
+	// given
+	sut := CatalogMessage{
+		Name:  "MESSAGE",
+		Audio: nil,
+	}
+	// then
+	t.False(sut.HasTranscript())
+}
+
+func (t *CatalogMessageTestSuite) TestHasTranscript_InvalidAudio() {
+	// given
+	sut := CatalogMessage{
+		Name:  "MESSAGE",
+		Audio: NewResourceFromString("-"),
+	}
+	// when
+	t.NoError(sut.Initialize())
+	// then
+	t.False(sut.HasTranscript())
+}
+
+func (t *CatalogMessageTestSuite) TestGetTranscriptURL_NoAudio() {
+	// given
+	sut := CatalogMessage{
+		Name:  "MESSAGE",
+		Audio: nil,
+	}
+	// then
+	t.Equal("", sut.GetTranscriptURL(".text"))
+}
+
+func (t *CatalogMessageTestSuite) TestGetTranscriptURL_WithExtension() {
+	// given
+	sut := CatalogMessage{
+		Name:  "MESSAGE",
+		Audio: NewResourceFromString("https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2020/2020-10-11+Finding.mp3"),
+	}
+	// then
+	t.Equal("https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2020/xscript/2020-10-11+Finding.text", sut.GetTranscriptURL(".text"))
+}
+
+func (t *CatalogMessageTestSuite) TestGetTranscriptURL_WithoutDotInExtension() {
+	// given
+	sut := CatalogMessage{
+		Name:  "MESSAGE",
+		Audio: NewResourceFromString("https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2020/2020-10-11+Finding.mp3"),
+	}
+	// then
+	t.Equal("https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2020/xscript/2020-10-11+Finding.json", sut.GetTranscriptURL("json"))
+}
+
+func (t *CatalogMessageTestSuite) TestGetTranscriptURL_InvalidURL() {
+	// given
+	sut := CatalogMessage{
+		Name:  "MESSAGE",
+		Audio: NewResourceFromString("invalid-url-no-slash"),
+	}
+	// then
+	t.Equal("", sut.GetTranscriptURL(".text"))
 }
 
 // +---------------------------------------------------------------------------

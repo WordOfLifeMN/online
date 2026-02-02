@@ -1,8 +1,13 @@
 package catalog
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"os/exec"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +32,10 @@ type CatalogMessage struct {
 	Resources   []OnlineResource  `json:"resources,omitempty"`   // list of online resources for this message (links, docs, video, etc)
 	initialized bool              `json:"-"`                     // has this object been initialized?
 }
+
+// transcript cache is a map of year to list of available transcript names. the list of names is
+// just the message name, which is the base name of the transcript file without extension
+var transcriptCache map[int][]string
 
 // +---------------------------------------------------------------------------
 // | Constructors
@@ -156,6 +165,101 @@ func (m *CatalogMessage) GetAudioSize() int {
 	}
 
 	return length
+}
+
+func (m *CatalogMessage) HasTranscript() bool {
+	// fast fail if no audio
+	m.Initialize()
+	if !m.HasAudio() {
+		return false
+	}
+
+	// load the transcript cache for this year if needed
+	if transcriptCache == nil {
+		transcriptCache = make(map[int][]string)
+	}
+	yearMessages, ok := transcriptCache[m.Date.Year()]
+	if !ok {
+		yearMessages = m.LoadTranscriptCacheForYear(m.Date.Year())
+		transcriptCache[m.Date.Year()] = yearMessages
+	}
+	if len(yearMessages) == 0 {
+		return false
+	}
+
+	audioURL, err := url.Parse(m.Audio.URL)
+	if err != nil {
+		log.Printf("WARNING: Could not parse audio URL %q: %s", m.Audio.URL, err.Error())
+		return false
+	}
+	audioName := filepath.Base(audioURL.Path)
+	audioName = strings.TrimSuffix(audioName, filepath.Ext(audioName))
+	audioName = strings.ReplaceAll(audioName, "+", " ")
+
+	// TODO(km)
+	// if strings.Contains(audioName, "%") || strings.Contains(audioName, ",") {
+	// 	log.Printf("Checking for transcript for message %q in year %d", audioName, m.Date.Year())
+	// 	time.Sleep(4 * time.Second)
+	// }
+	return slices.Contains(yearMessages, audioName)
+}
+
+// LoadTranscriptCacheForYear loads the transcript cache for the specified year. Given the year,
+// this will call the aws cli to list the transcript files for s3://wordoflife.mn.audio/<year>/xscript/
+// and return a list of the base names (without extensions) of each transcript file ending with
+// .text for that year.
+func (m *CatalogMessage) LoadTranscriptCacheForYear(year int) []string {
+	// get the list of transcript files from S3
+	cmd := exec.Command("aws", "s3", "ls", fmt.Sprintf("s3://wordoflife.mn.audio/%d/xscript/", year))
+	output, err := cmd.Output()
+	if err != nil {
+		return []string{}
+	}
+
+	// parse the output to get the base names
+	var xscriptBaseNames []string
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		if !strings.HasSuffix(line, ".text") {
+			continue
+		}
+		line = strings.TrimSuffix(line, ".text")
+
+		// the line is in the format "date time size filename", and filename may contain spaces.
+		// get the filename by compressing spaces, then parsing on up to 3 spaces
+		line = strings.Join(strings.Fields(line), " ")
+		parts := strings.SplitN(line, " ", 4)
+		xscriptBaseNames = append(xscriptBaseNames, strings.TrimSpace(parts[3]))
+	}
+
+	// TODO(km)
+	// log.Printf("List of transcripts for year %d:\n%#v", year, xscriptBaseNames)
+	// time.Sleep(5 * time.Second)
+
+	return xscriptBaseNames
+}
+
+func (m *CatalogMessage) GetTranscriptURL(ext string) string {
+	if !m.HasAudio() {
+		return ""
+	}
+
+	if !strings.HasPrefix(ext, ".") {
+		ext = "." + ext
+	}
+
+	xscriptURL := strings.Replace(m.Audio.URL, ".mp3", ext, 1)
+	lastSlash := strings.LastIndex(xscriptURL, "/")
+	if lastSlash == -1 {
+		return ""
+	}
+	xscriptURL = xscriptURL[:lastSlash+1] + "xscript/" + xscriptURL[lastSlash+1:]
+	return xscriptURL
 }
 
 // +---------------------------------------------------------------------------

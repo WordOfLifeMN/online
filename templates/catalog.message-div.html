@@ -51,6 +51,12 @@
                     </audio>
                 {{end}}
             </div>
+            <div style="margin-top: 2px; text-align: center;">
+                {{if .HasTranscript}}
+                    <a href="{{.GetTranscriptURL ".text"}}" target="_blank" title="transcript" style="color: var(--pico-muted-color); text-decoration: none;">&#x24C9;</a> 
+                    <a href="{{.GetTranscriptURL ".vtt"}}" target="_blank" title="transcript (video captions)" style="color: var(--pico-muted-color); text-decoration: none;">&#x24CB;</a>
+                {{end}}
+            </div>
         </div>
         <div>
             {{/* Speaker, Date, Description */}}

@@ -183,7 +183,7 @@ func uploadTranscriptionsToS3(xscriptPaths []string) ([]string, error) {
 	fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
 
 	for _, info := range xscripts {
-		cmd := exec.Command("aws", "s3", "cp", info.path, info.s3URL)
+		cmd := exec.Command("aws", "s3", "cp", "--content-type", "text/plain", info.path, info.s3URL)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
