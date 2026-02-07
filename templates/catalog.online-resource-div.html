@@ -4,13 +4,15 @@ Paramater map:
     . OnlineResource
 */ -}}
 
-<div style="border-radius: 16px; border: 1px solid var(--pico-secondary-border); padding: 8px; margin-bottom: 16px;">
+<div class="resource" style="border-radius: 16px; border: 1px solid var(--pico-secondary-border); padding: 8px; margin-bottom: 16px;">
     <div style="display: flex; flex-flow: row wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
 
         {{/* Resource name & link */}}
         <div style="flex-grow: 4;">
-            <img src="{{.GetIcon}}" style="max-height: 14px;"/>
-            <a href="{{.URL}}" target="wolmGuide">{{or .Name .GetFileName}}</a>
+            <p>
+                <a href="{{.URL}}" target="wolmGuide" style="margin-right: 8px;"><img src="{{.GetIcon}}" style="max-height: 24px;"/></a>
+                <a href="{{.URL}}" target="wolmGuide">{{or .Name .GetFileName}}</a>
+            </p>
         </div>
 
         {{/* File name on the right */}}
@@ -19,15 +21,17 @@ Paramater map:
         </div>
     </div>
 
-    
-    {{/* If part of a seri, show the seri and message it is from */}}
-    {{if .Seri}}
-    <div style="font-size: 0.7rem; color: var(--pico-muted-color);">
-        From <a href="{{.Seri.GetCatalogFileName .Seri.View}}">{{.Seri.Name}}</a>
-        {{if .Message}}
-            : {{.Message.Name}}
+
+    <div class="searchable" style="font-size: 0.7rem; color: var(--pico-muted-color);">
+        {{or .Name .GetFileName}}
+        {{/* If part of a seri, show the seri and message it is from */}}
+        {{if .Seri}}
+            <ul>
+                <li>From <a href="{{.Seri.GetCatalogFileName .Seri.View}}" target="wolmGuide">{{.Seri.Name}}</a> ({{.Seri.DateString}})</li>
+                {{if .Message}}
+                    <ul><li>Message: {{.Message.Name}}</li></ul>
+                {{end}}
+            </ul>
         {{end}}
-        ({{.Seri.DateString}})
     </div>
-    {{end}}
 </div>
