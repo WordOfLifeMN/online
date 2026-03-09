@@ -180,6 +180,7 @@ func (m *CatalogMessage) HasTranscript() bool {
 	}
 	yearMessages, ok := transcriptCache[m.Date.Year()]
 	if !ok {
+		log.Printf("(Researching transcripts for %d)", m.Date.Year())
 		yearMessages = m.LoadTranscriptCacheForYear(m.Date.Year())
 		transcriptCache[m.Date.Year()] = yearMessages
 	}
