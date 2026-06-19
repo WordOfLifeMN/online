@@ -17,10 +17,10 @@
 
     <div style="border-radius: 16px; border: 1px solid var(--pico-primary-border); margin-bottom:16px; padding: 8px;">
         <div style="display: flex; margin-bottom: 8px;">
-            <div style="min-width: 72px; max-width: 72px; margin-right: 12px;">
+            <div style="margin-right: 12px; flex-shrink: 0;">
                 {{$defaultThumbnail := printf "static/%s.default.thumbnail.png" .GetMinistry}}
                 <a href={{.GetCatalogFileName .View}}>
-                    <img src="{{or .Thumbnail $defaultThumbnail}}" alt="{{printf "%s Cover" .Name}}" style="min-width: 72px; height: auto;"/>
+                    <img src="{{or .Thumbnail $defaultThumbnail}}" alt="{{printf "%s Cover" .Name}}" style="height: 96px; width: auto;"/>
                 </a>
             </div>
             <div>
