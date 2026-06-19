@@ -76,11 +76,13 @@
         </div>
         <div style="clear: both;"></div>
 
-    {{- /* Resources */}}
+    {{- /* Resources (thumb-* images are excluded — they are thumbnails, not user-facing resources) */}}
     {{if .Resources}}
         <div>
             {{range .Resources}}
-                {{template "catalog.resource-p.html" .}}
+                {{if not .IsThumbImage}}
+                    {{template "catalog.resource-p.html" .}}
+                {{end}}
             {{end}}
         </div>
     {{end}}

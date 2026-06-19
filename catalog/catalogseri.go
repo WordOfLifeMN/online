@@ -83,6 +83,14 @@ func NewSeriesFromMessage(msg *CatalogMessage) CatalogSeri {
 	seri.Description = msg.Description
 	seri.Visibility = msg.Visibility
 
+	// use a thumb image resource as the series thumbnail if present
+	for _, resource := range msg.Resources {
+		if resource.IsThumbImage() {
+			seri.Thumbnail = resource.URL
+			break
+		}
+	}
+
 	// create a copy of the message for this seri
 	message := (*msg).Copy()
 	message.Series = []SeriesReference{{Name: seri.Name, Index: 1}}
@@ -342,6 +350,9 @@ func (s *CatalogSeri) AddSpeakerToSeries(speaker string) {
 // AddResourceToSeries adds a resource to the list of series and message resources if it isn't
 // already in the list
 func (s *CatalogSeri) AddResourceToSeries(resource OnlineResource) {
+	if resource.IsThumbImage() {
+		return
+	}
 	for _, existing := range s.Resources {
 		if existing.URL == resource.URL {
 			return

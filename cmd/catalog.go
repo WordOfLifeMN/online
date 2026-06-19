@@ -663,10 +663,13 @@ func (cmd *catalogCmdStruct) createResourcePage(ministry catalog.Ministry) error
 	seriList := cmd.cat.FindSeriesByMinistry(ministry)
 	seriList = catalog.FilterSeriesByView(seriList, catalog.Public)
 
-	// extract all the booklets
+	// extract all the resources, skipping thumb images (they are thumbnails, not user-facing)
 	for _, seri := range seriList {
 		for _, message := range seri.Messages {
 			for _, resource := range message.Resources {
+				if resource.IsThumbImage() {
+					continue
+				}
 				seriCopy := seri.Copy()
 				resource.Seri = &seriCopy
 

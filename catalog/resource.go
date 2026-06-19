@@ -172,6 +172,17 @@ func (r *OnlineResource) GetFileName() string {
 	return filepath.Base(url.Path)
 }
 
+// IsThumbImage reports whether this resource is a thumbnail image — an image whose
+// base filename starts with "thumb-" and has an image extension (.jpg, .jpeg, .png, .bmp).
+func (r *OnlineResource) IsThumbImage() bool {
+	name := strings.ToLower(r.GetFileName())
+	if !strings.HasPrefix(name, "thumb-") {
+		return false
+	}
+	ext := filepath.Ext(name)
+	return ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".bmp"
+}
+
 // GetThumbnail returns the path to the thumbnail to use for this file type. The thumbnail is
 // bigger than the icon and can be use in place of the resource. For instance, the thumbnail is
 // an image the user can click on to go to the resource (as opposed to a decorator for the link)

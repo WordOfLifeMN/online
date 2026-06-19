@@ -66,6 +66,47 @@ func (t *CatalogSeriTestSuite) TestNewSeriesFromStandAloneMessage() {
 	t.Len(msg.Series, 0)
 }
 
+func (t *CatalogSeriTestSuite) TestNewSeriesFromMessage_ThumbResourceSetsThumbnail() {
+	// given: a message with a mix of regular resources and a thumb image
+	msg := CatalogMessage{
+		Date:       MustParseDateOnly("2006-07-08"),
+		Name:       "A MESSAGE",
+		Visibility: Public,
+		Resources: []OnlineResource{
+			{URL: "http://example.com/notes.pdf", Name: "Notes"},
+			{URL: "http://example.com/thumb-my-message.jpg", Name: "Thumbnail"},
+		},
+	}
+
+	// when
+	sut := NewSeriesFromMessage(&msg)
+
+	// then: thumbnail is set from the thumb- resource
+	t.Equal("http://example.com/thumb-my-message.jpg", sut.Thumbnail)
+	// and: thumb image is excluded from the resource list
+	t.Len(sut.Resources, 1)
+	t.Equal("Notes", sut.Resources[0].Name)
+}
+
+func (t *CatalogSeriTestSuite) TestNewSeriesFromMessage_NoThumbResource() {
+	// given: a message with only regular resources
+	msg := CatalogMessage{
+		Date:       MustParseDateOnly("2006-07-08"),
+		Name:       "A MESSAGE",
+		Visibility: Public,
+		Resources: []OnlineResource{
+			{URL: "http://example.com/notes.pdf", Name: "Notes"},
+		},
+	}
+
+	// when
+	sut := NewSeriesFromMessage(&msg)
+
+	// then: no thumbnail set
+	t.Empty(sut.Thumbnail)
+	t.Len(sut.Resources, 1)
+}
+
 func (t *CatalogSeriTestSuite) TestNewSeriesFromMessageInSeries() {
 	// given
 	msg := CatalogMessage{
