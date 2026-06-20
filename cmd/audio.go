@@ -30,15 +30,14 @@ import (
 )
 
 type MessageInfo struct {
-	VideoPath       string
-	AudioPath       string
-	AudioURL        string
-	TranscriptPath  string
-	TranscriptURLs  []string
-	SpeakerName     string
-	SpeakerPronouns string // "he/him", "she/her"
-	Title           string
-	Summary         string
+	VideoPath      string
+	AudioPath      string
+	AudioURL       string
+	TranscriptPath string
+	TranscriptURLs []string
+	SpeakerName    string
+	Title          string
+	Summary        string
 
 	// times
 	ExtractTime          util.StopWatch
@@ -67,9 +66,6 @@ func init() {
 
 	rootCmd.PersistentFlags().String("speaker", "", "Name of the speaker")
 	viper.BindPFlag("speaker", rootCmd.PersistentFlags().Lookup("speaker"))
-
-	rootCmd.PersistentFlags().String("pronouns", "he/him", "Pronouns of the speaker, like he/him, she/her, they/them")
-	viper.BindPFlag("pronouns", rootCmd.PersistentFlags().Lookup("pronouns"))
 }
 
 func audio(cmd *cobra.Command, args []string) error {
@@ -92,12 +88,11 @@ func audio(cmd *cobra.Command, args []string) error {
 			}
 
 			info := MessageInfo{
-				VideoPath:       videoPath,
-				SpeakerName:     viper.GetString("speaker"),
-				SpeakerPronouns: viper.GetString("pronoun"),
+				VideoPath:   videoPath,
+				SpeakerName: viper.GetString("speaker"),
 			}
 			if info.SpeakerName == "" {
-				info.SpeakerName, info.SpeakerPronouns = getSpeakerFromFileName(videoPath)
+				info.SpeakerName = getSpeakerFromFileName(videoPath)
 			}
 
 			infos = append(infos, &info)
@@ -108,12 +103,11 @@ func audio(cmd *cobra.Command, args []string) error {
 			arg = getInputVideo(arg)
 
 			info := MessageInfo{
-				VideoPath:       arg,
-				SpeakerName:     viper.GetString("speaker"),
-				SpeakerPronouns: viper.GetString("pronoun"),
+				VideoPath:   arg,
+				SpeakerName: viper.GetString("speaker"),
 			}
 			if info.SpeakerName == "" {
-				info.SpeakerName, info.SpeakerPronouns = getSpeakerFromFileName(arg)
+				info.SpeakerName = getSpeakerFromFileName(arg)
 			}
 			infos = append(infos, &info)
 		}
@@ -434,7 +428,7 @@ func deleteExistingFile(audioPath string, prompt bool) error {
 	return nil
 }
 
-func PromptUserForSpeakerAndGender(defaultSpeaker string) (string, string) {
+func PromptUserForSpeaker(defaultSpeaker string) string {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Printf("Who is the speaker [Default:%s/Vern(v)/Mary(m)/Other]?\n", defaultSpeaker)
 	name, _ := reader.ReadString('\n')
@@ -445,10 +439,10 @@ func PromptUserForSpeakerAndGender(defaultSpeaker string) (string, string) {
 	}
 	switch strings.ToUpper(name) {
 	case "V", "VERN":
-		return "Pastor Vern Peltz", "he/him"
+		return "Pastor Vern Peltz"
 	case "M", "MARY":
-		return "Pastor Mary Peltz", "she/her"
+		return "Pastor Mary Peltz"
 	default:
-		return name, "they/them"
+		return name
 	}
 }

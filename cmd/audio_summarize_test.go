@@ -106,27 +106,25 @@ func (t *AudioSummarizeCmdTestSuite) TestGetSpeakerFromFileName() {
 	for i, tc := range []struct {
 		FileName string
 		Speaker  string
-		Pronoun  string
 	}{
-		{"2025-03-09 Msg-M.mp4", "Pastor Mary Peltz", "she/her"},
-		{"2025-03-09 Msg-m.mp4", "Pastor Mary Peltz", "she/her"},
-		{"2025-03-09-m Msg.mp4", "Pastor Mary Peltz", "she/her"},
-		{"2025-03-09-pm Msg.mp4", "Pastor Mary Peltz", "she/her"},
-		{"2025-03-09-mp Msg.mp4", "Pastor Mary Peltz", "she/her"},
-		{"2025-03-09pm Msg.mp4", "Pastor Mary Peltz", "she/her"},
-		{"2025-03-09-MP Msg.mp4", "Pastor Mary Peltz", "she/her"},
+		{"2025-03-09 Msg-M.mp4", "Pastor Mary Peltz"},
+		{"2025-03-09 Msg-m.mp4", "Pastor Mary Peltz"},
+		{"2025-03-09-m Msg.mp4", "Pastor Mary Peltz"},
+		{"2025-03-09-pm Msg.mp4", "Pastor Mary Peltz"},
+		{"2025-03-09-mp Msg.mp4", "Pastor Mary Peltz"},
+		{"2025-03-09pm Msg.mp4", "Pastor Mary Peltz"},
+		{"2025-03-09-MP Msg.mp4", "Pastor Mary Peltz"},
 
-		{"2025-03-09-v Msg.mp4", "Pastor Vern Peltz", "he/him"},
-		{"2025-03-09-m Msg.mp4", "Pastor Mary Peltz", "she/her"},
-		{"2025-03-09-i Msg.mp4", "Pastor Igor Kondratyuk", "he/him"},
-		{"2025-03-09-t Msg.mp4", "Pastor Tania Kondratyuk", "she/her"},
-		{"2025-03-09-a Msg.mp4", "Anthony Leong", "he/him"},
-		{"2025-03-09-j Msg.mp4", "Jim Isakson", "he/him"},
+		{"2025-03-09-v Msg.mp4", "Pastor Vern Peltz"},
+		{"2025-03-09-m Msg.mp4", "Pastor Mary Peltz"},
+		{"2025-03-09-i Msg.mp4", "Pastor Igor Kondratyuk"},
+		{"2025-03-09-t Msg.mp4", "Pastor Tania Kondratyuk"},
+		{"2025-03-09-a Msg.mp4", "Anthony Leong"},
+		{"2025-03-09-j Msg.mp4", "Jim Isakson"},
 
-		{"2025-03-09-pt Msg.mp4", "Pastor Tania Kondratyuk", "she/her"},
+		{"2025-03-09-pt Msg.mp4", "Pastor Tania Kondratyuk"},
 	} {
-		speaker, pronouns := getSpeakerFromFileName(tc.FileName)
+		speaker := getSpeakerFromFileName(tc.FileName)
 		t.Equal(tc.Speaker, speaker, "Case %d failed: %s", i+1, tc.FileName)
-		t.Equal(tc.Pronoun, pronouns, "Case %d failed: %s", i+1, tc.FileName)
 	}
 }

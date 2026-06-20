@@ -86,12 +86,11 @@ func xscriptSummarize(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	speakerName, speakerPronouns := getSpeakerFromFileName(xscriptPath)
+	speakerName := getSpeakerFromFileName(xscriptPath)
 	// fmt.Printf("TODO(km) XScript speaker %s\n XScript sample: %s\n",speakerName, xscriptSample)
 
 	info := &MessageInfo{
-		SpeakerName:     speakerName,
-		SpeakerPronouns: speakerPronouns,
+		SpeakerName: speakerName,
 	}
 	if info, err = generateMessageSummary(xscriptSample, info); err != nil {
 		return err
@@ -115,17 +114,21 @@ func generateMessageSummary(xscript string, info *MessageInfo) (*MessageInfo, er
 					Role: openai.ChatMessageRoleUser,
 					Content: fmt.Sprintf(`
 I'm going to give you a transcript of a Christian church sermon that is delimited by triple quotes.
-The speaker's name is %s and they use the pronouns %s.
+The speaker's name is %s.
 
 You will suggest a single title and a single summary.
 
 The title will be no longer than 6 words.
-The summary should be 3 sentences in length and use a casual voice suitable for social media. 
+The summary should be 3 sentences in length and use a casual voice suitable for social media.
 
-You will output the results formatted as a JSON object containing only two string fields named "title" and "summary"
+You will output the results formatted as a JSON object like
+{
+  "title": "The title of the sermon",
+  "summary": "The summary of the sermon"
+}
 
 """ %s """
-`, info.SpeakerName, info.SpeakerPronouns, xscript),
+`, info.SpeakerName, xscript),
 				},
 			},
 		},
@@ -293,7 +296,7 @@ func findStartOfWord(str string, initPos int) int {
 //   - 2025-03-04-[vmjia] Message Title.mp4
 //   - 2025-03-04-p[vmjia] Message Title.mp4
 //   - 2025-03-04p-[vmjia] Message Title.mp4
-func getSpeakerFromFileName(filePath string) (speakerName, speakerPronouns string) {
+func getSpeakerFromFileName(filePath string) string {
 	names := map[string]string{
 		"V": "Pastor Vern Peltz",
 		"M": "Pastor Mary Peltz",
@@ -302,14 +305,6 @@ func getSpeakerFromFileName(filePath string) (speakerName, speakerPronouns strin
 		"T": "Pastor Tania Kondratyuk",
 		"A": "Anthony Leong",
 	}
-	pronouns := map[string]string{
-		"Pastor Vern Peltz":       "he/him",
-		"Pastor Mary Peltz":       "she/her",
-		"Pastor Igor Kondratyuk":  "he/him",
-		"Pastor Tania Kondratyuk": "she/her",
-		"Anthony Leong":           "he/him",
-		"Jim Isakson":             "he/him",
-	}
 
 	// test for each possible location of the initials
 	ucFilePath := strings.ToUpper(filePath)
@@ -317,17 +312,17 @@ func getSpeakerFromFileName(filePath string) (speakerName, speakerPronouns strin
 		// initial at end of file name: "2025-03-09 Title-v.mp4"
 		re := fmt.Sprintf("-%s\\....$", initials)
 		if match, err := regexp.MatchString(re, ucFilePath); err == nil && match {
-			return n, pronouns[n]
+			return n
 		}
 		// initial following date with optional prayer "p": "2025-03-09-[p]v[p] Title.mp4"
 		re = fmt.Sprintf("-[0-9][0-9]-[0-9][0-9]-P?%sP? ", initials)
 		if match, err := regexp.MatchString(re, ucFilePath); err == nil && match {
-			return n, pronouns[n]
+			return n
 		}
 		// initial following prayer "p": "2025-03-09pv Title.mp4"
 		re = fmt.Sprintf("-[0-9][0-9]-[0-9][0-9]P%s ", initials)
 		if match, err := regexp.MatchString(re, ucFilePath); err == nil && match {
-			return n, pronouns[n]
+			return n
 		}
 	}
 
@@ -335,5 +330,5 @@ func getSpeakerFromFileName(filePath string) (speakerName, speakerPronouns strin
 	if match, err := regexp.MatchString("-[0-9][0-9]p ", filePath); err == nil && match {
 		defaultSpeaker = "Mary"
 	}
-	return PromptUserForSpeakerAndGender(defaultSpeaker)
+	return PromptUserForSpeaker(defaultSpeaker)
 }
