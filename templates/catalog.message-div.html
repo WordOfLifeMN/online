@@ -80,9 +80,7 @@
     {{if .Resources}}
         <div>
             {{range .Resources}}
-                {{if not .IsThumbImage}}
-                    {{template "catalog.resource-p.html" .}}
-                {{end}}
+                {{template "catalog.resource-p.html" .}}
             {{end}}
         </div>
     {{end}}

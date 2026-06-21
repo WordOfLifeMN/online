@@ -223,32 +223,3 @@ func (t *OnlineResourceTestSuite) TestMetadata() {
 /*
  * IsThumbImage
  */
-
-func (t *OnlineResourceTestSuite) TestIsThumbImage() {
-	testCases := []struct {
-		url      string
-		expected bool
-	}{
-		// valid thumb images
-		{"http://example.com/thumb-foo.jpg", true},
-		{"http://example.com/thumb-foo.jpeg", true},
-		{"http://example.com/thumb-foo.png", true},
-		{"http://example.com/thumb-foo.bmp", true},
-		// case insensitive extension
-		{"http://example.com/thumb-foo.JPEG", true},
-		{"http://example.com/thumb-foo.PNG", true},
-		// bare filename (no host)
-		{"thumb-series.jpg", true},
-		// not an image extension
-		{"http://example.com/thumb-foo.gif", false},
-		{"http://example.com/thumb-foo.pdf", false},
-		// missing thumb- prefix
-		{"http://example.com/foo.jpg", false},
-		{"http://example.com/mythumbnail.jpg", false},
-	}
-
-	for _, tc := range testCases {
-		r := OnlineResource{URL: tc.url}
-		t.Equal(tc.expected, r.IsThumbImage(), "URL: %s", tc.url)
-	}
-}

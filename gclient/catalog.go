@@ -115,7 +115,7 @@ func readSeriesFromDocument(service *sheets.Service, documentID string) ([]catal
 // data. The columns contains the index of column names to column indices, and
 // all the required columns must be present when called. rowData is the raw row
 // data from the sheet
-func newCatalogSeriFromRow(columns map[string]int, rowData []interface{}) (catalog.CatalogSeri, error) {
+func newCatalogSeriFromRow(columns map[string]int, rowData []any) (catalog.CatalogSeri, error) {
 	seri := catalog.CatalogSeri{}
 
 	// simple mapping
@@ -167,8 +167,9 @@ const (
 	msgSeries      string = "Series Name"
 	msgSeriesIndex string = "Track"
 	msgDescription string = "Description"
-	msgAudio       string = "Audio Link"
-	msgVideo       string = "Video Link"
+	msgThumb       string = "Thumb"
+	msgAudio       string = "Audio"
+	msgVideo       string = "Video"
 	msgResources   string = "Resources"
 )
 
@@ -177,7 +178,7 @@ var requiredMessageColumns []string = []string{
 	msgSpeakers,
 	msgMinistry, msgType, msgVisibility,
 	msgSeries, msgSeriesIndex,
-	msgAudio, msgVideo,
+	msgThumb, msgAudio, msgVideo,
 	msgResources,
 }
 
@@ -260,13 +261,14 @@ func readMessagesFromSheet(service *sheets.Service, documentID string, sheetName
 // sheet data. The columns contains the index of column names to column indices,
 // and all the required columns must be present when called. rowData is the raw
 // row data from the sheet
-func newCatalogMessageFromRow(columns map[string]int, rowData []interface{}) (catalog.CatalogMessage, error) {
+func newCatalogMessageFromRow(columns map[string]int, rowData []any) (catalog.CatalogMessage, error) {
 	msg := catalog.CatalogMessage{}
 
 	// simple mapping
 	msg.Name = getCellString(rowData, columns[msgName])
 	msg.Description = getCellString(rowData, columns[msgDescription])
 
+	msg.Thumb = catalog.NewResourceFromString(getCellString(rowData, columns[msgThumb]))
 	msg.Audio = catalog.NewResourceFromString(getCellString(rowData, columns[msgAudio]))
 	msg.Video = catalog.NewResourceFromString(getCellString(rowData, columns[msgVideo]))
 
@@ -325,7 +327,7 @@ func getIndexOfColumns(service *sheets.Service, documentID string, tabName strin
 
 // getCellString takes a row of data and returns the string version of the data in
 // the index'th column of the row. Returns "" if the index is out of range
-func getCellString(rowData []interface{}, index int) string {
+func getCellString(rowData []any, index int) string {
 	if index >= len(rowData) {
 		return ""
 	}

@@ -652,9 +652,6 @@ func (cmd *catalogCmdStruct) createResourcePage(ministry catalog.Ministry) error
 	for _, seri := range seriList {
 		for _, message := range seri.Messages {
 			for _, resource := range message.Resources {
-				if resource.IsThumbImage() {
-					continue
-				}
 				seriCopy := seri.Copy()
 				resource.Seri = &seriCopy
 

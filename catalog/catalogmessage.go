@@ -27,6 +27,7 @@ type CatalogMessage struct {
 	Type        MessageType       `json:"type"`                  // category of this message
 	Visibility  View              `json:"visibility,omitempty"`  // visibility of this message
 	Series      []SeriesReference `json:"series,omitempty"`      // which series this message belongs to
+	Thumb       *OnlineResource   `json:"thumb,omitempty"`       // URL of the thumbnail
 	Audio       *OnlineResource   `json:"audio,omitempty"`       // URL of the audio file
 	Video       *OnlineResource   `json:"video,omitempty"`       // URL of the video. normally on YouTube, BitChute, Rumble, or S3
 	Resources   []OnlineResource  `json:"resources,omitempty"`   // list of online resources for this message (links, docs, video, etc)
