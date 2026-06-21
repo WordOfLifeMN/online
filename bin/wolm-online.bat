@@ -1,5 +1,5 @@
 ECHO off
-ECHO "Word of Life Ministries podcast and catalog generator"
+ECHO "Word of Life Ministries catalog generator"
 
 SET CACHE=%USERPROFILE%\.wolm\online.cache.json
 SET PODCAST=%USERPROFILE%\.wolm\online.podcast.rss.xml

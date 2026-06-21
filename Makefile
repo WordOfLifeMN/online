@@ -32,8 +32,11 @@ run-refresh:
 win-build:
 	go build -o online.exe
 
-win-dump: ## Downloads the spreadsheet to a local JSON file
+win-google-dump: ## Downloads the spreadsheet to a local JSON file
 	go run main.go -v --sheet-id=1z4XIiEPMFPpeRgGpdhshiQpmY7A45KzCyZzQ7Ohe85E dump
+
+win-excel-dump: ## Dumps the content of a local Excel file to a local JSON file
+	go run main.go -v --excel-path=testdata\test-catalog.xlsx dump
 
 win-local: ## Processes the cache created by win-dump and creates a local website in ~/.wolm/catalog
 	go run main.go -v -i  C:\Users\WordofLifeMNMedia\.wolm\online.cache.json catalog -o  C:\Users\WordofLifeMNMedia\.wolm\catalog

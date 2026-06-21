@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/WordOfLifeMN/online/catalog"
+	"github.com/WordOfLifeMN/online/excelclient"
 	"github.com/WordOfLifeMN/online/gclient"
 	"github.com/WordOfLifeMN/online/util"
 	"github.com/spf13/cobra"
@@ -45,6 +46,11 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Include logging")
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 
+	// excel-path is the path to a local Excel file
+	rootCmd.PersistentFlags().String("excel-path", "", "Path to Excel file that contains the series and messages")
+	viper.BindPFlag("excel-path", rootCmd.PersistentFlags().Lookup("excel-path"))
+
+	// sheet-id is the GUI for a Google Sheet
 	rootCmd.PersistentFlags().String("sheet-id", "", "ID of Google spreadsheet that contains the series and messages")
 	viper.BindPFlag("sheet-id", rootCmd.PersistentFlags().Lookup("sheet-id"))
 
@@ -112,6 +118,13 @@ func readOnlineContentFromInput(ctx context.Context) (*catalog.Catalog, error) {
 			return catalog.NewCatalogFromJSON(inputFile)
 		}
 		return nil, fmt.Errorf("filetype %s is not supported", inputFile)
+	}
+
+	// check if reading from excel
+	excelPath := viper.GetString("excel-path")
+	if excelPath != "" {
+		excelPath = util.NormalizePath(excelPath)
+		return excelclient.NewCatalog(excelPath)
 	}
 
 	// check if reading from Google Sheet
