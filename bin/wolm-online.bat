@@ -6,7 +6,7 @@ SET CATALOG=%USERPROFILE%\.wolm\catalog
 
 ECHO:
 ECHO Getting online content...
-C:\Users\WordofLifeMNMedia\Go\github.com\WordOfLifeMN\online\online.exe --output %CACHE% dump
+C:\Users\WordofLifeMNMedia\Go\github.com\WordOfLifeMN\online\online.exe -v --output %CACHE% dump
 
 ECHO:
 ECHO Validating online content...

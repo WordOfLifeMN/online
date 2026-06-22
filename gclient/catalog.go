@@ -176,9 +176,9 @@ const (
 var requiredMessageColumns []string = []string{
 	msgDate, msgName, msgDescription,
 	msgSpeakers,
-	msgMinistry, msgType, msgVisibility,
+	msgType, msgVisibility,
 	msgSeries, msgSeriesIndex,
-	msgThumb, msgAudio, msgVideo,
+	msgAudio, msgVideo,
 	msgResources,
 }
 
@@ -193,25 +193,32 @@ func readMessagesFromDocument(service *sheets.Service, documentID string) ([]cat
 		return messages, err
 	}
 
-	// iterate through all the sheets looking for those that start with "Messages"
+	// iterate through all the sheets: skip "_"-prefixed and "Series" tabs,
+	// treat all others as message tabs using the tab name as the default ministry
 	for _, sheet := range document.Sheets {
-		title := strings.ToLower(sheet.Properties.Title)
+		title := sheet.Properties.Title
 		log.Printf("Checking sheet %s\n", title)
-		if strings.HasPrefix(title, "messages") || strings.HasPrefix(title, "msgs") {
-			sheetMessages, err := readMessagesFromSheet(service, documentID, sheet.Properties.Title)
-			if err != nil {
-				log.Printf("Unable to read messages from sheet '%s'", sheet.Properties.Title)
-				continue
-			}
-			messages = append(messages, sheetMessages...)
+		if strings.HasPrefix(title, "_") {
+			log.Printf("Ignoring sheet '%s' (starts with '_')\n", title)
+			continue
 		}
+		if strings.EqualFold(title, "Series") {
+			continue
+		}
+		sheetMessages, err := readMessagesFromSheet(service, documentID, title, title)
+		if err != nil {
+			log.Printf("Unable to read messages from sheet '%s': %s", title, err)
+			continue
+		}
+		messages = append(messages, sheetMessages...)
 	}
 
 	return messages, nil
 }
 
-// readMessagesFromSheet reads a series of messages from a single sheet in a document
-func readMessagesFromSheet(service *sheets.Service, documentID string, sheetName string) ([]catalog.CatalogMessage, error) {
+// readMessagesFromSheet reads a series of messages from a single sheet in a document.
+// defaultMinistry is used for any message that does not have an explicit Ministry column value.
+func readMessagesFromSheet(service *sheets.Service, documentID string, sheetName string, defaultMinistry string) ([]catalog.CatalogMessage, error) {
 	log.Printf("Reading the Messages from tab '%s'\n", sheetName)
 
 	// get the first row as column titles
@@ -246,7 +253,7 @@ func readMessagesFromSheet(service *sheets.Service, documentID string, sheetName
 	// iterate through all the results, creating a new series for each one
 	log.Printf("  Found %d messages", len(values.Values))
 	for messageIndex, messageRow := range values.Values {
-		message, err := newCatalogMessageFromRow(columns, messageRow)
+		message, err := newCatalogMessageFromRow(columns, messageRow, defaultMinistry)
 		if err != nil {
 			log.Printf("Unable to read message from row %d: %s", messageIndex+2, err)
 		}
@@ -261,14 +268,16 @@ func readMessagesFromSheet(service *sheets.Service, documentID string, sheetName
 // sheet data. The columns contains the index of column names to column indices,
 // and all the required columns must be present when called. rowData is the raw
 // row data from the sheet
-func newCatalogMessageFromRow(columns map[string]int, rowData []any) (catalog.CatalogMessage, error) {
+func newCatalogMessageFromRow(columns map[string]int, rowData []any, defaultMinistry string) (catalog.CatalogMessage, error) {
 	msg := catalog.CatalogMessage{}
 
 	// simple mapping
 	msg.Name = getCellString(rowData, columns[msgName])
 	msg.Description = getCellString(rowData, columns[msgDescription])
 
-	msg.Thumb = catalog.NewResourceFromString(getCellString(rowData, columns[msgThumb]))
+	if colIdx, ok := columns[msgThumb]; ok {
+		msg.Thumb = catalog.NewResourceFromString(getCellString(rowData, colIdx))
+	}
 	msg.Audio = catalog.NewResourceFromString(getCellString(rowData, columns[msgAudio]))
 	msg.Video = catalog.NewResourceFromString(getCellString(rowData, columns[msgVideo]))
 
@@ -280,8 +289,14 @@ func newCatalogMessageFromRow(columns map[string]int, rowData []any) (catalog.Ca
 		log.Printf("WARNING: Cannot parse date '%s' for message '%s'", dString, msg.Name)
 	}
 
-	// enums
-	msg.Ministry = catalog.NewMinistryFromString(getCellString(rowData, columns[msgMinistry]))
+	// ministry: use the column value if the column exists and has a value, otherwise use the tab name
+	ministryStr := defaultMinistry
+	if colIdx, ok := columns[msgMinistry]; ok {
+		if v := getCellString(rowData, colIdx); v != "" {
+			ministryStr = v
+		}
+	}
+	msg.Ministry = catalog.NewMinistryFromString(ministryStr)
 	msg.Type = catalog.NewMessageTypeFromString(getCellString(rowData, columns[msgType]))
 	msg.Visibility = catalog.NewViewFromString(getCellString(rowData, columns[msgVisibility]))
 

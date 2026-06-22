@@ -71,7 +71,7 @@ func TestReadMessageSheet(t *testing.T) {
 	assert.NoError(t, err)
 
 	// when
-	msgs, err := readMessagesFromSheet(service, testDocumentID, "Messages")
+	msgs, err := readMessagesFromSheet(service, testDocumentID, "Messages", "Messages")
 	assert.NoError(t, err)
 
 	// then

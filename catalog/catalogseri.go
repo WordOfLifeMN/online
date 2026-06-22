@@ -68,7 +68,15 @@ type SortSeriNewestToOldest []CatalogSeri
 func (a SortSeriNewestToOldest) Len() int      { return len(a) }
 func (a SortSeriNewestToOldest) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a SortSeriNewestToOldest) Less(i, j int) bool {
-	return a[i].StartDate.Time.After(a[j].StartDate.Time)
+	di := a[i].StopDate
+	if di.IsZero() {
+		di = a[i].StartDate
+	}
+	dj := a[j].StopDate
+	if dj.IsZero() {
+		dj = a[j].StartDate
+	}
+	return di.Time.After(dj.Time)
 }
 
 // +---------------------------------------------------------------------------

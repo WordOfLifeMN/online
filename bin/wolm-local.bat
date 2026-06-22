@@ -8,7 +8,7 @@ CD C:\Users\WordofLifeMNMedia\Go\github.com\WordOfLifeMN\online
 
 ECHO:
 ECHO Getting online content...
-go run main.go --output %CACHE% dump
+go run main.go -v --output %CACHE% dump
 
 ECHO:
 ECHO Validating online content...
