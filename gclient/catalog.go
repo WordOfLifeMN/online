@@ -27,17 +27,17 @@ func NewCatalogFromSheet(service *sheets.Service, documentID string) (*catalog.C
 	}
 
 	log.Printf("Reading catalog from spreadsheet %s (ID: %s)", document.Properties.Title, documentID)
-	series, err := readSeriesFromDocument(service, documentID)
-	if err != nil {
-		return &catalog, err
-	}
-	catalog.Series = series
-
 	messages, err := readMessagesFromDocument(service, documentID)
 	if err != nil {
 		return &catalog, err
 	}
 	catalog.Messages = messages
+
+	series, err := readSeriesFromDocument(service, documentID)
+	if err != nil {
+		return &catalog, err
+	}
+	catalog.Series = series
 
 	return &catalog, nil
 }
@@ -257,7 +257,18 @@ func readMessagesFromSheet(service *sheets.Service, documentID string, sheetName
 		if err != nil {
 			log.Printf("Unable to read message from row %d: %s", messageIndex+2, err)
 		}
-		messages = append(messages, message)
+		// handle the row per the type
+		switch message.Type {
+		case catalog.Series:
+			// TODO(km) ignore series for now
+			continue
+		case catalog.Booklet:
+			// TODO(km) ignore booklets for now
+			continue
+
+		default:
+			messages = append(messages, message)
+		}
 	}
 
 	return messages, nil
