@@ -369,7 +369,7 @@ func (s *CatalogSeri) AddResourceToSeries(resource OnlineResource) {
 // a series, except it has a booklet but no messages or ID. Note that a normal series can also
 // have a booklet but a "booklet series" has no messages
 func (s *CatalogSeri) IsBooklet() bool {
-	return len(s.Booklets) > 0 && len(s.Messages) == 0 && s.ID == ""
+	return len(s.Booklets) > 0 && len(s.Messages) == 0
 }
 
 // IsMessageRelevant reports whether the specified message is relavant for this series. In order

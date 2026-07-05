@@ -533,7 +533,7 @@ func (t *CatalogSeriTestSuite) TestBooklet() {
 	// then
 	t.True(sut.IsBooklet())
 
-	// when the series has an ID
+	// when the series has an ID (booklets with IDs are still booklets)
 	sut = CatalogSeri{
 		Name: "SERIES",
 		ID:   "MY-ID",
@@ -543,7 +543,7 @@ func (t *CatalogSeriTestSuite) TestBooklet() {
 	}
 
 	// then
-	t.False(sut.IsBooklet())
+	t.True(sut.IsBooklet())
 
 	// when the series has a message
 	sut = CatalogSeri{
