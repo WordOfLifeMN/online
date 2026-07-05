@@ -10,7 +10,7 @@
 
 {{- /* message */ -}}
 {{/* Section Title for special messages */}}
-{{if eq (index .Series 0).Index 100}}
+{{if and (gt (len .Series) 0) (eq (index .Series 0).Index 100)}}
     <h2>Post-service Ministry and Q&A</h2>
 {{end}}
 
@@ -29,7 +29,7 @@
             {{/* Video */}}
             <div style="margin-bottom: 12px; min-height: 40px; min-width: 200px; text-align: center;">
                 {{if .Video}}
-                    {{if le (index .Series 0).Index $maxEmbeddedVideosPerPage}}
+                    {{if or (eq (len .Series) 0) (le (index .Series 0).Index $maxEmbeddedVideosPerPage)}}
                         {{.Video.GetEmbeddedVideo 320}}
                     {{else}}
                         <a href="{{.Video.URL}}" target="wolmVideo">
