@@ -90,6 +90,174 @@ func (t *CatalogTestSuite) TestNewCatalogSeriFromMessageRow_Booklet() {
 	t.Empty(seri.Thumbnail)
 }
 
+func (t *CatalogTestSuite) TestGetCellString() {
+	row := []any{"hello", "  world  ", 42}
+	t.Equal("hello", getCellString(row, 0))
+	t.Equal("world", getCellString(row, 1)) // trims whitespace
+	t.Equal("42", getCellString(row, 2))    // non-string value coerced via fmt
+	t.Equal("", getCellString(row, 99))     // out-of-range returns empty
+	t.Equal("", getCellString(nil, 0))      // nil slice returns empty
+}
+
+func seriColumnsForTest() map[string]int {
+	return map[string]int{
+		"Name": 0, "ID": 1, "Description": 2,
+		"Date Started": 3, "Date Ended": 4,
+		"Visibility": 5, "Booklets": 6,
+		"CD Jacket": 7, "DVD Jacket": 8, "Cover Art": 9,
+	}
+}
+
+func (t *CatalogTestSuite) TestNewCatalogSeriFromRow_BasicFields() {
+	rowData := []any{
+		"My Series", "SER-001", "A great series",
+		"2020-01-05", "2020-03-01",
+		"public", "", "", "", "http://thumb.jpg",
+	}
+
+	seri, err := newCatalogSeriFromRow(seriColumnsForTest(), rowData)
+	t.NoError(err)
+	t.Equal("My Series", seri.Name)
+	t.Equal("SER-001", seri.ID)
+	t.Equal("A great series", seri.Description)
+	t.Equal(catalog.MustParseDateOnly("2020-01-05"), seri.StartDate)
+	t.Equal(catalog.MustParseDateOnly("2020-03-01"), seri.StopDate)
+	t.Equal(catalog.Public, seri.Visibility)
+	t.Equal("http://thumb.jpg", seri.Thumbnail)
+}
+
+func (t *CatalogTestSuite) TestNewCatalogSeriFromRow_EmptyDates() {
+	// empty date strings → zero DateOnly values, not errors
+	rowData := []any{"My Series", "SER-001", "", "", "", "public", "", "", "", ""}
+
+	seri, err := newCatalogSeriFromRow(seriColumnsForTest(), rowData)
+	t.NoError(err)
+	t.True(seri.StartDate.IsZero())
+	t.True(seri.StopDate.IsZero())
+}
+
+func (t *CatalogTestSuite) TestNewCatalogSeriFromRow_InvalidDates() {
+	// unparseable date strings → zero DateOnly values, no error returned
+	rowData := []any{"My Series", "SER-001", "", "not-a-date", "also-bad", "public", "", "", "", ""}
+
+	seri, err := newCatalogSeriFromRow(seriColumnsForTest(), rowData)
+	t.NoError(err)
+	t.True(seri.StartDate.IsZero())
+	t.True(seri.StopDate.IsZero())
+}
+
+func (t *CatalogTestSuite) TestNewCatalogSeriFromRow_JacketFallback() {
+	columns := seriColumnsForTest()
+	base := []any{"name", "id", "desc", "", "", "public", "", "", "", ""}
+
+	// DVD and CD both set: DVD wins
+	row := append([]any{}, base...)
+	row[7], row[8] = "cd.jpg", "dvd.jpg"
+	seri, err := newCatalogSeriFromRow(columns, row)
+	t.NoError(err)
+	t.Equal("dvd.jpg", seri.Jacket)
+
+	// DVD absent, CD set: falls back to CD
+	row = append([]any{}, base...)
+	row[7] = "cd.jpg"
+	seri, err = newCatalogSeriFromRow(columns, row)
+	t.NoError(err)
+	t.Equal("cd.jpg", seri.Jacket)
+
+	// Both absent: empty jacket
+	seri, err = newCatalogSeriFromRow(columns, base)
+	t.NoError(err)
+	t.Empty(seri.Jacket)
+}
+
+func msgColumnsForTest() map[string]int {
+	return map[string]int{
+		"Date": 0, "Name": 1, "Description": 2,
+		"Speaker": 3, "Type": 4, "Visibility": 5,
+		"Series Name": 6, "Track": 7,
+		"Audio": 8, "Video": 9, "Resources": 10,
+		// "Ministry" and "Thumb" intentionally omitted to test optional-column paths
+	}
+}
+
+func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_NoThumbColumn() {
+	// Thumb column absent from the columns map → msg.Thumb must be nil
+	rowData := []any{
+		"2021-06-01", "Test Message", "A description",
+		"Speaker One", "message", "public",
+		"", "", "", "", "",
+	}
+
+	msg, err := newCatalogMessageFromRow(msgColumnsForTest(), rowData, "wol")
+	t.NoError(err)
+	t.Nil(msg.Thumb)
+}
+
+func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_DefaultMinistry() {
+	rowData := []any{
+		"2021-06-01", "Test Message", "",
+		"", "message", "public",
+		"", "", "", "", "",
+	}
+
+	// No Ministry column → defaultMinistry is used
+	msg, err := newCatalogMessageFromRow(msgColumnsForTest(), rowData, "wol")
+	t.NoError(err)
+	t.Equal(catalog.WordOfLife, msg.Ministry)
+
+	// Ministry column present but cell is empty → still falls back to defaultMinistry
+	columnsWithMinistry := msgColumnsForTest()
+	columnsWithMinistry["Ministry"] = 11
+	rowWithEmptyMinistry := append(append([]any{}, rowData...), "")
+
+	msg, err = newCatalogMessageFromRow(columnsWithMinistry, rowWithEmptyMinistry, "wol")
+	t.NoError(err)
+	t.Equal(catalog.WordOfLife, msg.Ministry)
+}
+
+func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_MinistryFromColumn() {
+	// Ministry column present with non-empty value → overrides defaultMinistry
+	columns := msgColumnsForTest()
+	columns["Ministry"] = 11
+	rowData := []any{
+		"2021-06-01", "Test Message", "",
+		"", "message", "public",
+		"", "", "", "", "", "tbo",
+	}
+
+	msg, err := newCatalogMessageFromRow(columns, rowData, "wol")
+	t.NoError(err)
+	t.Equal(catalog.TheBridgeOutreach, msg.Ministry)
+}
+
+func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_MultipleSpeakers() {
+	rowData := []any{
+		"2021-06-01", "Test Message", "",
+		"Alice;Bob;Charlie", "message", "public",
+		"", "", "", "", "",
+	}
+
+	msg, err := newCatalogMessageFromRow(msgColumnsForTest(), rowData, "wol")
+	t.NoError(err)
+	t.Len(msg.Speakers, 3)
+	t.Equal("Alice", msg.Speakers[0])
+	t.Equal("Bob", msg.Speakers[1])
+	t.Equal("Charlie", msg.Speakers[2])
+}
+
+func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_InvalidDate() {
+	// unparseable date → zero DateOnly, no error returned
+	rowData := []any{
+		"not-a-date", "Test Message", "",
+		"", "message", "public",
+		"", "", "", "", "",
+	}
+
+	msg, err := newCatalogMessageFromRow(msgColumnsForTest(), rowData, "wol")
+	t.NoError(err)
+	t.True(msg.Date.IsZero())
+}
+
 // +---------------------------------------------------------------------------
 // | Integration tests (require Google API)
 // +---------------------------------------------------------------------------
@@ -198,4 +366,15 @@ func (t *CatalogTestSuite) TestReadMessagesFromDocument() {
 		t.Equal(util.ComputeHash(s.Name), s.ID,
 			"series %q should have a hash-based ID", s.Name)
 	}
+}
+
+func (t *CatalogTestSuite) TestNewCatalogFromSheet() {
+	// when
+	cat, err := NewCatalogFromSheet(t.service, testDocumentID)
+
+	// then
+	t.NoError(err)
+	t.NotNil(cat)
+	t.NotEmpty(cat.Messages)
+	t.NotEmpty(cat.Series)
 }
