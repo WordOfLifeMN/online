@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,6 +28,7 @@ type CatalogMessage struct {
 	Type        MessageType       `json:"type"`                  // category of this message
 	Visibility  View              `json:"visibility,omitempty"`  // visibility of this message
 	Series      []SeriesReference `json:"series,omitempty"`      // which series this message belongs to
+	Thumb       *OnlineResource   `json:"thumb,omitempty"`       // URL of the thumbnail
 	Audio       *OnlineResource   `json:"audio,omitempty"`       // URL of the audio file
 	Video       *OnlineResource   `json:"video,omitempty"`       // URL of the video. normally on YouTube, BitChute, Rumble, or S3
 	Resources   []OnlineResource  `json:"resources,omitempty"`   // list of online resources for this message (links, docs, video, etc)
@@ -36,6 +38,8 @@ type CatalogMessage struct {
 // transcript cache is a map of year to list of available transcript names. the list of names is
 // just the message name, which is the base name of the transcript file without extension
 var transcriptCache map[int][]string
+var transcriptCacheOnce sync.Once
+var transcriptCacheMu sync.Mutex
 
 // +---------------------------------------------------------------------------
 // | Constructors
@@ -174,16 +178,10 @@ func (m *CatalogMessage) HasTranscript() bool {
 		return false
 	}
 
-	// load the transcript cache for this year if needed
-	if transcriptCache == nil {
-		transcriptCache = make(map[int][]string)
-	}
-	yearMessages, ok := transcriptCache[m.Date.Year()]
-	if !ok {
-		log.Printf("(Researching transcripts for %d)", m.Date.Year())
-		yearMessages = m.LoadTranscriptCacheForYear(m.Date.Year())
-		transcriptCache[m.Date.Year()] = yearMessages
-	}
+	// on first call, load all years 2005-current in parallel
+	transcriptCacheOnce.Do(m.LoadTranscriptsCache)
+
+	yearMessages := transcriptCache[m.Date.Year()]
 	if len(yearMessages) == 0 {
 		return false
 	}
@@ -203,6 +201,24 @@ func (m *CatalogMessage) HasTranscript() bool {
 	// 	time.Sleep(4 * time.Second)
 	// }
 	return slices.Contains(yearMessages, audioName)
+}
+
+// LoadTranscriptsCache loads the transcript cache for all years from 2005 to the current year
+// in parallel. This is called once (via sync.Once) on the first HasTranscript call.
+func (m *CatalogMessage) LoadTranscriptsCache() {
+	transcriptCache = make(map[int][]string)
+	currentYear := time.Now().Year()
+	var wg sync.WaitGroup
+	for year := 2005; year <= currentYear; year++ {
+		wg.Go(func() {
+			log.Printf("(Researching transcripts for %d)", year)
+			names := m.LoadTranscriptCacheForYear(year)
+			transcriptCacheMu.Lock()
+			transcriptCache[year] = names
+			transcriptCacheMu.Unlock()
+		})
+	}
+	wg.Wait()
 }
 
 // LoadTranscriptCacheForYear loads the transcript cache for the specified year. Given the year,

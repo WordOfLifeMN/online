@@ -121,7 +121,7 @@ func (t *CatalogCmdTestSuite) TestSeriTemplate() {
 	t.Contains(buf.String(), "MESSAGE-B")
 	// header and footer
 	t.Contains(buf.String(), `content="WORD OF LIFE MINISTRIES"`)
-	t.Contains(buf.String(), `&copy; Word of Life Ministries 2012`)
+	t.Contains(buf.String(), `&copy; Word of Life Ministries`)
 }
 
 func (t *CatalogCmdTestSuite) TestSeriPage() {

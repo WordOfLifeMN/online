@@ -1,13 +1,12 @@
 ECHO off
-ECHO "Word of Life Ministries podcast and catalog generator"
+ECHO "Word of Life Ministries catalog generator"
 
 SET CACHE=%USERPROFILE%\.wolm\online.cache.json
-SET PODCAST=%USERPROFILE%\.wolm\online.podcast.rss.xml
 SET CATALOG=%USERPROFILE%\.wolm\catalog
 
 ECHO:
 ECHO Getting online content...
-C:\Users\WordofLifeMNMedia\Go\github.com\WordOfLifeMN\online\online.exe --output %CACHE% dump
+C:\Users\WordofLifeMNMedia\Go\github.com\WordOfLifeMN\online\online.exe -v --output %CACHE% dump
 
 ECHO:
 ECHO Validating online content...
@@ -16,11 +15,6 @@ IF %errorlevel% NEQ 0 (
     pause
     EXIT /b %errorlevel%
 )
-
-REM ECHO:
-REM ECHO Generating and uploading podcast...
-REM C:\Users\WordofLifeMNMedia\Go\github.com\WordOfLifeMN\online\online.exe --input %CACHE% --output %PODCAST% podcast
-REM aws s3 cp --acl=public-read %USERPROFILE%\.wolm\online.podcast.rss.xml s3://wordoflife.mn.podcast/wolmn-service-podcast.rss.xml
 
 ECHO:
 ECHO Generating and uploading online catalog...

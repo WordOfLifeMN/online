@@ -31,6 +31,7 @@ func (t *CatalogSeriTestSuite) TestNewSeriesFromStandAloneMessage() {
 		Description: "A DESCRIPTION",
 		Visibility:  Partner,
 		Speakers:    []string{"OLLIE", "SVEN"},
+		Thumb:       &OnlineResource{URL: "http://thumb-ollie.jpg", Name: "Ollie Thumb"},
 		Resources: []OnlineResource{
 			{URL: "http://ollie.png", Name: "Ollie Portrait"},
 			{URL: "http://sven.png", Name: "Sven Portrait"},
@@ -48,6 +49,7 @@ func (t *CatalogSeriTestSuite) TestNewSeriesFromStandAloneMessage() {
 	t.Equal([]string{"OLLIE", "SVEN"}, sut.Speakers)
 	t.Equal(Partner, sut.Visibility)
 	t.Equal(State_Complete, sut.State)
+	t.Equal("http://thumb-ollie.jpg", sut.Thumbnail)
 
 	// resources
 	t.Nil(sut.Booklets)
@@ -64,28 +66,6 @@ func (t *CatalogSeriTestSuite) TestNewSeriesFromStandAloneMessage() {
 	// verify message in series is not the message used for the copy
 	t.NotSame(&sut.Messages[0], &msg)
 	t.Len(msg.Series, 0)
-}
-
-func (t *CatalogSeriTestSuite) TestNewSeriesFromMessage_ThumbResourceSetsThumbnail() {
-	// given: a message with a mix of regular resources and a thumb image
-	msg := CatalogMessage{
-		Date:       MustParseDateOnly("2006-07-08"),
-		Name:       "A MESSAGE",
-		Visibility: Public,
-		Resources: []OnlineResource{
-			{URL: "http://example.com/notes.pdf", Name: "Notes"},
-			{URL: "http://example.com/thumb-my-message.jpg", Name: "Thumbnail"},
-		},
-	}
-
-	// when
-	sut := NewSeriesFromMessage(&msg)
-
-	// then: thumbnail is set from the thumb- resource
-	t.Equal("http://example.com/thumb-my-message.jpg", sut.Thumbnail)
-	// and: thumb image is excluded from the resource list
-	t.Len(sut.Resources, 1)
-	t.Equal("Notes", sut.Resources[0].Name)
 }
 
 func (t *CatalogSeriTestSuite) TestNewSeriesFromMessage_NoThumbResource() {
@@ -553,7 +533,7 @@ func (t *CatalogSeriTestSuite) TestBooklet() {
 	// then
 	t.True(sut.IsBooklet())
 
-	// when the series has an ID
+	// when the series has an ID (booklets with IDs are still booklets)
 	sut = CatalogSeri{
 		Name: "SERIES",
 		ID:   "MY-ID",
@@ -563,7 +543,7 @@ func (t *CatalogSeriTestSuite) TestBooklet() {
 	}
 
 	// then
-	t.False(sut.IsBooklet())
+	t.True(sut.IsBooklet())
 
 	// when the series has a message
 	sut = CatalogSeri{

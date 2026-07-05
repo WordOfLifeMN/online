@@ -68,7 +68,15 @@ type SortSeriNewestToOldest []CatalogSeri
 func (a SortSeriNewestToOldest) Len() int      { return len(a) }
 func (a SortSeriNewestToOldest) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a SortSeriNewestToOldest) Less(i, j int) bool {
-	return a[i].StartDate.Time.After(a[j].StartDate.Time)
+	di := a[i].StopDate
+	if di.IsZero() {
+		di = a[i].StartDate
+	}
+	dj := a[j].StopDate
+	if dj.IsZero() {
+		dj = a[j].StartDate
+	}
+	return di.Time.After(dj.Time)
 }
 
 // +---------------------------------------------------------------------------
@@ -82,13 +90,8 @@ func NewSeriesFromMessage(msg *CatalogMessage) CatalogSeri {
 	seri.Name = msg.Name
 	seri.Description = msg.Description
 	seri.Visibility = msg.Visibility
-
-	// use a thumb image resource as the series thumbnail if present
-	for _, resource := range msg.Resources {
-		if resource.IsThumbImage() {
-			seri.Thumbnail = resource.URL
-			break
-		}
+	if msg.Thumb != nil {
+		seri.Thumbnail = (*msg.Thumb).URL
 	}
 
 	// create a copy of the message for this seri
@@ -350,9 +353,6 @@ func (s *CatalogSeri) AddSpeakerToSeries(speaker string) {
 // AddResourceToSeries adds a resource to the list of series and message resources if it isn't
 // already in the list
 func (s *CatalogSeri) AddResourceToSeries(resource OnlineResource) {
-	if resource.IsThumbImage() {
-		return
-	}
 	for _, existing := range s.Resources {
 		if existing.URL == resource.URL {
 			return
@@ -369,7 +369,7 @@ func (s *CatalogSeri) AddResourceToSeries(resource OnlineResource) {
 // a series, except it has a booklet but no messages or ID. Note that a normal series can also
 // have a booklet but a "booklet series" has no messages
 func (s *CatalogSeri) IsBooklet() bool {
-	return len(s.Booklets) > 0 && len(s.Messages) == 0 && s.ID == ""
+	return len(s.Booklets) > 0 && len(s.Messages) == 0
 }
 
 // IsMessageRelevant reports whether the specified message is relavant for this series. In order

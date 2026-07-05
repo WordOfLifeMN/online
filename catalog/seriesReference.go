@@ -33,13 +33,13 @@ type SeriesReference struct {
 func NewSeriesReferencesFromStrings(names string, tracks string) []SeriesReference {
 	// parse names
 	nameList := []string{}
-	for _, name := range strings.Split(names, ";") {
+	for name := range strings.SplitSeq(names, ";") {
 		nameList = append(nameList, strings.TrimSpace(name))
 	}
 
 	// parse tracks
 	trackList := []int{}
-	for _, track := range strings.Split(tracks, ";") {
+	for track := range strings.SplitSeq(tracks, ";") {
 		track = strings.TrimSpace(track)
 		if trackNumber, err := strconv.Atoi(track); err == nil {
 			trackList = append(trackList, trackNumber)
@@ -64,7 +64,7 @@ func NewSeriesReferencesFromStrings(names string, tracks string) []SeriesReferen
 		if index < len(trackList) {
 			seriesRef.Index = trackList[index]
 		} else {
-			seriesRef.Index = trackList[len(trackList)-1]
+			seriesRef.Index = trackList[len(trackList)-1] // TODO(km) should be 0
 		}
 		seriesRefs = append(seriesRefs, seriesRef)
 	}
