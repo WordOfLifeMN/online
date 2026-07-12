@@ -311,11 +311,12 @@ func newCatalogSeriFromMessageRow(msg catalog.CatalogMessage) catalog.CatalogSer
 	}
 	seri.ID = util.ComputeHash(msg.Name)
 
-	if msg.Type == catalog.Booklet {
-		seri.Booklets = msg.Resources
-	} else {
-		seri.Resources = msg.Resources
-	}
+	// Resources on the row become booklets so they appear on the booklet page.
+	// A Booklet row is only a booklet. A Series row still becomes a full series once
+	// its messages are attached in Catalog.Initialize(); the booklets ride along via
+	// seri.Booklets, which Normalize() preserves. A Series row with no resources has
+	// an empty Booklets slice and remains a plain series.
+	seri.Booklets = msg.Resources
 
 	return seri
 }

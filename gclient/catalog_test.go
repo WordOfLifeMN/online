@@ -58,9 +58,10 @@ func (t *CatalogTestSuite) TestNewCatalogSeriFromMessageRow_Series() {
 	t.Equal(catalog.Public, seri.Visibility)
 	t.Equal("http://thumb.png", seri.Thumbnail)
 	t.Equal(util.ComputeHash("Grace and Truth"), seri.ID)
-	// resources go to Resources, not Booklets
-	t.Len(seri.Resources, 1)
-	t.Empty(seri.Booklets)
+	// resources on a series row also become booklets
+	t.Len(seri.Booklets, 1)
+	t.Equal("http://notes.pdf", seri.Booklets[0].URL)
+	t.Empty(seri.Resources)
 	// dates left zero for Normalize() to compute later
 	t.True(seri.StartDate.IsZero())
 	t.True(seri.StopDate.IsZero())
