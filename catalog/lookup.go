@@ -19,8 +19,15 @@ type MessageLookup struct {
 	Track int // 0 means "not supplied"
 }
 
-// AmbiguousLookupError reports that a lookup matched more than one message and no
-// track number resolved it. It lists the candidates so the operator can pick one.
+// AmbiguousLookupError reports that a lookup matched more than one message and
+// nothing available resolved it. It carries the candidates so the caller can ask the
+// operator to choose.
+//
+// Track number alone is not enough in practice. Measured against the live catalog for
+// 2024 onward, 60 (date, type) groups are ambiguous and only 21 of them have distinct
+// non-zero tracks. The rest are things like a message and its Q&A session, or several
+// candidate interviews on one date, which all carry track 0 because they are not in a
+// series. That is why the caller is expected to resolve this interactively.
 type AmbiguousLookupError struct {
 	Lookup     MessageLookup
 	Candidates []CatalogMessage
@@ -33,19 +40,37 @@ func (e *AmbiguousLookupError) Error() string {
 		fmt.Fprintf(&b, "no message on %s of type %q has track %d. candidates are:",
 			e.Lookup.Date.String(), string(e.Lookup.Type), e.Lookup.Track)
 	} else {
-		fmt.Fprintf(&b, "%d messages on %s are of type %q. re-run with a track number to say which:",
+		fmt.Fprintf(&b, "%d messages on %s are of type %q:",
 			len(e.Candidates), e.Lookup.Date.String(), string(e.Lookup.Type))
 	}
 
 	for _, msg := range e.Candidates {
-		track := 0
-		if len(msg.Series) > 0 {
-			track = msg.Series[0].Index
-		}
-		fmt.Fprintf(&b, "\n  track %d: %s", track, msg.Name)
+		fmt.Fprintf(&b, "\n  %s", msg.DescribeForChoice())
 	}
 
 	return b.String()
+}
+
+// DescribeForChoice renders a message as one line of a disambiguation list
+func (m *CatalogMessage) DescribeForChoice() string {
+	track := 0
+	if len(m.Series) > 0 {
+		track = m.Series[0].Index
+	}
+
+	desc := m.Name
+	if len(m.Series) > 0 && m.Series[0].Name != "" {
+		desc += fmt.Sprintf("  [%s", m.Series[0].Name)
+		if track > 0 {
+			desc += fmt.Sprintf(", track %d", track)
+		}
+		desc += "]"
+	}
+	if speakers := m.SpeakerString(); speakers != "" {
+		desc += "  (" + speakers + ")"
+	}
+
+	return desc
 }
 
 // NotFoundLookupError reports that nothing in the catalog matched the lookup. This is
@@ -106,16 +131,23 @@ func (c *Catalog) FindMessage(lookup MessageLookup) (*CatalogMessage, *CatalogSe
 
 // withSeries pairs a message with the series it belongs to, if any
 func (c *Catalog) withSeries(msg *CatalogMessage) (*CatalogMessage, *CatalogSeri, error) {
-	if len(msg.Series) == 0 {
-		return msg, nil, nil
+	return msg, c.FindSeriesForMessage(msg), nil
+}
+
+// FindSeriesForMessage returns the series a message belongs to, or nil if it is not in
+// one. Exported so that a caller which resolved an AmbiguousLookupError by asking the
+// operator can pair their choice with its series.
+func (c *Catalog) FindSeriesForMessage(msg *CatalogMessage) *CatalogSeri {
+	if msg == nil || len(msg.Series) == 0 {
+		return nil
 	}
 
 	seri, ok := c.FindSeriByName(msg.Series[0].Name)
 	if !ok {
 		// the message names a series the catalog doesn't define. that is a catalog
 		// consistency problem for 'check' to report, not a reason to fail publishing.
-		return msg, nil, nil
+		return nil
 	}
 
-	return msg, seri, nil
+	return seri
 }

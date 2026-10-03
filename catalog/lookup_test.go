@@ -173,6 +173,64 @@ func (t *LookupTestSuite) TestTrack_MatchesNothing() {
 	t.Contains(err.Error(), "track 5")
 }
 
+// TestTrack_CannotResolveZeroTracks covers the shape that track numbers genuinely
+// cannot disambiguate, and which is common in the live catalog: a message and its Q&A
+// session on the same date, neither in a series, so both carry track 0. Measured over
+// 2024+, 39 of 60 ambiguous groups look like this. The lookup must surface the
+// candidates for the operator to choose between rather than guess.
+func (t *LookupTestSuite) TestTrack_CannotResolveZeroTracks() {
+	cat := &Catalog{
+		Messages: []CatalogMessage{
+			{
+				Name: "Power of Prayer", Date: MustParseDateOnly("2026-05-17"), Type: Message,
+				Ministry: WordOfLife, Visibility: Public,
+			},
+			{
+				Name: "Power of Prayer: Q&A", Date: MustParseDateOnly("2026-05-17"), Type: Message,
+				Ministry: WordOfLife, Visibility: Public,
+			},
+		},
+	}
+
+	// no track supplied
+	_, _, err := cat.FindMessage(MessageLookup{
+		Date: MustParseDateOnly("2026-05-17"),
+		Type: Message,
+	})
+	t.Error(err)
+
+	var ambiguous *AmbiguousLookupError
+	t.ErrorAs(err, &ambiguous)
+	t.Len(ambiguous.Candidates, 2)
+
+	// supplying a track cannot help: neither candidate has one
+	_, _, err = cat.FindMessage(MessageLookup{
+		Date:  MustParseDateOnly("2026-05-17"),
+		Type:  Message,
+		Track: 1,
+	})
+	t.ErrorAs(err, &ambiguous)
+	t.Len(ambiguous.Candidates, 2)
+}
+
+func (t *LookupTestSuite) TestDescribeForChoice() {
+	// a message in a series shows the series and track
+	inSeries := CatalogMessage{
+		Name:     "Offense, Part 1",
+		Speakers: []string{"Pastor Vern Peltz"},
+		Series:   []SeriesReference{{Name: "Offense", Index: 1}},
+	}
+	t.Equal("Offense, Part 1  [Offense, track 1]  (Pastor Vern Peltz)",
+		inSeries.DescribeForChoice())
+
+	// a standalone message shows neither
+	standalone := CatalogMessage{
+		Name:     "Power of Prayer: Q&A",
+		Speakers: []string{"Pastor Vern Peltz"},
+	}
+	t.Equal("Power of Prayer: Q&A  (Pastor Vern Peltz)", standalone.DescribeForChoice())
+}
+
 func (t *LookupTestSuite) TestFindMessage_MessageWithNoSeries() {
 	cat := &Catalog{
 		Messages: []CatalogMessage{

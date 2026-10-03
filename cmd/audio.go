@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/WordOfLifeMN/online/catalog"
@@ -231,11 +232,60 @@ func buildUploadPacket(info *MessageInfo) (*UploadPacket, error) {
 		Type:  msgType,
 		Track: viper.GetInt("track"),
 	})
+
+	// several messages share this date and type. the track number often cannot tell
+	// them apart - a message and its Q&A, or several interviews on one date, all carry
+	// track 0 - so ask rather than guess.
+	var ambiguous *catalog.AmbiguousLookupError
+	if errors.As(err, &ambiguous) {
+		chosen := promptUserForMessageChoice(ambiguous)
+		if chosen == nil {
+			return nil, err
+		}
+		msg, seri, err = chosen, cat.FindSeriesForMessage(chosen), nil
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	return NewUploadPacket(msg, seri, info.Summary, getThumbnailPath(info.VideoPath))
+}
+
+// promptUserForMessageChoice asks which of several equally-matching spreadsheet rows
+// describes the video being processed. Returns nil if the operator declines to choose.
+func promptUserForMessageChoice(ambiguous *catalog.AmbiguousLookupError) *catalog.CatalogMessage {
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Printf("\n%d spreadsheet rows match %s / %s:\n",
+		len(ambiguous.Candidates),
+		ambiguous.Lookup.Date.String(),
+		string(ambiguous.Lookup.Type))
+	for index := range ambiguous.Candidates {
+		fmt.Printf("  %d. %s\n", index+1, ambiguous.Candidates[index].DescribeForChoice())
+	}
+
+	for {
+		fmt.Printf("Which one is this video [1-%d, or blank to skip]? ",
+			len(ambiguous.Candidates))
+		answer, err := reader.ReadString('\n')
+		if err != nil && strings.TrimSpace(answer) == "" {
+			// stdin closed or unreadable - treat as a skip rather than looping forever
+			fmt.Println()
+			return nil
+		}
+		answer = strings.Trim(answer, "\"' \r\n")
+		if answer == "" {
+			return nil
+		}
+
+		choice, err := strconv.Atoi(answer)
+		if err != nil || choice < 1 || choice > len(ambiguous.Candidates) {
+			fmt.Printf("Please enter a number between 1 and %d.\n", len(ambiguous.Candidates))
+			continue
+		}
+
+		return &ambiguous.Candidates[choice-1]
+	}
 }
 
 // getThumbnailPath returns the local thumbnail to upload with the video, if one sits
