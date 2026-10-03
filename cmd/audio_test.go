@@ -25,6 +25,8 @@ func (t *AudioTestSuite) withStdin(input string, fn func()) {
 	t.Require().NoError(err)
 
 	os.Stdin = reader
+	resetStdin()
+	defer resetStdin()
 	go func() {
 		writer.WriteString(input)
 		writer.Close()

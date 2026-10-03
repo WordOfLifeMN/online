@@ -87,38 +87,38 @@ func init() {
 func audio(cmd *cobra.Command, args []string) error {
 	initLogging()
 
+	// read the spreadsheet once up front, before any questions, so that the questions
+	// about each video can be answered from it
+	cat := readCatalogForLookup(cmd.Context())
+
+	printAudioBanner()
+
+	// Gather the videos and ask about each one as it is entered. Everything that needs
+	// an answer is asked before the slow work starts, so the operator is not called
+	// back to the keyboard twenty minutes into a transcription - but the questions
+	// about a video must immediately follow that video, or there is no way to tell
+	// which answer belongs to which file.
 	var infos []*MessageInfo
 
-	var videoPaths []string
 	if len(args) == 0 {
-		// prompt user for video files until there are no more
 		for {
 			videoPath := getInputVideo("")
 			if videoPath == "" {
-				if len(videoPaths) == 0 {
+				if len(infos) == 0 {
 					// no videos at all
 					fmt.Println("No input files, exiting")
 					return nil
 				}
-				// user is done inputting videos
+				// user is done entering videos
 				break
 			}
-			videoPaths = append(videoPaths, videoPath)
+			infos = append(infos, newMessageInfo(videoPath, cat))
 		}
 	} else {
 		// validate the video file arguments
 		for _, arg := range args {
-			videoPaths = append(videoPaths, getInputVideo(arg))
+			infos = append(infos, newMessageInfo(getInputVideo(arg), cat))
 		}
-	}
-
-	// read the spreadsheet once for all the videos, rather than once per video
-	cat := readCatalogForLookup(cmd.Context())
-
-	// ask everything that needs an answer before starting the slow work, so the
-	// operator is not called back to the keyboard twenty minutes into a transcription
-	for _, videoPath := range videoPaths {
-		infos = append(infos, newMessageInfo(videoPath, cat))
 	}
 
 	// process all the video files
@@ -132,15 +132,63 @@ func audio(cmd *cobra.Command, args []string) error {
 	return err
 }
 
+// stdinReader is the one buffered reader over standard input.
+//
+// Every prompt must share it. A bufio.Reader reads ahead in blocks, so a second
+// reader over the same file descriptor finds that the first one has already consumed
+// the bytes it wanted. With a terminal this is usually invisible, because input
+// arrives a line at a time; with redirected input the first prompt swallows the whole
+// stream and every later prompt sees EOF.
+var stdinReader *bufio.Reader
+
+// getStdin returns the shared reader, creating it on first use. It is created lazily
+// rather than at startup so that a test can replace os.Stdin and call resetStdin.
+func getStdin() *bufio.Reader {
+	if stdinReader == nil {
+		stdinReader = bufio.NewReader(os.Stdin)
+	}
+	return stdinReader
+}
+
+// resetStdin drops the shared reader so the next prompt picks up the current
+// os.Stdin. For tests.
+func resetStdin() {
+	stdinReader = nil
+}
+
+// printAudioBanner explains the input loop before the first prompt
+func printAudioBanner() {
+	fmt.Printf("\n")
+	fmt.Printf("╭───────────────────────────────────────────────────────────────────────────────────┄┄\n")
+	fmt.Printf("│ Prepare messages for YouTube\n")
+	fmt.Printf("│\n")
+	fmt.Printf("│ Drag an edited video into this window and press Enter. You will be asked\n")
+	fmt.Printf("│ about that video before being asked for the next one.\n")
+	fmt.Printf("│\n")
+	fmt.Printf("│ Press Enter on an empty line when there are no more videos.\n")
+	fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
+	fmt.Printf("\n")
+}
+
 // newMessageInfo creates the record for one video: finds its spreadsheet row, then
 // resolves the speaker. Both may ask the operator a question, which is why this runs
-// before any extraction or transcription.
+// before any extraction or transcription - and why it runs immediately after the
+// video is entered, so the questions stay attached to the file they are about.
 func newMessageInfo(videoPath string, cat *catalog.Catalog) *MessageInfo {
 	info := MessageInfo{VideoPath: videoPath}
+
+	// name the video the questions are about, so a run covering several services
+	// cannot leave the operator guessing which answer applies to which file
+	fmt.Printf("\n── %s\n", filepath.Base(videoPath))
 
 	info.Message, info.Seri, info.PacketError = findMessageForVideo(videoPath, cat)
 	if info.PacketError != nil {
 		log.Printf("No spreadsheet row for %s: %s", filepath.Base(videoPath), info.PacketError)
+		fmt.Printf("   No spreadsheet row: %s\n", info.PacketError)
+	} else {
+		// show the row the answers are coming from, so the speaker default below is
+		// not an unexplained suggestion
+		fmt.Printf("   Spreadsheet: %s\n", info.Message.DescribeForChoice())
 	}
 
 	info.SpeakerName = resolveSpeaker(videoPath, info.Message)
@@ -152,6 +200,9 @@ func newMessageInfo(videoPath string, cat *catalog.Catalog) *MessageInfo {
 // here is not fatal - the transcript, title and summary are still worth producing - so
 // it warns and returns nil rather than stopping.
 func readCatalogForLookup(ctx context.Context) *catalog.Catalog {
+	// this takes a couple of seconds and is otherwise silent without --verbose
+	fmt.Printf("Reading the spreadsheet...\n")
+
 	cat, err := readOnlineContentFromInput(ctx)
 	if err != nil {
 		fmt.Printf("WARNING: could not read the spreadsheet: %s\n", err)
@@ -328,7 +379,7 @@ func processOneAudio(info *MessageInfo) error {
 // promptUserForMessageChoice asks which of several equally-matching spreadsheet rows
 // describes the video being processed. Returns nil if the operator declines to choose.
 func promptUserForMessageChoice(ambiguous *catalog.AmbiguousLookupError) *catalog.CatalogMessage {
-	reader := bufio.NewReader(os.Stdin)
+	reader := getStdin()
 
 	fmt.Printf("\n%d spreadsheet rows match %s / %s:\n",
 		len(ambiguous.Candidates),
@@ -470,7 +521,7 @@ func PromtUserForInputFile(path string, allowedExts ...string) string {
 		allowedExts[i] = "." + strings.TrimPrefix(ext, ".")
 	}
 
-	reader := bufio.NewReader(os.Stdin)
+	reader := getStdin()
 
 	// get the input video file
 	for filePath := strings.Trim(path, "\"' \r\n"); ; filePath = "" {
@@ -544,7 +595,7 @@ func deleteExistingFile(audioPath string, prompt bool) error {
 
 	// audio does exist
 	if prompt {
-		reader := bufio.NewReader(os.Stdin)
+		reader := getStdin()
 		fmt.Printf("File %s exists.\nDo you want to overwrite it [Y/n]?",
 			audioPath)
 		a, _ := reader.ReadString('\n')
@@ -566,7 +617,7 @@ func deleteExistingFile(audioPath string, prompt bool) error {
 }
 
 func PromptUserForSpeaker(defaultSpeaker string) string {
-	reader := bufio.NewReader(os.Stdin)
+	reader := getStdin()
 	fmt.Printf("Who is the speaker [Default:%s/Vern(v)/Mary(m)/Other]?\n", defaultSpeaker)
 	name, _ := reader.ReadString('\n')
 	name = strings.Trim(name, "\"' \r\n")
