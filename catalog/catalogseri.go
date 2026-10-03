@@ -261,27 +261,6 @@ func (s *CatalogSeri) GetID() string {
 	return s.ID
 }
 
-// GetViewID gets an ID for the series for a specific view. If the view is public, then the
-// mystic ID is the same as the normal ID. However, if the view is partner or private, then the
-// mystic ID is additionally hashed to obscure/uniqueify the name
-func (s *CatalogSeri) GetViewID(view View) string {
-	// get the base ID for a public view
-	id := s.GetID()
-
-	// the public view is just the ID
-	if view == Public {
-		return id
-	}
-
-	// all other views have an additional hash
-	return id + "-" + util.ComputeHash(id+string(view))
-}
-
-// GetCatalogFileName returns the file name of this seri with the specified view
-func (s *CatalogSeri) GetCatalogFileName(view View) string {
-	return s.GetViewID(view) + ".html"
-}
-
 // DateString gets the date of the series in a displayable string
 func (s *CatalogSeri) DateString() string {
 	if s.State == State_Unknown || s.State == State_HasNotStarted {
