@@ -60,6 +60,7 @@ override the configuration file.
 | Key | Meaning | Default |
 |-----|---------|---------|
 | `sheet-id` | Google spreadsheet holding the series and messages | - |
+| `anthropic-api-key` | API key for the church's Anthropic Console account | - |
 | `anthropic-model` | Model used for titles and descriptions | `claude-opus-5` |
 | `whisper-model` | Transcription model | `tiny.en` |
 | `whisper-exe` | Path to the faster-whisper executable | (see `audio_transcribe.go`) |
@@ -73,9 +74,18 @@ service account's email address.
 
 Reference: https://github.com/juampynr/google-spreadsheet-reader
 
-**Anthropic.** Either set `ANTHROPIC_API_KEY` in the environment, or sign in
-once with `ant auth login`. The SDK finds either on its own; there is no API key
-in the configuration file.
+**Anthropic.** Put the church's API key in `~/.wolm/online-config.yaml` as
+`anthropic-api-key`. It is handed to this process only.
+
+Do **not** set `ANTHROPIC_API_KEY` as a user-wide environment variable. It would
+shadow the credentials that Claude Code and other tools on the machine use, which
+is how the church's key ends up paying for unrelated work. There is deliberately
+no command line flag for the key either, so it stays out of shell history and the
+process list.
+
+If the config value is absent the SDK falls back to its normal resolution
+(`ANTHROPIC_API_KEY`, then an `ant auth login` profile), so a machine set up that
+way still works.
 
 # Requirements
 

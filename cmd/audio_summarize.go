@@ -11,6 +11,7 @@ import (
 
 	"github.com/WordOfLifeMN/online/util"
 	"github.com/anthropics/anthropic-sdk-go"
+	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -120,6 +121,54 @@ func xscriptSummarize(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// anthropicClientOptions supplies the API key to the SDK client.
+//
+// The key is read from the 'anthropic-api-key' configuration value in
+// ~/.wolm/online-config.yaml and handed straight to the client, rather than being
+// exported into the environment. That matters for two reasons:
+//
+//   - A user-wide ANTHROPIC_API_KEY would shadow any OAuth profile on this machine,
+//     including the one Claude Code uses. The church's key must not end up
+//     authenticating anything but this application.
+//   - Setting it with os.Setenv would also hand it to every child process we spawn -
+//     ffmpeg and faster-whisper would both inherit it for no reason.
+//
+// Returning no options lets the SDK fall back to its normal resolution
+// (ANTHROPIC_API_KEY, then an 'ant auth login' profile), so a machine configured that
+// way still works.
+//
+// There is deliberately no command line flag for the key: a flag would expose it in
+// shell history and in the process list.
+func anthropicClientOptions() []option.RequestOption {
+	if key := viper.GetString("anthropic-api-key"); key != "" {
+		return []option.RequestOption{option.WithAPIKey(key)}
+	}
+	return nil
+}
+
+// checkAnthropicCredentials reports a useful error when nothing has been configured,
+// rather than letting the SDK fail with an unauthenticated request after the audio has
+// already been extracted and transcribed
+func checkAnthropicCredentials() error {
+	if viper.GetString("anthropic-api-key") != "" {
+		return nil
+	}
+	if os.Getenv("ANTHROPIC_API_KEY") != "" || os.Getenv("ANTHROPIC_AUTH_TOKEN") != "" {
+		return nil
+	}
+
+	return fmt.Errorf(`no Anthropic credentials configured.
+
+Add the church's API key to %s:
+
+    anthropic-api-key: sk-ant-...
+
+The key is read from there and handed to this process only. Do NOT set
+ANTHROPIC_API_KEY as a user-wide environment variable - it would override the
+credentials Claude Code and other tools use on this machine`,
+		viper.ConfigFileUsed())
+}
+
 // getAnthropicModel returns the model to use for summarization
 func getAnthropicModel() string {
 	if model := viper.GetString("anthropic-model"); model != "" {
@@ -166,9 +215,13 @@ func generateMessageSummary(info *MessageInfo) (*MessageInfo, error) {
 		return info, fmt.Errorf("transcript %s is empty", info.TranscriptPath)
 	}
 
+	if err := checkAnthropicCredentials(); err != nil {
+		return info, err
+	}
+
 	riskNotes := wantRiskNotes(info)
 
-	client := anthropic.NewClient()
+	client := anthropic.NewClient(anthropicClientOptions()...)
 	resp, err := client.Messages.New(context.Background(), anthropic.MessageNewParams{
 		Model:     anthropic.Model(getAnthropicModel()),
 		MaxTokens: 16000,

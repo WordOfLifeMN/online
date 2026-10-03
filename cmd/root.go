@@ -101,9 +101,29 @@ func initLogging() {
 	// since we're verbose, let's dump the configuration
 	log.Printf("Using config file: %s", viper.ConfigFileUsed())
 	for _, key := range viper.AllKeys() {
-		log.Printf("    %s = %s", key, viper.GetString(key))
+		log.Printf("    %s = %s", key, redactIfSecret(key, viper.GetString(key)))
 	}
 
+}
+
+// redactIfSecret hides the value of configuration keys that hold credentials.
+//
+// The verbose configuration dump is on by default for anyone launching through
+// bin/wolm-audio.bat, so without this the API key would be printed to the console on
+// every single run and end up in any captured output.
+func redactIfSecret(key string, value string) string {
+	if value == "" {
+		return value
+	}
+
+	lowered := strings.ToLower(key)
+	for _, marker := range []string{"key", "token", "secret", "password", "credential"} {
+		if strings.Contains(lowered, marker) {
+			return fmt.Sprintf("(redacted, %d chars)", len(value))
+		}
+	}
+
+	return value
 }
 
 // readOnlineContentFromInput reads the content of a catalog from wherever
@@ -135,4 +155,3 @@ func readOnlineContentFromInput(ctx context.Context) (*catalog.Catalog, error) {
 	// no input
 	return nil, fmt.Errorf("no input specified. please provide an --input or --sheet-id parameter, or configure a default sheet-id in the ~/.wolm/online.yaml file")
 }
-

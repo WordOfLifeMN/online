@@ -3,8 +3,17 @@
 # Online catalog
 sheet-id: 1z4XIiEPMFPpeRgGpdhshiQpmY7A45KzCyZzQ7Ohe85E
 
+# Anthropic API key for the church's own Console account.
+#
+# This is read from the config file and handed to this process only. Do NOT set
+# ANTHROPIC_API_KEY as a user-wide environment variable - it would shadow the
+# credentials Claude Code and other tools on this machine use.
+#
+# There is deliberately no command line flag for it, so it stays out of shell
+# history and the process list. Keep this file out of version control.
+anthropic-api-key: sk-ant-paste-the-church-key-here
+
 # Model used to generate titles and descriptions (default: claude-opus-5).
-# Credentials come from ANTHROPIC_API_KEY or an 'ant auth login' profile, not from here.
 #anthropic-model: claude-haiku-4-5
 
 # Transcription model (default: tiny.en) and where intermediate files are written
