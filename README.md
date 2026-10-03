@@ -30,6 +30,9 @@ transcript are intermediates and are deleted once the summary is generated
 online audio "2026-03-08-v Walking in Faith.mp4"
 ```
 
+Or run `bin/wolm-audio.bat`, which launches the same thing and prompts for the
+video file so it can be dragged into the window.
+
 The message is matched to a spreadsheet row by **date and type**. A service
 usually produces both a prayer and a message on the same date, so type is what
 tells them apart; it is inferred from the file name (`p` next to the date means
