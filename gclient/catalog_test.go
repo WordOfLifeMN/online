@@ -31,12 +31,6 @@ func (t *CatalogTestSuite) SetupSuite() {
 // | Unit tests (no Google API)
 // +---------------------------------------------------------------------------
 
-func (t *CatalogTestSuite) TestSeriesContainsName() {
-	t.False(seriesContainsName(nil, "Alpha"))
-	t.False(seriesContainsName([]catalog.CatalogSeri{{Name: "Beta"}}, "Alpha"))
-	t.True(seriesContainsName([]catalog.CatalogSeri{{Name: "Alpha"}, {Name: "Beta"}}, "Alpha"))
-}
-
 func (t *CatalogTestSuite) TestNewCatalogSeriFromMessageRow_Series() {
 	// given a Series-type message row
 	thumb := catalog.OnlineResource{URL: "http://thumb.png", Name: "thumb"}
@@ -107,68 +101,6 @@ func seriColumnsForTest() map[string]int {
 		"Visibility": 5, "Booklets": 6,
 		"CD Jacket": 7, "DVD Jacket": 8, "Cover Art": 9,
 	}
-}
-
-func (t *CatalogTestSuite) TestNewCatalogSeriFromRow_BasicFields() {
-	rowData := []any{
-		"My Series", "SER-001", "A great series",
-		"2020-01-05", "2020-03-01",
-		"public", "", "", "", "http://thumb.jpg",
-	}
-
-	seri, err := newCatalogSeriFromRow(seriColumnsForTest(), rowData)
-	t.NoError(err)
-	t.Equal("My Series", seri.Name)
-	t.Equal("SER-001", seri.ID)
-	t.Equal("A great series", seri.Description)
-	t.Equal(catalog.MustParseDateOnly("2020-01-05"), seri.StartDate)
-	t.Equal(catalog.MustParseDateOnly("2020-03-01"), seri.StopDate)
-	t.Equal(catalog.Public, seri.Visibility)
-	t.Equal("http://thumb.jpg", seri.Thumbnail)
-}
-
-func (t *CatalogTestSuite) TestNewCatalogSeriFromRow_EmptyDates() {
-	// empty date strings → zero DateOnly values, not errors
-	rowData := []any{"My Series", "SER-001", "", "", "", "public", "", "", "", ""}
-
-	seri, err := newCatalogSeriFromRow(seriColumnsForTest(), rowData)
-	t.NoError(err)
-	t.True(seri.StartDate.IsZero())
-	t.True(seri.StopDate.IsZero())
-}
-
-func (t *CatalogTestSuite) TestNewCatalogSeriFromRow_InvalidDates() {
-	// unparseable date strings → zero DateOnly values, no error returned
-	rowData := []any{"My Series", "SER-001", "", "not-a-date", "also-bad", "public", "", "", "", ""}
-
-	seri, err := newCatalogSeriFromRow(seriColumnsForTest(), rowData)
-	t.NoError(err)
-	t.True(seri.StartDate.IsZero())
-	t.True(seri.StopDate.IsZero())
-}
-
-func (t *CatalogTestSuite) TestNewCatalogSeriFromRow_JacketFallback() {
-	columns := seriColumnsForTest()
-	base := []any{"name", "id", "desc", "", "", "public", "", "", "", ""}
-
-	// DVD and CD both set: DVD wins
-	row := append([]any{}, base...)
-	row[7], row[8] = "cd.jpg", "dvd.jpg"
-	seri, err := newCatalogSeriFromRow(columns, row)
-	t.NoError(err)
-	t.Equal("dvd.jpg", seri.Jacket)
-
-	// DVD absent, CD set: falls back to CD
-	row = append([]any{}, base...)
-	row[7] = "cd.jpg"
-	seri, err = newCatalogSeriFromRow(columns, row)
-	t.NoError(err)
-	t.Equal("cd.jpg", seri.Jacket)
-
-	// Both absent: empty jacket
-	seri, err = newCatalogSeriFromRow(columns, base)
-	t.NoError(err)
-	t.Empty(seri.Jacket)
 }
 
 func msgColumnsForTest() map[string]int {
@@ -278,35 +210,6 @@ func (t *CatalogTestSuite) TestReadColumns() {
 	t.Equal(4, columns["!# Five †"])
 }
 
-func (t *CatalogTestSuite) TestReadSeries() {
-	// when
-	series, err := readSeriesFromDocument(t.service, testDocumentID)
-	t.NoError(err)
-
-	// then
-	t.Len(series, 3)
-
-	// fully validate the first basic series
-	sut := series[0]
-	t.Equal("TEST-123", sut.ID)
-	t.Equal("Public Series", sut.Name)
-	t.Equal("A series that contains 3 public messages", sut.Description)
-	t.Equal(catalog.MustParseDateOnly("2014-01-05"), sut.StartDate)
-	t.Equal(catalog.MustParseDateOnly("2014-02-02"), sut.StopDate)
-	t.Equal(catalog.Public, sut.Visibility)
-
-	// validate booklet
-	sut = series[1]
-	t.Equal("Booklet", sut.Name)
-	t.Len(sut.Booklets, 1)
-	t.Equal(catalog.OnlineResource{URL: "http://book-one.pdf", Name: "book-one"}, sut.Booklets[0])
-
-	// validate resources
-	sut = series[2]
-	t.Equal("Resources", sut.Name)
-	t.Len(sut.Booklets, 0)
-}
-
 func (t *CatalogTestSuite) TestReadMessageSheet() {
 	// when
 	msgs, series, err := readMessagesFromSheet(t.service, testDocumentID, "Messages", "Messages")
@@ -376,5 +279,13 @@ func (t *CatalogTestSuite) TestNewCatalogFromSheet() {
 	t.NoError(err)
 	t.NotNil(cat)
 	t.NotEmpty(cat.Messages)
-	t.NotEmpty(cat.Series)
+
+	// Series are no longer read from a separate tab, so this fixture produces none:
+	// every row in its message tabs is a plain message. Series now come from rows
+	// typed Series or Booklet, which is covered by
+	// TestNewCatalogSeriFromMessageRow_Series and _Booklet, and the IDs they get are
+	// checked against the live sheet by TestReadMessagesFromDocument.
+	for _, s := range cat.Series {
+		t.NotEmpty(s.ID, "series %q should have an ID", s.Name)
+	}
 }

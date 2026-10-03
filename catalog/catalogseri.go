@@ -21,7 +21,6 @@ type CatalogSeri struct {
 	Description string           `json:"description,omitempty"` // detailed description of contents of series
 	Booklets    []OnlineResource `json:"booklets,omitempty"`    // list of study booklets for this series (pdf)
 	Visibility  View             `json:"visibility"`            // visibility of this series as a whole
-	Jacket      string           `json:"jacket,omitempty"`      // link to the DVD (or CD) jacket for this series
 	Thumbnail   string           `json:"thumbnail,omitempty"`   // link to the thumbnail to use for the series
 
 	// cached or generated data. note that this data could be customized for different views of

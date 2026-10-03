@@ -57,7 +57,6 @@ func (s *CatalogIOTestSuite) TestJSONWrite() {
 						Name: "TEST-BOOKLET",
 					},
 				},
-				Jacket:    "URL://JACKET",
 				Thumbnail: "URL://THUMB",
 				StartDate: MustParseDateOnly("2021-01-01"),
 				StopDate:  MustParseDateOnly("2021-01-08"),
@@ -106,7 +105,6 @@ func (s *CatalogIOTestSuite) TestJSONWrite() {
         }
       ],
       "visibility": "private",
-      "jacket": "URL://JACKET",
       "thumbnail": "URL://THUMB"
     }
   ],

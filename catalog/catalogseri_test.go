@@ -296,7 +296,6 @@ func (t *CatalogSeriTestSuite) TestCopy() {
 		Booklets:    []OnlineResource{{URL: "https://thing.pdf", Name: "Thing"}},
 		Resources:   []OnlineResource{{URL: "https://thing.pdf", Name: "Thing"}},
 		Visibility:  Public,
-		Jacket:      "https://jacket.pdf",
 		Thumbnail:   "https://thumb.jpg",
 		StartDate:   MustParseDateOnly("2021-02-03"),
 		StopDate:    MustParseDateOnly("2021-05-14"),
