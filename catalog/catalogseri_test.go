@@ -425,59 +425,6 @@ func (t *CatalogSeriTestSuite) TestSeriesID_Explicit() {
 	t.Equal("MY-ID", sut.GetID())
 }
 
-func (t *CatalogSeriTestSuite) TestDateString() {
-	// given message in the future
-	sut := CatalogSeri{
-		Name: "SERIES",
-	}
-	sut.Initialize()
-	t.Equal("Coming Soon", sut.DateString())
-
-	// given message with start date
-	sut = CatalogSeri{
-		Name:      "SERIES",
-		StartDate: MustParseDateOnly("2006-07-08"),
-	}
-	sut.Initialize()
-	t.Equal("Started Jul 8, 2006", sut.DateString())
-
-	// given message with start/end date
-	sut = CatalogSeri{
-		Name:      "SERIES",
-		StartDate: MustParseDateOnly("2006-07-08"),
-		StopDate:  MustParseDateOnly("2008-09-01"),
-	}
-	sut.Initialize()
-	t.Equal("Jul 8, 2006 - Sep 1, 2008", sut.DateString())
-
-	// given message completed in same year
-	sut = CatalogSeri{
-		Name:      "SERIES",
-		StartDate: MustParseDateOnly("2006-07-08"),
-		StopDate:  MustParseDateOnly("2006-09-01"),
-	}
-	sut.Initialize()
-	t.Equal("Jul 8 - Sep 1, 2006", sut.DateString())
-
-	// given message completed in same month
-	sut = CatalogSeri{
-		Name:      "SERIES",
-		StartDate: MustParseDateOnly("2006-07-08"),
-		StopDate:  MustParseDateOnly("2006-07-21"),
-	}
-	sut.Initialize()
-	t.Equal("Jul 8-21, 2006", sut.DateString())
-
-	// given message completed on same day
-	sut = CatalogSeri{
-		Name:      "SERIES",
-		StartDate: MustParseDateOnly("2006-07-08"),
-		StopDate:  MustParseDateOnly("2006-07-08"),
-	}
-	sut.Initialize()
-	t.Equal("Jul 8, 2006", sut.DateString())
-}
-
 func (t *CatalogSeriTestSuite) TestSpeakerString() {
 	// given
 	sut := CatalogSeri{

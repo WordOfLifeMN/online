@@ -150,7 +150,7 @@ func (t *PublishTestSuite) TestTitle_Format() {
 		Date:     catalog.MustParseDateOnly("2021-03-08"),
 	}
 
-	t.Equal("Walking in Faith | Pastor Vern Peltz | Mar 8, 2021", getUploadTitle(&msg))
+	t.Equal("Walking in Faith | Pastor Vern Peltz | March 8, 2021", getUploadTitle(&msg))
 }
 
 func (t *PublishTestSuite) TestTitle_MultipleSpeakers() {
@@ -160,7 +160,21 @@ func (t *PublishTestSuite) TestTitle_MultipleSpeakers() {
 		Date:     catalog.MustParseDateOnly("2021-03-08"),
 	}
 
-	t.Equal("Together | Pastor Vern Peltz, Pastor Mary Peltz | Mar 8, 2021", getUploadTitle(&msg))
+	t.Equal("Together | Pastor Vern Peltz, Pastor Mary Peltz | March 8, 2021", getUploadTitle(&msg))
+}
+
+// A message recorded ahead of its service date must still be titled with the plain
+// date. CatalogMessage.DateString would prefix "Scheduled for " here.
+func (t *PublishTestSuite) TestTitle_FutureDateHasNoPrefix() {
+	msg := catalog.CatalogMessage{
+		Name:     "Christmas Eve Service",
+		Speakers: []string{"Pastor Vern Peltz"},
+		Date:     catalog.MustParseDateOnly("2099-12-24"),
+	}
+
+	title := getUploadTitle(&msg)
+	t.Equal("Christmas Eve Service | Pastor Vern Peltz | December 24, 2099", title)
+	t.NotContains(title, "Scheduled")
 }
 
 func (t *PublishTestSuite) TestTitle_NoSpeaker() {
@@ -169,7 +183,7 @@ func (t *PublishTestSuite) TestTitle_NoSpeaker() {
 		Date: catalog.MustParseDateOnly("2021-03-08"),
 	}
 
-	t.Equal("Walking in Faith | Mar 8, 2021", getUploadTitle(&msg))
+	t.Equal("Walking in Faith | March 8, 2021", getUploadTitle(&msg))
 }
 
 // +---------------------------------------------------------------------------
@@ -243,7 +257,7 @@ func (t *PublishTestSuite) TestPacket_Public() {
 	t.NoError(err)
 
 	t.Equal(ChannelWOL, packet.Channel)
-	t.Equal("Walking in Faith | Pastor Vern Peltz | Mar 8, 2021", packet.Title)
+	t.Equal("Walking in Faith | Pastor Vern Peltz | March 8, 2021", packet.Title)
 	t.Equal("Walking in Faith", packet.Playlist)
 	t.Equal(3, packet.Position)
 	t.Equal(PrivacyPublic, packet.Privacy)

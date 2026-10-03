@@ -174,14 +174,24 @@ func getPlaylistPosition(msg *catalog.CatalogMessage) int {
 	return msg.Series[0].Index
 }
 
+// titleDateFormat is how the date appears in a YouTube title. The house style is the
+// full month name - "October 2, 2026", not "Oct 2, 2026".
+const titleDateFormat = "January 2, 2006"
+
 // getUploadTitle builds the YouTube title: "Name | Speaker | Date"
+//
+// The date is formatted here rather than through CatalogMessage.DateString, which
+// prefixes "Scheduled for " on a future date. That reads sensibly on a web page
+// listing upcoming messages, but it has no place in the title of a video that is being
+// uploaded right now - and a message recorded ahead of its service date would
+// otherwise be titled "... | Scheduled for October 2, 2026".
 func getUploadTitle(msg *catalog.CatalogMessage) string {
 	parts := []string{msg.Name}
 	if speakers := msg.SpeakerString(); speakers != "" {
 		parts = append(parts, speakers)
 	}
-	if date := msg.DateString(); date != "" {
-		parts = append(parts, date)
+	if !msg.Date.IsZero() {
+		parts = append(parts, msg.Date.Time.Format(titleDateFormat))
 	}
 	return strings.Join(parts, " | ")
 }

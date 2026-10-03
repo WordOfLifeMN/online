@@ -2,7 +2,6 @@ package catalog
 
 import (
 	"strings"
-	"time"
 )
 
 // CatalogMessage describes one message. The message may be part of a series or not. A message
@@ -96,18 +95,6 @@ func (m *CatalogMessage) normalizeSpeakerName(speaker string) string {
 // +---------------------------------------------------------------------------
 // | Accessors
 // +---------------------------------------------------------------------------
-
-func (m *CatalogMessage) DateString() string {
-	if m.Date.IsZero() {
-		return ""
-	}
-
-	if m.Date.After(time.Now()) {
-		return "Scheduled for " + m.Date.Time.Format("Jan 2, 2006")
-	}
-
-	return m.Date.Time.Format("Jan 2, 2006")
-}
 
 // SpeakerString gets all the speakers in a descriptive string
 func (m *CatalogMessage) SpeakerString() string {
