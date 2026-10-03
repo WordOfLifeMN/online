@@ -188,6 +188,17 @@ Phase 2 — doing it the other way round leaves the tree broken in between.
 
 ---
 
+## Verified against the live spreadsheet (2026-10-03)
+
+- [x] 4.4  `check` reports valid, `peek` reads all tabs, `dump` returns 2677 messages
+      and 346 series with zero `audio` keys and 2677 `video` keys intact
+- [x] Google Sheets scope narrowed to read-only and confirmed still able to read
+
+Lookup ambiguity was measured here rather than assumed: for 2024+, 134 of 494
+messages sit in an ambiguous (date, type) group and only 21 of the 60 groups have
+distinct non-zero tracks. The track tie-breaker was therefore replaced with an
+interactive chooser - see commit b7fa4b4.
+
 ## Blocked: needs real media, credentials, and spend
 
 All code is implemented. These remaining tasks cannot be done from here - they need
@@ -199,7 +210,6 @@ evaluation and validation, not implementation.
 - [ ] 2.23 Validate risk notes on real F&F messages (one you would publish, one you
       would not). **Drop the feature if it flags ordinary preaching.**
 - [ ] 2.24 Confirm the combined prompt has not degraded title/summary quality
-- [ ] 4.4  Verify `dump`, `check`, `peek` against the live sheet
 - [ ] 4.6  End-to-end run on one real message, timed against the old workflow
 
 Defaults chosen pending measurement: `whisper-model: tiny.en`,
