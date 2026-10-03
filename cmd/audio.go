@@ -31,6 +31,12 @@ type MessageInfo struct {
 	Summary        string
 	RiskNotes      []RiskNote
 
+	// the spreadsheet row describing this message, and the series it belongs to.
+	// resolved up front, before the slow work, so that everything needing an answer
+	// from the operator is asked while they are still at the keyboard.
+	Message *catalog.CatalogMessage
+	Seri    *catalog.CatalogSeri
+
 	// the assembled packet, and why it could not be assembled if it could not. a
 	// missing packet is not fatal: the generated title and summary are still useful.
 	Packet      *UploadPacket
@@ -83,12 +89,13 @@ func audio(cmd *cobra.Command, args []string) error {
 
 	var infos []*MessageInfo
 
+	var videoPaths []string
 	if len(args) == 0 {
 		// prompt user for video files until there are no more
 		for {
 			videoPath := getInputVideo("")
 			if videoPath == "" {
-				if len(infos) == 0 {
+				if len(videoPaths) == 0 {
 					// no videos at all
 					fmt.Println("No input files, exiting")
 					return nil
@@ -96,14 +103,22 @@ func audio(cmd *cobra.Command, args []string) error {
 				// user is done inputting videos
 				break
 			}
-
-			infos = append(infos, newMessageInfo(videoPath))
+			videoPaths = append(videoPaths, videoPath)
 		}
 	} else {
 		// validate the video file arguments
 		for _, arg := range args {
-			infos = append(infos, newMessageInfo(getInputVideo(arg)))
+			videoPaths = append(videoPaths, getInputVideo(arg))
 		}
+	}
+
+	// read the spreadsheet once for all the videos, rather than once per video
+	cat := readCatalogForLookup(cmd.Context())
+
+	// ask everything that needs an answer before starting the slow work, so the
+	// operator is not called back to the keyboard twenty minutes into a transcription
+	for _, videoPath := range videoPaths {
+		infos = append(infos, newMessageInfo(videoPath, cat))
 	}
 
 	// process all the video files
@@ -117,17 +132,110 @@ func audio(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-// newMessageInfo creates the record for one video, resolving the speaker from the
-// --speaker flag or from the file name
-func newMessageInfo(videoPath string) *MessageInfo {
-	info := MessageInfo{
-		VideoPath:   videoPath,
-		SpeakerName: viper.GetString("speaker"),
+// newMessageInfo creates the record for one video: finds its spreadsheet row, then
+// resolves the speaker. Both may ask the operator a question, which is why this runs
+// before any extraction or transcription.
+func newMessageInfo(videoPath string, cat *catalog.Catalog) *MessageInfo {
+	info := MessageInfo{VideoPath: videoPath}
+
+	info.Message, info.Seri, info.PacketError = findMessageForVideo(videoPath, cat)
+	if info.PacketError != nil {
+		log.Printf("No spreadsheet row for %s: %s", filepath.Base(videoPath), info.PacketError)
 	}
-	if info.SpeakerName == "" {
-		info.SpeakerName = getSpeakerFromFileName(videoPath)
-	}
+
+	info.SpeakerName = resolveSpeaker(videoPath, info.Message)
+
 	return &info
+}
+
+// readCatalogForLookup loads the spreadsheet so messages can be looked up. A failure
+// here is not fatal - the transcript, title and summary are still worth producing - so
+// it warns and returns nil rather than stopping.
+func readCatalogForLookup(ctx context.Context) *catalog.Catalog {
+	cat, err := readOnlineContentFromInput(ctx)
+	if err != nil {
+		fmt.Printf("WARNING: could not read the spreadsheet: %s\n", err)
+		fmt.Printf("         continuing without it - no upload packet will be assembled\n")
+		return nil
+	}
+	if err := cat.Initialize(); err != nil {
+		fmt.Printf("WARNING: could not initialize the catalog: %s\n", err)
+		return nil
+	}
+	return cat
+}
+
+// findMessageForVideo locates the spreadsheet row describing a video, asking the
+// operator to choose when the date and type match more than one
+func findMessageForVideo(
+	videoPath string,
+	cat *catalog.Catalog,
+) (*catalog.CatalogMessage, *catalog.CatalogSeri, error) {
+	if cat == nil {
+		return nil, nil, fmt.Errorf("the spreadsheet was not available")
+	}
+
+	date, err := getDateFromFileName(videoPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	msgType := catalog.NewMessageTypeFromString(viper.GetString("type"))
+	if msgType == catalog.UnknownType {
+		msgType = getMessageTypeFromFileName(videoPath)
+	}
+
+	msg, seri, err := cat.FindMessage(catalog.MessageLookup{
+		Date:  date,
+		Type:  msgType,
+		Track: viper.GetInt("track"),
+	})
+
+	// several rows share this date and type. the track number often cannot tell them
+	// apart - a message and its Q&A, or several interviews on one date, all carry
+	// track 0 - so ask rather than guess.
+	var ambiguous *catalog.AmbiguousLookupError
+	if errors.As(err, &ambiguous) {
+		chosen := promptUserForMessageChoice(ambiguous)
+		if chosen == nil {
+			return nil, nil, err
+		}
+		return chosen, cat.FindSeriesForMessage(chosen), nil
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return msg, seri, nil
+}
+
+// resolveSpeaker determines who spoke, in order of authority:
+//
+//  1. an explicit --speaker flag
+//  2. an initial in the file name, which is unambiguous when present
+//  3. otherwise ask, defaulting to whatever the spreadsheet says
+//
+// Before the spreadsheet was consulted this early, step 3 defaulted to a guess based
+// on whether the file name looked like a prayer. The spreadsheet knows the answer, so
+// it supplies the default now and accepting it is a single keystroke.
+func resolveSpeaker(videoPath string, msg *catalog.CatalogMessage) string {
+	if speaker := viper.GetString("speaker"); speaker != "" {
+		return speaker
+	}
+
+	if speaker := getSpeakerInitialFromFileName(videoPath); speaker != "" {
+		return speaker
+	}
+
+	defaultSpeaker := ""
+	if msg != nil {
+		defaultSpeaker = msg.SpeakerString()
+	}
+	if defaultSpeaker == "" {
+		defaultSpeaker = guessSpeakerFromFileName(videoPath)
+	}
+
+	return PromptUserForSpeaker(defaultSpeaker)
 }
 
 // processAllVideos processes each video in turn, updating the message information
@@ -194,61 +302,18 @@ func processOneAudio(info *MessageInfo) error {
 	}
 	info.SummaryTime.Stop()
 
-	// assemble the upload packet. this needs the spreadsheet, which may be
-	// unreachable or may not have a row for this message yet - neither is a reason to
-	// throw away the summary we just generated, so the error is recorded and shown
-	// rather than returned.
-	info.Packet, info.PacketError = buildUploadPacket(info)
+	// assemble the upload packet from the row found before processing started. a
+	// missing row is not a reason to throw away the summary we just generated, so the
+	// error is recorded and shown rather than returned.
+	if info.Message != nil {
+		info.Packet, info.PacketError = NewUploadPacket(
+			info.Message, info.Seri, info.Summary, getThumbnailPath(info.VideoPath))
+	}
 
 	// everything succeeded, so the intermediates have served their purpose
 	cleanUpIntermediates(info)
 
 	return nil
-}
-
-// buildUploadPacket looks the message up in the spreadsheet and assembles the packet
-// the operator pastes into YouTube Studio
-func buildUploadPacket(info *MessageInfo) (*UploadPacket, error) {
-	date, err := getDateFromFileName(info.VideoPath)
-	if err != nil {
-		return nil, err
-	}
-
-	msgType := catalog.NewMessageTypeFromString(viper.GetString("type"))
-	if msgType == catalog.UnknownType {
-		msgType = getMessageTypeFromFileName(info.VideoPath)
-	}
-
-	cat, err := readOnlineContentFromInput(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	if err := cat.Initialize(); err != nil {
-		return nil, err
-	}
-
-	msg, seri, err := cat.FindMessage(catalog.MessageLookup{
-		Date:  date,
-		Type:  msgType,
-		Track: viper.GetInt("track"),
-	})
-
-	// several messages share this date and type. the track number often cannot tell
-	// them apart - a message and its Q&A, or several interviews on one date, all carry
-	// track 0 - so ask rather than guess.
-	var ambiguous *catalog.AmbiguousLookupError
-	if errors.As(err, &ambiguous) {
-		chosen := promptUserForMessageChoice(ambiguous)
-		if chosen == nil {
-			return nil, err
-		}
-		msg, seri, err = chosen, cat.FindSeriesForMessage(chosen), nil
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return NewUploadPacket(msg, seri, info.Summary, getThumbnailPath(info.VideoPath))
 }
 
 // promptUserForMessageChoice asks which of several equally-matching spreadsheet rows

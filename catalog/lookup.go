@@ -37,11 +37,11 @@ func (e *AmbiguousLookupError) Error() string {
 	var b strings.Builder
 
 	if e.Lookup.Track > 0 {
-		fmt.Fprintf(&b, "no message on %s of type %q has track %d. candidates are:",
-			e.Lookup.Date.String(), string(e.Lookup.Type), e.Lookup.Track)
+		fmt.Fprintf(&b, "no message on %s has track %d. candidates are:",
+			e.Lookup.Date.String(), e.Lookup.Track)
 	} else {
-		fmt.Fprintf(&b, "%d messages on %s are of type %q:",
-			len(e.Candidates), e.Lookup.Date.String(), string(e.Lookup.Type))
+		fmt.Fprintf(&b, "%d messages on %s could be this video:",
+			len(e.Candidates), e.Lookup.Date.String())
 	}
 
 	for _, msg := range e.Candidates {
@@ -88,20 +88,38 @@ func (e *NotFoundLookupError) Error() string {
 // FindMessage locates the single message matching the lookup, together with the series
 // it belongs to (nil if it is not in one).
 //
-// Returns *NotFoundLookupError if nothing matches, or *AmbiguousLookupError if several
-// do and the track number does not resolve it. It never guesses between candidates.
+// Date is the reliable key; type only narrows. Type is inferred from the video file
+// name, which distinguishes a prayer from a message and nothing else - it cannot tell
+// a "training", "word", "testimony", "song" or "special-event" from a message, and
+// those are roughly 400 of the catalog's messages. So when date and type together
+// match nothing, the type is treated as a bad hint and the search widens to the date
+// alone rather than reporting the message missing.
+//
+// Returns *NotFoundLookupError if the date matches nothing at all, or
+// *AmbiguousLookupError if several messages match and the track number does not
+// resolve it. It never guesses between candidates.
 func (c *Catalog) FindMessage(lookup MessageLookup) (*CatalogMessage, *CatalogSeri, error) {
-	// collect everything matching date and type
-	var candidates []CatalogMessage
+	// everything on this date, whatever its type
+	var onDate []CatalogMessage
 	for index := range c.Messages {
-		msg := c.Messages[index]
-		if !msg.Date.Time.Equal(lookup.Date.Time) {
-			continue
+		if c.Messages[index].Date.Time.Equal(lookup.Date.Time) {
+			onDate = append(onDate, c.Messages[index])
 		}
-		if msg.Type != lookup.Type {
-			continue
+	}
+	if len(onDate) == 0 {
+		return nil, nil, &NotFoundLookupError{Lookup: lookup}
+	}
+
+	// narrow by type where that leaves anything
+	candidates := onDate
+	var ofType []CatalogMessage
+	for index := range onDate {
+		if onDate[index].Type == lookup.Type {
+			ofType = append(ofType, onDate[index])
 		}
-		candidates = append(candidates, msg)
+	}
+	if len(ofType) > 0 {
+		candidates = ofType
 	}
 
 	switch len(candidates) {

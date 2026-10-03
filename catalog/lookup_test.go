@@ -76,6 +76,46 @@ func (t *LookupTestSuite) TestFindMessage_PrayerAndMessageSameDate() {
 	t.Equal("Walking in Faith", message.Name)
 }
 
+// The file name can only tell a prayer from a message. It gives no signal for the
+// other types - training, word, testimony, song, special-event - which account for
+// roughly 400 messages in the live catalog. When the inferred type matches nothing on
+// that date, the type must be discarded as a bad hint rather than the message being
+// reported missing.
+func (t *LookupTestSuite) TestFindMessage_WrongTypeFallsBackToDate() {
+	cat := &Catalog{
+		Messages: []CatalogMessage{
+			{
+				Name: "Leadership Training", Date: MustParseDateOnly("2026-10-02"),
+				Type: Training, Speakers: []string{"Terry Francis"},
+				Ministry: WordOfLife, Visibility: Public,
+			},
+		},
+	}
+
+	// the file name implies "message", but the row is a "training"
+	msg, _, err := cat.FindMessage(MessageLookup{
+		Date: MustParseDateOnly("2026-10-02"),
+		Type: Message,
+	})
+
+	t.NoError(err)
+	t.Equal("Leadership Training", msg.Name)
+	t.Equal("Terry Francis", msg.SpeakerString())
+}
+
+// widening on a bad type hint must not override a good one
+func (t *LookupTestSuite) TestFindMessage_GoodTypeHintStillNarrows() {
+	cat := t.newLookupCatalog() // a prayer and a message on the same date
+
+	msg, _, err := cat.FindMessage(MessageLookup{
+		Date: MustParseDateOnly("2026-03-08"),
+		Type: Prayer,
+	})
+
+	t.NoError(err)
+	t.Equal("Opening Prayer", msg.Name)
+}
+
 func (t *LookupTestSuite) TestFindMessage_NotFound() {
 	cat := t.newLookupCatalog()
 

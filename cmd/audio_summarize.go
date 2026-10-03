@@ -99,9 +99,16 @@ func xscriptSummarize(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("must be a file, not a directory: %s", xscriptPath)
 	}
 
+	// this subcommand works from a transcript alone, with no spreadsheet lookup, so
+	// the speaker comes from the file name or the operator
+	speaker := getSpeakerInitialFromFileName(xscriptPath)
+	if speaker == "" {
+		speaker = PromptUserForSpeaker(guessSpeakerFromFileName(xscriptPath))
+	}
+
 	info := &MessageInfo{
 		TranscriptPath: xscriptPath,
-		SpeakerName:    getSpeakerFromFileName(xscriptPath),
+		SpeakerName:    speaker,
 	}
 	var err error
 	if info, err = generateMessageSummary(info); err != nil {
@@ -315,15 +322,17 @@ func printRiskNotes(info *MessageInfo) {
 	fmt.Printf("  These are observations, not verdicts. Check each quote in context.\n")
 }
 
-// getSpeakerFromFileName attempts to infer the speaker name from the file name,
-// and prompts the user if necessary
+// getSpeakerInitialFromFileName infers the speaker from an initial in the file name.
+// Returns "" when the file name carries no initial, which is the caller's signal to
+// look elsewhere.
+//
 //   - supported initials are V (Vern Peltz), M (Mary Peltz), J (Jim Isakson), I
 //     (Igor Kondratyuk), A (Anthony Leong), T (Tania Kondratyuk)
 //   - 2025-03-04 Message Title-[VMJIA].mp4
 //   - 2025-03-04-[vmjia] Message Title.mp4
 //   - 2025-03-04-p[vmjia] Message Title.mp4
 //   - 2025-03-04p-[vmjia] Message Title.mp4
-func getSpeakerFromFileName(filePath string) string {
+func getSpeakerInitialFromFileName(filePath string) string {
 	names := map[string]string{
 		"V": "Pastor Vern Peltz",
 		"M": "Pastor Mary Peltz",
@@ -353,9 +362,15 @@ func getSpeakerFromFileName(filePath string) string {
 		}
 	}
 
-	defaultSpeaker := "Vern"
+	return ""
+}
+
+// guessSpeakerFromFileName is the last-resort default for the speaker prompt, used
+// only when neither the file name nor the spreadsheet says who spoke. A prayer is
+// more often Mary, anything else more often Vern.
+func guessSpeakerFromFileName(filePath string) string {
 	if match, err := regexp.MatchString("-[0-9][0-9]p ", filePath); err == nil && match {
-		defaultSpeaker = "Mary"
+		return "Mary"
 	}
-	return PromptUserForSpeaker(defaultSpeaker)
+	return "Vern"
 }
