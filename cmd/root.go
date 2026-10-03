@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/WordOfLifeMN/online/catalog"
@@ -23,12 +22,14 @@ var cfgFile string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "online",
-	Short: "Generates online media content for Word of Life Ministries",
-	Long: `This client-side application will read Google Sheets containing information
-series or messages that are presented, then generate the static files for 
-accessing the content online.
+	Short: "Prepares Word of Life Ministries messages for publication",
+	Long: `This client-side application prepares recorded messages for publication to
+YouTube.
 
-Supports generating a RSS podcast as well as a HTML static website.`,
+Given an edited video it extracts the audio, transcribes it, generates a suggested
+title and description, looks the message up in the Google Sheet for its series,
+track, ministry and visibility, and assembles everything needed to upload the
+message by hand.`,
 	SilenceUsage: true,
 }
 
@@ -51,8 +52,14 @@ func init() {
 	rootCmd.PersistentFlags().StringP("input", "i", "", "Path to JSON file to read catalog from (overrides --sheet-id)")
 	viper.BindPFlag("input", rootCmd.PersistentFlags().Lookup("input"))
 
-	rootCmd.PersistentFlags().String("openai-key", "", "OpenAI API key")
-	viper.BindPFlag("openai-key", rootCmd.PersistentFlags().Lookup("openai-key"))
+	rootCmd.PersistentFlags().String("anthropic-model", "", "Model used to generate titles and descriptions")
+	viper.BindPFlag("anthropic-model", rootCmd.PersistentFlags().Lookup("anthropic-model"))
+
+	rootCmd.PersistentFlags().String("scratch-dir", "", "Directory for intermediate audio and transcript files")
+	viper.BindPFlag("scratch-dir", rootCmd.PersistentFlags().Lookup("scratch-dir"))
+
+	rootCmd.PersistentFlags().String("whisper-model", "", "Transcription model to use")
+	viper.BindPFlag("whisper-model", rootCmd.PersistentFlags().Lookup("whisper-model"))
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -129,65 +136,3 @@ func readOnlineContentFromInput(ctx context.Context) (*catalog.Catalog, error) {
 	return nil, fmt.Errorf("no input specified. please provide an --input or --sheet-id parameter, or configure a default sheet-id in the ~/.wolm/online.yaml file")
 }
 
-// getTemplatePath finds the template with the specified name in the template directory. Returns
-// err if a template with the name cannot be found
-func getTemplatePath(templateName string) (string, error) {
-	templateDir, err := getTemplateDir()
-	if err != nil {
-		return "", err
-	}
-
-	templatePath := filepath.Join(templateDir, templateName)
-	if util.DoesPathExist(templatePath) {
-		return templatePath, nil
-	}
-
-	return "", fmt.Errorf("cannot find template %s", templatePath)
-}
-
-// getTemplateDir finds the directory that stores templates for rendering pages
-func getTemplateDir() (string, error) {
-	// check the configured directory: for when running binary executable with a configuration
-	// file
-	templateDir := viper.GetString("template-dir")
-	if templateDir != "" {
-		// log.Printf("Looking for template dir in config: %s", templateDir)
-		if util.IsDirectory(templateDir) {
-			return templateDir, nil
-		}
-	}
-
-	// check for a template directory relative to the executable: for when running the
-	// executable in the project directory
-	execPath, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	execDir := filepath.Dir(execPath)
-	templateDir = filepath.Join(execDir, "templates")
-	// log.Printf("Looking for template dir relative to executable: %s", templateDir)
-	if util.IsDirectory(templateDir) {
-		return templateDir, nil
-	}
-
-	// check the current working directory: for when running a go tool like "go run"
-	cwDir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	templateDir = filepath.Join(cwDir, "templates")
-	// log.Printf("Looking for template dir in cwd: %s", templateDir)
-	if util.IsDirectory(templateDir) {
-		return templateDir, nil
-	}
-
-	// check relative to the current working directory: for when running go tests, where the cwd
-	// would be the pkg dir in the project
-	templateDir = filepath.Join(cwDir, "..", "templates")
-	// log.Printf("Looking for template dir relative to cwd: %s", templateDir)
-	if util.IsDirectory(templateDir) {
-		return templateDir, nil
-	}
-
-	return "", fmt.Errorf("unable to find the template directory")
-}

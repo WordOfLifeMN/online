@@ -191,7 +191,6 @@ const (
 	msgSeriesIndex string = "Track"
 	msgDescription string = "Description"
 	msgThumb       string = "Thumb"
-	msgAudio       string = "Audio"
 	msgVideo       string = "Video"
 	msgResources   string = "Resources"
 )
@@ -201,7 +200,7 @@ var requiredMessageColumns []string = []string{
 	msgSpeakers,
 	msgType, msgVisibility,
 	msgSeries, msgSeriesIndex,
-	msgAudio, msgVideo,
+	msgVideo,
 	msgResources,
 }
 
@@ -335,7 +334,6 @@ func newCatalogMessageFromRow(columns map[string]int, rowData []any, defaultMini
 	if colIdx, ok := columns[msgThumb]; ok {
 		msg.Thumb = catalog.NewResourceFromString(getCellString(rowData, colIdx))
 	}
-	msg.Audio = catalog.NewResourceFromString(getCellString(rowData, columns[msgAudio]))
 	msg.Video = catalog.NewResourceFromString(getCellString(rowData, columns[msgVideo]))
 
 	// get date

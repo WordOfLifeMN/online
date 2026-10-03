@@ -2,5 +2,11 @@
 #sheet-id: 1vvhIGMPvVF-DtWoYsEbVBvzk_VtLyKuIw_zyLdsB-JY
 # Online catalog
 sheet-id: 1z4XIiEPMFPpeRgGpdhshiQpmY7A45KzCyZzQ7Ohe85E
-template-dir: /Users/kmurray/git/go/src/github.com/WordOfLifeMN/online/templates/
-openai-key: paste-openai-api-key-here
+
+# Model used to generate titles and descriptions (default: claude-opus-5).
+# Credentials come from ANTHROPIC_API_KEY or an 'ant auth login' profile, not from here.
+#anthropic-model: claude-haiku-4-5
+
+# Transcription model (default: tiny.en) and where intermediate files are written
+#whisper-model: tiny.en
+#scratch-dir: ~/.wolm/scratch

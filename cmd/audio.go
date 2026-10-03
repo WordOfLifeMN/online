@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -9,40 +10,51 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
+// defaultScratchDir is where intermediate audio and transcript files are written when
+// no 'scratch-dir' is configured. These files are deleted once they have served their
+// purpose, so they deliberately do not live beside the source video.
+const defaultScratchDir = "~/.wolm/scratch"
+
 type MessageInfo struct {
 	VideoPath      string
 	AudioPath      string
-	AudioURL       string
 	TranscriptPath string
-	TranscriptURLs []string
 	SpeakerName    string
 	Title          string
 	Summary        string
+	RiskNotes      []RiskNote
+
+	// the assembled packet, and why it could not be assembled if it could not. a
+	// missing packet is not fatal: the generated title and summary are still useful.
+	Packet      *UploadPacket
+	PacketError error
 
 	// times
-	ExtractTime          util.StopWatch
-	UploadTime           util.StopWatch
-	TranscribeTime       util.StopWatch
-	UploadTranscriptTime util.StopWatch
-	SummaryTime          util.StopWatch
+	ExtractTime    util.StopWatch
+	TranscribeTime util.StopWatch
+	SummaryTime    util.StopWatch
 }
 
 // audioCmd represents the command to extract and process audio
 var audioCmd = &cobra.Command{
 	Use:   "audio",
-	Short: "Extract, upload, and process audio",
-	Long: `Process audio from a service message.
+	Short: "Prepare a message for publication",
+	Long: `Process a service message into everything needed to publish it.
 
 Given one or more video files, will do the following for each file:
-1. Extract the audio and save it as *.mp3
-2. Upload the audio to s3://wordoflife.mn.audio/year
-3. Transcribe the audio with Whisper to xscript/*.txt
-4. Send the transcript to ChatGPT to get a suggested title and summary`,
+1. Extract the audio to a temporary .mp3
+2. Transcribe the audio to a temporary transcript
+3. Send the transcript to Claude for a suggested title and description
+4. Delete the temporary files
+
+The audio and transcript are intermediates only - they are not published or
+preserved. Pass --keep-intermediates to leave them on disk.`,
 	RunE: audio,
 }
 
@@ -51,6 +63,18 @@ func init() {
 
 	rootCmd.PersistentFlags().String("speaker", "", "Name of the speaker")
 	viper.BindPFlag("speaker", rootCmd.PersistentFlags().Lookup("speaker"))
+
+	audioCmd.Flags().Bool("keep-intermediates", false,
+		"Do not delete the extracted audio and transcript after processing")
+	viper.BindPFlag("keep-intermediates", audioCmd.Flags().Lookup("keep-intermediates"))
+
+	audioCmd.Flags().String("type", "",
+		"Message type for the spreadsheet lookup (message, prayer, testimony, ...). Inferred from the file name if not given")
+	viper.BindPFlag("type", audioCmd.Flags().Lookup("type"))
+
+	audioCmd.Flags().Int("track", 0,
+		"Track number, to pick between several messages sharing a date and type")
+	viper.BindPFlag("track", audioCmd.Flags().Lookup("track"))
 }
 
 func audio(cmd *cobra.Command, args []string) error {
@@ -72,35 +96,17 @@ func audio(cmd *cobra.Command, args []string) error {
 				break
 			}
 
-			info := MessageInfo{
-				VideoPath:   videoPath,
-				SpeakerName: viper.GetString("speaker"),
-			}
-			if info.SpeakerName == "" {
-				info.SpeakerName = getSpeakerFromFileName(videoPath)
-			}
-
-			infos = append(infos, &info)
+			infos = append(infos, newMessageInfo(videoPath))
 		}
 	} else {
 		// validate the video file arguments
 		for _, arg := range args {
-			arg = getInputVideo(arg)
-
-			info := MessageInfo{
-				VideoPath:   arg,
-				SpeakerName: viper.GetString("speaker"),
-			}
-			if info.SpeakerName == "" {
-				info.SpeakerName = getSpeakerFromFileName(arg)
-			}
-			infos = append(infos, &info)
+			infos = append(infos, newMessageInfo(getInputVideo(arg)))
 		}
 	}
 
 	// process all the video files
-	//	err := processAllVideosSequentially(infos)
-	err := processAllVideosInEditingPriority(infos)
+	err := processAllVideos(infos)
 
 	// output the results of all processing
 	for index, info := range infos {
@@ -110,9 +116,28 @@ func audio(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-// processAllVideosSequentially processes each video sequentially,
-// updating the message information records as it goes
-func processAllVideosSequentially(infos []*MessageInfo) error {
+// newMessageInfo creates the record for one video, resolving the speaker from the
+// --speaker flag or from the file name
+func newMessageInfo(videoPath string) *MessageInfo {
+	info := MessageInfo{
+		VideoPath:   videoPath,
+		SpeakerName: viper.GetString("speaker"),
+	}
+	if info.SpeakerName == "" {
+		info.SpeakerName = getSpeakerFromFileName(videoPath)
+	}
+	return &info
+}
+
+// processAllVideos processes each video in turn, updating the message information
+// records as it goes.
+//
+// NOTE: this used to be split into two passes ("editing priority") so that the audio
+// could be extracted and uploaded for every video first, getting the public S3 URLs
+// printed as early as possible while the slow transcription ran afterwards. With no
+// uploads there is no early output to hurry, so a single straightforward pass is both
+// simpler and equivalent.
+func processAllVideos(infos []*MessageInfo) error {
 	var errs []error
 	for _, info := range infos {
 		if err := processOneAudio(info); err != nil {
@@ -124,11 +149,14 @@ func processAllVideosSequentially(infos []*MessageInfo) error {
 	return errors.Join(errs...)
 }
 
-// processOneAudio handles the minimal processing of one audio file.
-// If the audio path doesn't exist, will extract the audio from the video.
+// processOneAudio handles the processing of one message.
+// If the audio doesn't exist, will extract the audio from the video.
 // If the transcript doesn't exist, will transcribe the audio.
-// Will send the audio transcript to ChatGPT.
+// Will send the transcript to Claude for a title and summary.
 // All information will be recorded in the passed in info record.
+//
+// On success the intermediate audio and transcript are deleted. On failure they are
+// left in place so the failed step can be retried without redoing the work before it.
 func processOneAudio(info *MessageInfo) error {
 	var err error
 
@@ -145,147 +173,135 @@ func processOneAudio(info *MessageInfo) error {
 		if err != nil {
 			return err
 		}
-
-		// upload the audio to S3
-		info.UploadTime = util.NewStopWatch()
-		info.AudioURL, err = uploadAudioToS3(info.AudioPath)
-		info.UploadTime.Stop()
-		if err != nil {
-			return err
-		}
 	}
-	info.AudioURL = getAudioHTTPURL(info.AudioPath)
 
 	// transcribe the audio file if needed
-	info.TranscriptPath = getTranscribePathFromAudioPath(info.AudioPath, ".txt")
+	info.TranscriptPath = getTranscribePathFromAudioPath(info.AudioPath)
 	if !util.IsFile(info.TranscriptPath) {
 		info.TranscribeTime = util.NewStopWatch()
-		xscripts, err := transcribeAudio(info.AudioPath)
+		info.TranscriptPath, err = transcribeAudio(info.AudioPath)
 		info.TranscribeTime.Stop()
 		if err != nil {
 			return err
 		}
-		info.TranscriptPath = xscripts[0]
 	}
 
 	// generate the message summary
 	info.SummaryTime = util.NewStopWatch()
-	xscriptSample, err := xscriptExtractSample(info.TranscriptPath, 12_000)
-	if err != nil {
-		return err
-	}
-	if _, err = generateMessageSummary(xscriptSample, info); err != nil {
+	if _, err = generateMessageSummary(info); err != nil {
 		return err
 	}
 	info.SummaryTime.Stop()
 
+	// assemble the upload packet. this needs the spreadsheet, which may be
+	// unreachable or may not have a row for this message yet - neither is a reason to
+	// throw away the summary we just generated, so the error is recorded and shown
+	// rather than returned.
+	info.Packet, info.PacketError = buildUploadPacket(info)
+
+	// everything succeeded, so the intermediates have served their purpose
+	cleanUpIntermediates(info)
+
 	return nil
 }
 
-// processAllVideosInEditingPriority handles processing all the videos in a way that makes best
-// use of editing time. It first does all the extraction and uploading, outputting the
-// relevant links, then does the transcoding and summarization later since that takes
-// the most time
-func processAllVideosInEditingPriority(infos []*MessageInfo) error {
-	var err error
-
-	// do all the audio extraction
-	for _, info := range infos {
-		if info.VideoPath == "" {
-			return fmt.Errorf("no video file was provided to extract audio from. aborting")
-		}
-
-		// extract the audio from the video if needed
-		info.AudioPath = getAudioPathFromVideoPath(info.VideoPath)
-		info.AudioURL = getAudioHTTPURL(info.AudioPath)
-		if !util.IsFile(info.AudioPath) {
-			info.ExtractTime = util.NewStopWatch()
-			info.AudioPath, err = extractAudioFromVideo(info.VideoPath)
-			info.ExtractTime.Stop()
-			if err != nil {
-				return err
-			}
-
-			// upload the audio to S3
-			info.UploadTime = util.NewStopWatch()
-			info.AudioURL, err = uploadAudioToS3(info.AudioPath)
-			info.UploadTime.Stop()
-			if err != nil {
-				return err
-			}
-		} else {
-			// just print the URL
-			fmt.Printf("╭───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-			fmt.Printf("│ Public HTML reference for audio file\n")
-			fmt.Printf("%s\n", info.AudioURL)
-			fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-		}
+// buildUploadPacket looks the message up in the spreadsheet and assembles the packet
+// the operator pastes into YouTube Studio
+func buildUploadPacket(info *MessageInfo) (*UploadPacket, error) {
+	date, err := getDateFromFileName(info.VideoPath)
+	if err != nil {
+		return nil, err
 	}
 
-	// now transcribe and summarize everything
-
-	for _, info := range infos {
-		// check if transcription needed
-		info.TranscriptPath = getTranscribePathFromAudioPath(info.AudioPath, ".txt")
-		if !util.IsFile(info.TranscriptPath) {
-			// transcribe the audio file
-			info.TranscribeTime = util.NewStopWatch()
-			xscripts, err := transcribeAudio(info.AudioPath)
-			info.TranscribeTime.Stop()
-			if err != nil {
-				return err
-			}
-			info.TranscriptPath = xscripts[0]
-
-			// upload the transcriptions
-			info.UploadTranscriptTime = util.NewStopWatch()
-			info.TranscriptURLs, err = uploadTranscriptionsToS3(xscripts)
-			info.UploadTranscriptTime.Stop()
-			if err != nil {
-				return err
-			}
-
-		}
-
-		// generate the message summary
-		info.SummaryTime = util.NewStopWatch()
-		xscriptSample, err := xscriptExtractSample(info.TranscriptPath, 12_000)
-		if err != nil {
-			return err
-		}
-		if _, err = generateMessageSummary(xscriptSample, info); err != nil {
-			return err
-		}
-		info.SummaryTime.Stop()
+	msgType := catalog.NewMessageTypeFromString(viper.GetString("type"))
+	if msgType == catalog.UnknownType {
+		msgType = getMessageTypeFromFileName(info.VideoPath)
 	}
 
-	return nil
+	cat, err := readOnlineContentFromInput(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	if err := cat.Initialize(); err != nil {
+		return nil, err
+	}
+
+	msg, seri, err := cat.FindMessage(catalog.MessageLookup{
+		Date:  date,
+		Type:  msgType,
+		Track: viper.GetInt("track"),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return NewUploadPacket(msg, seri, info.Summary, getThumbnailPath(info.VideoPath))
+}
+
+// getThumbnailPath returns the local thumbnail to upload with the video, if one sits
+// beside the video file. Thumbnails go to YouTube with the video; they are not
+// uploaded anywhere else.
+func getThumbnailPath(videoPath string) string {
+	base := strings.TrimSuffix(videoPath, filepath.Ext(videoPath))
+	for _, ext := range []string{".jpg", ".jpeg", ".png"} {
+		if util.IsFile(base + ext) {
+			return base + ext
+		}
+	}
+	return ""
+}
+
+// cleanUpIntermediates deletes the extracted audio and the transcript. These are
+// working files, not content. Suppressed by --keep-intermediates.
+func cleanUpIntermediates(info *MessageInfo) {
+	if viper.GetBool("keep-intermediates") {
+		log.Printf("Keeping intermediates: %s, %s", info.AudioPath, info.TranscriptPath)
+		return
+	}
+
+	for _, path := range []string{info.AudioPath, info.TranscriptPath} {
+		if path == "" || !util.IsFile(path) {
+			continue
+		}
+		if err := os.Remove(path); err != nil {
+			// not fatal - the message was processed successfully, we just left a file behind
+			log.Printf("WARNING: could not delete intermediate %s: %s", path, err)
+			continue
+		}
+		log.Printf("Deleted intermediate %s", path)
+	}
 }
 
 func printMessageInfo(index int, info *MessageInfo) {
 	fmt.Printf("Message #%d\n", index+1)
-	fmt.Printf("Video file   : %s\n", filepath.Base(info.VideoPath))
-	fmt.Printf("Audio file   : %s\n", filepath.Base(info.AudioPath))
-	fmt.Printf("Transcription: %s\n", "xscript\\"+filepath.Base(info.TranscriptPath))
-	fmt.Printf("╭───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-	fmt.Printf("│ Audio URL:\n")
-	fmt.Printf("%s\n", info.AudioURL)
-	fmt.Printf("│ Speaker  : %s\n", info.SpeakerName)
-	fmt.Printf("│ Title    : %s\n", info.Title)
-	fmt.Printf("│ Summary  :\n")
-	fmt.Printf("%s\n", info.Summary)
-	fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-	fmt.Printf("╭───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-	fmt.Printf("│ Transcript URLs:\n")
-	for _, u := range info.TranscriptURLs {
-		fmt.Printf("%s\n", u)
+	fmt.Printf("Video file: %s\n", filepath.Base(info.VideoPath))
+	fmt.Printf("Speaker   : %s\n", info.SpeakerName)
+
+	if info.Packet != nil {
+		info.Packet.Print()
+	} else {
+		// no packet, so show what we were able to generate on its own
+		fmt.Printf("\nCould not assemble an upload packet:\n  %s\n", info.PacketError)
+		fmt.Printf("\nGenerated title and summary (not yet matched to a spreadsheet row):\n")
+		fmt.Printf("╭───────────────────────────────────────────────────────────────────────────────────┄┄\n")
+		fmt.Printf("│ Title\n%s\n", info.Title)
+		fmt.Printf("│ Summary\n%s\n", info.Summary)
+		fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
 	}
-	fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-	log.Printf("Timeline: Extract = %s, Upload = %s, Transcribe = %s, UploadXscript = %s, Summarize = %s\n",
-		info.ExtractTime.Elapsed(), info.UploadTime.Elapsed(),
-		info.TranscribeTime.Elapsed(), info.UploadTranscriptTime.Elapsed(),
-		info.SummaryTime.Elapsed())
+
+	printRiskNotes(info)
+	log.Printf("Timeline: Extract = %s, Transcribe = %s, Summarize = %s\n",
+		info.ExtractTime.Elapsed(), info.TranscribeTime.Elapsed(), info.SummaryTime.Elapsed())
 	fmt.Println()
+}
+
+// getScratchDir returns the directory for intermediate files
+func getScratchDir() string {
+	dir := viper.GetString("scratch-dir")
+	if dir == "" {
+		dir = defaultScratchDir
+	}
+	return util.NormalizePath(dir)
 }
 
 // getInputVideo finds an appropriate video file for processing. The input
@@ -370,15 +386,20 @@ func PromtUserForInputFile(path string, allowedExts ...string) string {
 	}
 }
 
+// getAudioPathFromVideoPath returns the scratch path of the audio extracted from the
+// given video
 func getAudioPathFromVideoPath(videoPath string) string {
-	return videoPath[:len(videoPath)-4] + ".mp3"
+	name := filepath.Base(videoPath)
+	name = strings.TrimSuffix(name, filepath.Ext(name))
+	return filepath.Join(getScratchDir(), name+".mp3")
 }
 
-func getTranscribePathFromAudioPath(audioPath string, textExt string) string {
-	textExt = "." + strings.TrimPrefix(textExt, ".")
-	audioName := filepath.Base(audioPath)
-	return fmt.Sprintf("%s/xscript/%s",
-		filepath.Dir(audioPath), audioName[:len(audioName)-4]+textExt)
+// getTranscribePathFromAudioPath returns the scratch path of the transcript generated
+// from the given audio
+func getTranscribePathFromAudioPath(audioPath string) string {
+	name := filepath.Base(audioPath)
+	name = strings.TrimSuffix(name, filepath.Ext(name))
+	return filepath.Join(getScratchDir(), name+".text")
 }
 
 // deleteExistingFile deletes an existing file if it exists.

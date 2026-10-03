@@ -176,7 +176,7 @@ func msgColumnsForTest() map[string]int {
 		"Date": 0, "Name": 1, "Description": 2,
 		"Speaker": 3, "Type": 4, "Visibility": 5,
 		"Series Name": 6, "Track": 7,
-		"Audio": 8, "Video": 9, "Resources": 10,
+		"Video": 9, "Resources": 10,
 		// "Ministry" and "Thumb" intentionally omitted to test optional-column paths
 	}
 }
@@ -323,7 +323,6 @@ func (t *CatalogTestSuite) TestReadMessageSheet() {
 	t.Equal(catalog.WordOfLife, sut.Ministry)
 	t.Equal(catalog.Message, sut.Type)
 	t.Equal(catalog.Public, sut.Visibility)
-	t.Equal(catalog.OnlineResource{URL: "https://s3/2021/audio.mp3", Name: "audio"}, *sut.Audio)
 	t.Equal(catalog.OnlineResource{URL: "https://youtu.be/c/blahtyblah", Name: "blahtyblah"}, *sut.Video)
 
 	// validate resources

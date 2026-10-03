@@ -69,7 +69,6 @@ func (s *CatalogIOTestSuite) TestJSONWrite() {
 				Name:       "MSG-A",
 				Speakers:   []string{"VERN", "MARY"},
 				Visibility: "public",
-				Audio:      &OnlineResource{URL: "URL://AUDIO"},
 				Video:      &OnlineResource{URL: "URL://VIDEO"},
 			},
 			{
@@ -77,7 +76,6 @@ func (s *CatalogIOTestSuite) TestJSONWrite() {
 				Name:       "MSG-B",
 				Speakers:   []string{"VERN"},
 				Visibility: "public",
-				Audio:      &OnlineResource{URL: "URL://AUDIO2"},
 				Video:      &OnlineResource{URL: "URL://VIDEO2"},
 			},
 		},
@@ -123,9 +121,6 @@ func (s *CatalogIOTestSuite) TestJSONWrite() {
       "ministry": "",
       "type": "",
       "visibility": "public",
-      "audio": {
-        "url": "URL://AUDIO"
-      },
       "video": {
         "url": "URL://VIDEO"
       }
@@ -139,9 +134,6 @@ func (s *CatalogIOTestSuite) TestJSONWrite() {
       "ministry": "",
       "type": "",
       "visibility": "public",
-      "audio": {
-        "url": "URL://AUDIO2"
-      },
       "video": {
         "url": "URL://VIDEO2"
       }

@@ -8,9 +8,17 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/WordOfLifeMN/online/util"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+// defaultWhisperModel is the transcription model used when none is configured.
+// The transcript is a disposable input to title and description generation, never
+// published, so the cheapest model that still yields usable text is the right default.
+const defaultWhisperModel = "tiny.en"
+
+// whisperExe is the faster-whisper binary. Overridable with the 'whisper-exe' config key.
+const defaultWhisperExe = "C:/Users/WordofLifeMNMedia/bin/Faster-Whisper-XXL_r245.4_windows/Faster-Whisper-XXL/faster-whisper-xxl.exe"
 
 // audioTranscribeCmd represents the command to transcribe audio to text
 var audioTranscribeCmd = &cobra.Command{
@@ -18,22 +26,14 @@ var audioTranscribeCmd = &cobra.Command{
 	Short: "Transcribe the audio track to text",
 	Long: `Takes an already extracted audio track and transcribes it to English text.
 
-The input file must be .mp3 and the output will be generated as both a text and
-a vtt file in the 'xscript' sub-directory.
+The input file must be .mp3 and the transcript is written to the scratch directory.
+The transcript is an intermediate used to generate a title and description; it is
+not published or preserved.
 
-The resulting text files will be uploaded to AWS S3 to the wordoflife.mn.audio bucket
-as 
-- s3://wordoflife.mn.audio/{year}/xscript/{txt-file-name}
-- s3://wordoflife.mn.audio/{year}/xscript/{vtt-file-name}
+The model can be set with the 'whisper-model' configuration key (default "` + defaultWhisperModel + `").
 
-Requires 'whisper' and 'aws' be installed and accessible on the path.`,
+Requires 'faster-whisper' be installed and accessible.`,
 	RunE: audioTranscribe,
-}
-
-type xscriptInfo struct {
-	path    string
-	s3URL   string
-	httpURL string
 }
 
 func init() {
@@ -45,10 +45,9 @@ func init() {
 func audioTranscribe(cmd *cobra.Command, args []string) error {
 	initLogging()
 
-	var err error
 	var audioPath string
 
-	// get the input video file
+	// get the input audio file
 	if len(args) == 1 {
 		audioPath = args[0]
 	}
@@ -58,59 +57,60 @@ func audioTranscribe(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	textPaths, err := transcribeAudio(audioPath)
+	xscriptPath, err := transcribeAudio(audioPath)
 	if err != nil {
 		return err
 	}
-	if len(textPaths) == 0 {
-		return fmt.Errorf("transcribing %s returned no output text", audioPath)
-	}
 
-	if _, err = uploadTranscriptionsToS3(textPaths); err != nil {
-		return err
-	}
+	fmt.Printf("Transcribed to %s\n", xscriptPath)
 	return nil
 }
 
-// transcribeAudio uses whisper to transcribe the audio and returns the .txt and .vtt
-// files
-func transcribeAudio(audioPath string) ([]string, error) {
-	// delete any existing transcription files and collect the names
-	var xscriptPaths []string
-	for _, ext := range []string{".text", ".vtt", ".srt", ".tsv", ".json"} {
-		xscriptPaths = append(xscriptPaths, getTranscribePathFromAudioPath(audioPath, ext))
+// getWhisperModel returns the transcription model to use
+func getWhisperModel() string {
+	if model := viper.GetString("whisper-model"); model != "" {
+		return model
 	}
-	for i, p := range xscriptPaths {
-		if err := deleteExistingFile(p, i == 0); err != nil {
-			if strings.HasSuffix(err.Error(), "exists") {
-				// user doesn't want to overwrite. assume the existing transcript
-				// is valid and return no errors
-				return xscriptPaths[0:2], nil
-			}
-			return nil, err
+	return defaultWhisperModel
+}
+
+// getWhisperExe returns the path to the faster-whisper executable
+func getWhisperExe() string {
+	if exe := viper.GetString("whisper-exe"); exe != "" {
+		return exe
+	}
+	return defaultWhisperExe
+}
+
+// transcribeAudio uses faster-whisper to transcribe the audio and returns the path to
+// the resulting text file. Only text output is produced - the .vtt, .srt, .tsv and
+// .json formats existed to publish transcripts online, which we no longer do.
+func transcribeAudio(audioPath string) (string, error) {
+	xscriptPath := getTranscribePathFromAudioPath(audioPath)
+
+	if err := deleteExistingFile(xscriptPath, true); err != nil {
+		if strings.HasSuffix(err.Error(), "exists") {
+			// user doesn't want to overwrite. assume the existing transcript is valid
+			return xscriptPath, nil
 		}
+		return "", err
+	}
+
+	// make sure the scratch directory exists
+	if err := os.MkdirAll(filepath.Dir(xscriptPath), os.FileMode(0777)); err != nil {
+		return "", fmt.Errorf("cannot create scratch directory %s: %w", filepath.Dir(xscriptPath), err)
 	}
 
 	// output status
 	fmt.Printf("Transcribing: %s\n", filepath.Base(audioPath))
-	fmt.Printf("    to .text: %s\n", "xscript\\"+filepath.Base(xscriptPaths[0]))
-	fmt.Printf("    and .vtt: %s\n", "xscript\\"+filepath.Base(xscriptPaths[1]))
+	fmt.Printf("       model: %s\n", getWhisperModel())
+	fmt.Printf("          to: %s\n", filepath.Base(xscriptPath))
 
 	cmd := exec.Command(
-		// parameters for whisper
-		// "whisper",
-		// "--fp16", "False",
-		// "--output_format", "all",
-
-		// parameters for fast-whisper
-		"C:/Users/WordofLifeMNMedia/bin/Faster-Whisper-XXL_r245.4_windows/Faster-Whisper-XXL/faster-whisper-xxl.exe",
-		"--output_format", "text", "vtt",
-
-		// parameters for both
-		"--output_dir", filepath.Dir(xscriptPaths[0]),
-		// "--model", "tiny",
-		"--model", "small",
-		// "--model", "medium",
+		getWhisperExe(),
+		"--output_format", "text",
+		"--output_dir", filepath.Dir(xscriptPath),
+		"--model", getWhisperModel(),
 		"--language", "en",
 		audioPath,
 	)
@@ -119,64 +119,11 @@ func transcribeAudio(audioPath string) ([]string, error) {
 	log.Print(cmd.String())
 	cmd.Run()
 
-	// faster-whisper always exits with an error, so check the output files
-	for _, file := range xscriptPaths[0:2] {
-		if _, err := os.Stat(file); err != nil {
-			fmt.Printf("Unable to transcribe audio: output files not found\n")
-			return nil, fmt.Errorf("unable to transcribe audio: output file %s not found", file)
-		}
+	// faster-whisper always exits with an error, so check the output file instead
+	if _, err := os.Stat(xscriptPath); err != nil {
+		fmt.Printf("Unable to transcribe audio: output file not found\n")
+		return "", fmt.Errorf("unable to transcribe audio: output file %s not found", xscriptPath)
 	}
 
-	// delete the files we don't use
-	for _, file := range xscriptPaths[2:] {
-		os.Remove(file)
-	}
-
-	return xscriptPaths[0:2], nil
-}
-
-func uploadTranscriptionsToS3(xscriptPaths []string) ([]string, error) {
-	var xscriptURLs []string
-	s3Bucket := "wordoflife.mn.audio"
-
-	xscripts := []xscriptInfo{}
-	for _, p := range xscriptPaths {
-		if !util.DoesPathExist(p) {
-			return xscriptURLs, fmt.Errorf("cannot find file %s", p)
-		}
-
-		// compute all the file references
-		year := filepath.Base(p)[0:4]
-		xscripts = append(xscripts, xscriptInfo{
-			path:  p,
-			s3URL: fmt.Sprintf("s3://%s/%s/xscript/%s", s3Bucket, year, filepath.Base(p)),
-			httpURL: fmt.Sprintf("https://s3.us-west-2.amazonaws.com/%s/%s/xscript/%s",
-				s3Bucket, year, strings.ReplaceAll(filepath.Base(p), " ", "+")),
-		})
-	}
-
-	// write the expectations
-	for _, info := range xscripts {
-		fmt.Printf("Uploading: %s\n", filepath.Base(info.path))
-		fmt.Printf("       to: %s\n", "xscript\\"+filepath.Base(info.s3URL))
-	}
-	fmt.Printf("╭───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-	fmt.Printf("│ Public HTML reference for transcription files\n")
-	for _, info := range xscripts {
-		fmt.Printf("%s\n", info.httpURL)
-	}
-	fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-
-	for _, info := range xscripts {
-		cmd := exec.Command("aws", "s3", "cp", "--content-type", "text/plain", info.path, info.s3URL)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			fmt.Printf("Unable to upload file to S3: %s\n", err)
-			return xscriptURLs, err
-		}
-		xscriptURLs = append(xscriptURLs, info.httpURL)
-	}
-
-	return xscriptURLs, nil
+	return xscriptPath, nil
 }

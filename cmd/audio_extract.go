@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/WordOfLifeMN/online/util"
 	"github.com/spf13/cobra"
 )
 
@@ -18,14 +17,10 @@ var audioExtractCmd = &cobra.Command{
 	Short: "Extract audio track from video",
 	Long: `Extracts the audio as an mp3 file from the mp4 video file.
 
-The input file must be .mp4 and the output will be generated as an .mp3 file
-in the same directory as the input. If the output file already exsits, you will
-be prompted to overwrite it.
+The input file must be .mp4. The audio is written to the scratch directory as an
+.mp3 file. It is an intermediate on the way to a transcript and is not preserved.
 
-After extraction, the audio file will be uploaded to AWS S3's wordoflife.mn.audio
-bucket as s3://wordoflife.mn.audio/{year}/{mp3-file-name} .
-
-Requires 'ffmpeg' and 'aws' be installed and accessible on the path.`,
+Requires 'ffmpeg' be installed and accessible on the path.`,
 	RunE: audioExtract,
 }
 
@@ -38,7 +33,6 @@ func init() {
 func audioExtract(cmd *cobra.Command, args []string) error {
 	initLogging()
 
-	var err error
 	var videoPath string
 
 	// get the input video file
@@ -56,9 +50,7 @@ func audioExtract(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if _, err = uploadAudioToS3(audioPath); err != nil {
-		return err
-	}
+	fmt.Printf("Extracted to %s\n", audioPath)
 	return nil
 }
 
@@ -68,11 +60,16 @@ func extractAudioFromVideo(videoPath string) (string, error) {
 		return "", err
 	}
 
+	// make sure the scratch directory exists
+	if err := os.MkdirAll(filepath.Dir(audioPath), os.FileMode(0777)); err != nil {
+		return "", fmt.Errorf("cannot create scratch directory %s: %w", filepath.Dir(audioPath), err)
+	}
+
 	// compute trim length based on file name
 	trimLen := 9.8
-	if strings.Contains(audioPath, " FF ") {
+	if strings.Contains(videoPath, " FF ") {
 		trimLen = 9.9
-	} else if strings.Contains(audioPath, " CORE ") {
+	} else if strings.Contains(videoPath, " CORE ") {
 		trimLen = 30.0
 	}
 
@@ -98,46 +95,4 @@ func extractAudioFromVideo(videoPath string) (string, error) {
 	}
 
 	return audioPath, nil
-}
-
-// uploadAudioToS3 uploads the provided audio to the S3 bucket
-// and returns the HTTP URL for the uploaded file.
-func uploadAudioToS3(audioPath string) (string, error) {
-	if !util.DoesPathExist(audioPath) {
-		return "", fmt.Errorf("cannot find file %s", audioPath)
-	}
-
-	// compute all the file references
-	s3URL := getAudioS3URL(audioPath)
-	url := getAudioHTTPURL(audioPath)
-
-	// fmt.Printf("Uploading: %s\n", audioPath)
-	// fmt.Printf("       to: %s\n", s3URL)
-	fmt.Printf("╭───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-	fmt.Printf("│ Public HTML reference for audio file\n")
-	fmt.Printf("%s\n", url)
-	fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-
-	cmd := exec.Command("aws", "s3", "cp", audioPath, s3URL)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("Unable to upload audio to S3: %s\n", err)
-		return "", err
-	}
-
-	return url, nil
-}
-
-func getAudioS3URL(audioPath string) string {
-	audioName := filepath.Base(audioPath)
-	s3Bucket := "wordoflife.mn.audio"
-	return fmt.Sprintf("s3://%s/%s/%s", s3Bucket, audioName[0:4], audioName)
-}
-
-func getAudioHTTPURL(audioPath string) string {
-	audioName := filepath.Base(audioPath)
-	s3Bucket := "wordoflife.mn.audio"
-	return fmt.Sprintf("https://s3.us-west-2.amazonaws.com/%s/%s/%s",
-		s3Bucket, audioName[0:4], strings.ReplaceAll(audioName, " ", "+"))
 }

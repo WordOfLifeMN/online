@@ -33,7 +33,6 @@ func getValidTestMessage() CatalogMessage {
 		Ministry:    WordOfLife,
 		Type:        Message,
 		Visibility:  Public,
-		Audio:       NewResourceFromString("https://path/to/file.mp3"),
 		Video:       NewResourceFromString("https://path/to/file.mp4"),
 	}
 }
@@ -100,15 +99,6 @@ func (t *ValidateTestSuite) TestMessageVisibilityUnknown() {
 
 	t.False(sut.IsValid(t.Report))
 	t.Contains(t.Report.String(), "Unknown visibility")
-}
-
-func (t *ValidateTestSuite) TestMessageAudio() {
-	sut := getValidTestMessage()
-	sut.Audio = NewResourceFromString("random string")
-
-	t.False(sut.IsValid(t.Report))
-	t.Contains(t.Report.String(), "Audio ")
-	t.Contains(t.Report.String(), " isn't valid")
 }
 
 func (t *ValidateTestSuite) TestMessageVideo() {

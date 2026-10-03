@@ -1,298 +1,265 @@
 {
-    "created": "2021-09-24T20:06:27.90325-05:00",
-    "series": [
+  "created": "2021-09-24T20:06:27.90325-05:00",
+  "series": [
+    {
+      "id": "WOLS-Y4euZWJ3FJPSHyWk",
+      "name": "A People of Conviction, or Convenience?",
+      "description": "These messages deal with the power of Anti-Christ and where it is taking the world we are living in right now. We look at Tolerance, Pantheism, and Universalism which are the rising religions of the future. We also explore the influences of the present worldly system. How can we measure whether we are growing spiritually? How can we differentiate between God testing us or if it's Demonic testing? What is the purposes of these tests? What does a lukewarm Christian look like? Do we and our children even \"Know\" the God we serve? This is a powerful series to help us prepare for the evil days which lay before us.",
+      "visibility": "public",
+      "jacket": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/Jackets/People+of+Conviction+or+Convenience.pdf",
+      "thumbnail": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/CoverImage/People+of+Conviction+or+Convenience.jpg",
+      "start-date": "2014-01-05",
+      "end-date": "2014-02-02",
+      "booklets": [
         {
-            "id": "WOLS-Y4euZWJ3FJPSHyWk",
-            "name": "A People of Conviction, or Convenience?",
-            "description": "These messages deal with the power of Anti-Christ and where it is taking the world we are living in right now. We look at Tolerance, Pantheism, and Universalism which are the rising religions of the future. We also explore the influences of the present worldly system. How can we measure whether we are growing spiritually? How can we differentiate between God testing us or if it's Demonic testing? What is the purposes of these tests? What does a lukewarm Christian look like? Do we and our children even \"Know\" the God we serve? This is a powerful series to help us prepare for the evil days which lay before us.",
-            "visibility": "public",
-            "jacket": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/Jackets/People+of+Conviction+or+Convenience.pdf",
-            "thumbnail": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/CoverImage/People+of+Conviction+or+Convenience.jpg",
-            "start-date": "2014-01-05",
-            "end-date": "2014-02-02",
-            "booklets": [
-                {
-                    "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/StudyGuide/Favor+and+Grace.pdf",
-                    "name": "Favor and Grace"
-                }
-            ]
-        },
-        {
-            "id": "WOLS-4yeme1fzk6ttayy",
-            "name": "Summerfest 2014",
-            "visibility": "public",
-            "start-date": "2014-07-08",
-            "end-date": "2014-07-20"
+          "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/StudyGuide/Favor+and+Grace.pdf",
+          "name": "Favor and Grace"
         }
-    ],
-    "messages": [
+      ]
+    },
+    {
+      "id": "WOLS-4yeme1fzk6ttayy",
+      "name": "Summerfest 2014",
+      "visibility": "public",
+      "start-date": "2014-07-08",
+      "end-date": "2014-07-20"
+    }
+  ],
+  "messages": [
+    {
+      "date": "2014-01-05",
+      "name": "A People of Conviction or Convenience",
+      "description": "This message deals with end-times and preparing our children and grandchildren so they are aware of what is coming and ready for it.",
+      "speakers": [
+        "Pastor Vern Peltz"
+      ],
+      "ministry": "wol",
+      "type": "message",
+      "visibility": "public",
+      "series": [
         {
-            "date": "2014-01-05",
-            "name": "A People of Conviction or Convenience",
-            "description": "This message deals with end-times and preparing our children and grandchildren so they are aware of what is coming and ready for it.",
-            "speakers": [
-                "Pastor Vern Peltz"
-            ],
-            "ministry": "wol",
-            "type": "message",
-            "visibility": "public",
-            "series": [
-                {
-                    "name": "A People of Conviction, or Convenience?",
-                    "index": 1
-                }
-            ],
-            "audio": {
-                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-01-05+People+of+Conviction+or+Convenience.mp3"
-            },
-            "video": {
-                "url": "http://youtu.be/DGXneD1ZANY"
-            },
-            "resources": [
-                {
-                    "url": "https://s3-us-west-2.amazonaws.com/thebridgeoutreach.mn.audio/2016/2016-03-19+Jake.mp3",
-                    "name": "Jake"
-                },
-                {
-                    "url": "https://rumble.com/vmly6n-faith-and-freedom-dr.-scott-jensen-q-and-a.html",
-                    "name": "Scott Jensen"
-                },
-                {
-                    "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/StudyGuide/Healing+the+Heart+Worksheets+2017+Revised.docx",
-                    "name": "Healing the Heart"
-                },
-                {
-                    "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.video/2014/2014-06-01+The+Truth+About+Dinosaurs%2C+Part+1.mov",
-                    "name": "Dinosaurs"
-                },
-                {
-                    "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.video/2014/2014-07-19+Childrens+Service.wmv",
-                    "name": "Childrens Service"
-                }
-            ]
-        },
-        {
-            "date": "2014-01-26",
-            "name": "Sustaining the Movement, Part 1",
-            "description": "Have we leveled out spiritually?  Do we feel we are doing good enough in our spiritual life?  Have we become luke-warm?  Have we fallen into temptation?  What does it mean to have the Holy Spirit 'Live' in us?  These questions, and more are addressed in this message.",
-            "speakers": [
-                "Pastor Vern Peltz"
-            ],
-            "ministry": "wol",
-            "type": "message",
-            "visibility": "public",
-            "series": [
-                {
-                    "name": "A People of Conviction, or Convenience?",
-                    "index": 2
-                }
-            ],
-            "audio": {
-                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-01-26+Sustaining+the+Movement%2C+Part+1.mp3"
-            },
-            "video": {
-                "url": "https://rumble.com/vmgcvh-faith-and-freedom-critical-race-theory-in-the-schools.html"
-            },
-            "resources": [
-                {
-                    "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/StudyGuide/Names+of+God.pdf",
-                    "name": "Names of God"
-                },
-                {
-                    "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/StudyGuide/Names+of+God+-+Full+List.pdf",
-                    "name": "Names of God - Full List"
-                }
-            ]
-        },
-        {
-            "date": "2014-02-02",
-            "name": "Sustaining the Movement, Part 2",
-            "description": "Have we leveled out spiritually? Do we feel we are doing good enough in our spiritual life? Have we become luke-warm? Have we fallen into temptation? What does it mean to have the Holy Spirit 'Live' in us? These questions, and more are addressed in this message.",
-            "speakers": [
-                "Pastor Vern Peltz"
-            ],
-            "ministry": "wol",
-            "type": "message",
-            "visibility": "public",
-            "series": [
-                {
-                    "name": "A People of Conviction, or Convenience?",
-                    "index": 3
-                }
-            ],
-            "audio": {
-                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-02-02+Sustaining+the+Movement%2C+Part+2.mp3"
-            },
-            "video": {
-                "url": "https://www.bitchute.com/video/2BLmAvXID0DH/"
-            }
-        },
-        {
-            "date": "2014-02-02",
-            "name": "Word (Feb 2, 2014)",
-            "speakers": [
-                "Doreen Samsa"
-            ],
-            "ministry": "wol",
-            "type": "word",
-            "visibility": "private",
-            "audio": {
-                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-02-02+Word-Doreen+Samsa.mp3"
-            },
-            "video": {
-                "url": "n/a"
-            }
-        },
-        {
-            "date": "2013-02-20",
-            "name": "Attachment Disorder",
-            "speakers": [
-                "Mary Peltz"
-            ],
-            "ministry": "core",
-            "type": "message",
-            "visibility": "public",
-            "audio": {
-                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2013/2013-02-20+Attachment+Disorder.mp3"
-            },
-            "video": {
-                "url": "-"
-            }
-        },
-        {
-            "date": "2014-07-18",
-            "name": "Prophesy: Drama Skit 1",
-            "description": "Drama Presentation.",
-            "speakers": [
-                "Drama Team"
-            ],
-            "ministry": "wol",
-            "type": "special-event",
-            "visibility": "partner",
-            "series": [
-                {
-                    "name": "Summerfest 2014"
-                }
-            ],
-            "audio": {
-                "url": "-"
-            },
-            "video": {
-                "url": "abrogated"
-            }
-        },
-        {
-            "date": "2014-07-18",
-            "name": "Revival: Imparting Life to Others",
-            "description": "On this message, Brad spoke about revival, what it really is, and if we want it - how to get it.",
-            "speakers": [
-                "Brad Brede",
-                "Pastor Vern Peltz"
-            ],
-            "ministry": "wol",
-            "type": "message",
-            "visibility": "public",
-            "series": [
-                {
-                    "name": "Summerfest 2014",
-                    "index": 1
-                }
-            ],
-            "audio": {
-                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-07-18+Revival-Imparting+Life+to+Others.mp3"
-            },
-            "video": {
-                "url": "http://youtu.be/APGvq3hVf9I"
-            }
-        },
-        {
-            "date": "2014-07-19",
-            "name": "Children's Service",
-            "speakers": [
-                "Children's Ministry"
-            ],
-            "ministry": "wol",
-            "type": "special-event",
-            "visibility": "private",
-            "series": [
-                {
-                    "name": "Summerfest 2014"
-                }
-            ],
-            "audio": {
-                "url": "-"
-            },
-            "video": {
-                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.video/2014/2014-07-19+Childrens+Service.wmv"
-            }
-        },
-        {
-            "date": "2014-07-19",
-            "name": "The Strength of Men",
-            "description": "Men's Meeting. Allow the strength which God placed into the male to operate and flow in serving God and doing everything God wants us to do.",
-            "speakers": [
-                "Brad Brede"
-            ],
-            "ministry": "wol",
-            "type": "message",
-            "visibility": "public",
-            "series": [
-                {
-                    "name": "Summerfest 2014",
-                    "index": 2
-                }
-            ],
-            "audio": {
-                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-07-19+The+Strength+of+Men.mp3"
-            },
-            "video": {
-                "url": "http://youtu.be/VswC49qJqQo"
-            }
-        },
-        {
-            "date": "2014-07-20",
-            "name": "Prophesy: Drama Skit 2",
-            "description": "Drama Presentation",
-            "speakers": [
-                "Drama Team"
-            ],
-            "ministry": "wol",
-            "type": "special-event",
-            "visibility": "private",
-            "series": [
-                {
-                    "name": "Summerfest 2014"
-                }
-            ],
-            "audio": {
-                "url": "-"
-            },
-            "video": {
-                "url": "http://youtu.be/lDepdLDKyDs"
-            }
-        },
-        {
-            "date": "2014-07-20",
-            "name": "The Power to Heal",
-            "description": "This message lays out the basic scriptural stance on healing and how to receive the Power of the Anointing.",
-            "speakers": [
-                "Brad Brede"
-            ],
-            "ministry": "wol",
-            "type": "message",
-            "visibility": "public",
-            "series": [
-                {
-                    "name": "Summerfest 2014",
-                    "index": 3
-                }
-            ],
-            "audio": {
-                "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/2014/2014-07-20+The+Power+to+Heal.mp3"
-            },
-            "video": {
-                "url": "http://youtu.be/L_tsWGFIpJg"
-            }
+          "name": "A People of Conviction, or Convenience?",
+          "index": 1
         }
-    ]
+      ],
+      "video": {
+        "url": "http://youtu.be/DGXneD1ZANY"
+      },
+      "resources": [
+        {
+          "url": "https://s3-us-west-2.amazonaws.com/thebridgeoutreach.mn.audio/2016/2016-03-19+Jake.mp3",
+          "name": "Jake"
+        },
+        {
+          "url": "https://rumble.com/vmly6n-faith-and-freedom-dr.-scott-jensen-q-and-a.html",
+          "name": "Scott Jensen"
+        },
+        {
+          "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/StudyGuide/Healing+the+Heart+Worksheets+2017+Revised.docx",
+          "name": "Healing the Heart"
+        },
+        {
+          "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.video/2014/2014-06-01+The+Truth+About+Dinosaurs%2C+Part+1.mov",
+          "name": "Dinosaurs"
+        },
+        {
+          "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.video/2014/2014-07-19+Childrens+Service.wmv",
+          "name": "Childrens Service"
+        }
+      ]
+    },
+    {
+      "date": "2014-01-26",
+      "name": "Sustaining the Movement, Part 1",
+      "description": "Have we leveled out spiritually?  Do we feel we are doing good enough in our spiritual life?  Have we become luke-warm?  Have we fallen into temptation?  What does it mean to have the Holy Spirit 'Live' in us?  These questions, and more are addressed in this message.",
+      "speakers": [
+        "Pastor Vern Peltz"
+      ],
+      "ministry": "wol",
+      "type": "message",
+      "visibility": "public",
+      "series": [
+        {
+          "name": "A People of Conviction, or Convenience?",
+          "index": 2
+        }
+      ],
+      "video": {
+        "url": "https://rumble.com/vmgcvh-faith-and-freedom-critical-race-theory-in-the-schools.html"
+      },
+      "resources": [
+        {
+          "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/StudyGuide/Names+of+God.pdf",
+          "name": "Names of God"
+        },
+        {
+          "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.audio/StudyGuide/Names+of+God+-+Full+List.pdf",
+          "name": "Names of God - Full List"
+        }
+      ]
+    },
+    {
+      "date": "2014-02-02",
+      "name": "Sustaining the Movement, Part 2",
+      "description": "Have we leveled out spiritually? Do we feel we are doing good enough in our spiritual life? Have we become luke-warm? Have we fallen into temptation? What does it mean to have the Holy Spirit 'Live' in us? These questions, and more are addressed in this message.",
+      "speakers": [
+        "Pastor Vern Peltz"
+      ],
+      "ministry": "wol",
+      "type": "message",
+      "visibility": "public",
+      "series": [
+        {
+          "name": "A People of Conviction, or Convenience?",
+          "index": 3
+        }
+      ],
+      "video": {
+        "url": "https://www.bitchute.com/video/2BLmAvXID0DH/"
+      }
+    },
+    {
+      "date": "2014-02-02",
+      "name": "Word (Feb 2, 2014)",
+      "speakers": [
+        "Doreen Samsa"
+      ],
+      "ministry": "wol",
+      "type": "word",
+      "visibility": "private",
+      "video": {
+        "url": "n/a"
+      }
+    },
+    {
+      "date": "2013-02-20",
+      "name": "Attachment Disorder",
+      "speakers": [
+        "Mary Peltz"
+      ],
+      "ministry": "core",
+      "type": "message",
+      "visibility": "public",
+      "video": {
+        "url": "-"
+      }
+    },
+    {
+      "date": "2014-07-18",
+      "name": "Prophesy: Drama Skit 1",
+      "description": "Drama Presentation.",
+      "speakers": [
+        "Drama Team"
+      ],
+      "ministry": "wol",
+      "type": "special-event",
+      "visibility": "partner",
+      "series": [
+        {
+          "name": "Summerfest 2014"
+        }
+      ],
+      "video": {
+        "url": "abrogated"
+      }
+    },
+    {
+      "date": "2014-07-18",
+      "name": "Revival: Imparting Life to Others",
+      "description": "On this message, Brad spoke about revival, what it really is, and if we want it - how to get it.",
+      "speakers": [
+        "Brad Brede",
+        "Pastor Vern Peltz"
+      ],
+      "ministry": "wol",
+      "type": "message",
+      "visibility": "public",
+      "series": [
+        {
+          "name": "Summerfest 2014",
+          "index": 1
+        }
+      ],
+      "video": {
+        "url": "http://youtu.be/APGvq3hVf9I"
+      }
+    },
+    {
+      "date": "2014-07-19",
+      "name": "Children's Service",
+      "speakers": [
+        "Children's Ministry"
+      ],
+      "ministry": "wol",
+      "type": "special-event",
+      "visibility": "private",
+      "series": [
+        {
+          "name": "Summerfest 2014"
+        }
+      ],
+      "video": {
+        "url": "https://s3-us-west-2.amazonaws.com/wordoflife.mn.video/2014/2014-07-19+Childrens+Service.wmv"
+      }
+    },
+    {
+      "date": "2014-07-19",
+      "name": "The Strength of Men",
+      "description": "Men's Meeting. Allow the strength which God placed into the male to operate and flow in serving God and doing everything God wants us to do.",
+      "speakers": [
+        "Brad Brede"
+      ],
+      "ministry": "wol",
+      "type": "message",
+      "visibility": "public",
+      "series": [
+        {
+          "name": "Summerfest 2014",
+          "index": 2
+        }
+      ],
+      "video": {
+        "url": "http://youtu.be/VswC49qJqQo"
+      }
+    },
+    {
+      "date": "2014-07-20",
+      "name": "Prophesy: Drama Skit 2",
+      "description": "Drama Presentation",
+      "speakers": [
+        "Drama Team"
+      ],
+      "ministry": "wol",
+      "type": "special-event",
+      "visibility": "private",
+      "series": [
+        {
+          "name": "Summerfest 2014"
+        }
+      ],
+      "video": {
+        "url": "http://youtu.be/lDepdLDKyDs"
+      }
+    },
+    {
+      "date": "2014-07-20",
+      "name": "The Power to Heal",
+      "description": "This message lays out the basic scriptural stance on healing and how to receive the Power of the Anointing.",
+      "speakers": [
+        "Brad Brede"
+      ],
+      "ministry": "wol",
+      "type": "message",
+      "visibility": "public",
+      "series": [
+        {
+          "name": "Summerfest 2014",
+          "index": 3
+        }
+      ],
+      "video": {
+        "url": "http://youtu.be/L_tsWGFIpJg"
+      }
+    }
+  ]
 }

@@ -1,16 +1,7 @@
 package catalog
 
 import (
-	"fmt"
-	"log"
-	"net/http"
-	"net/url"
-	"os/exec"
-	"path/filepath"
-	"slices"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -29,17 +20,10 @@ type CatalogMessage struct {
 	Visibility  View              `json:"visibility,omitempty"`  // visibility of this message
 	Series      []SeriesReference `json:"series,omitempty"`      // which series this message belongs to
 	Thumb       *OnlineResource   `json:"thumb,omitempty"`       // URL of the thumbnail
-	Audio       *OnlineResource   `json:"audio,omitempty"`       // URL of the audio file
 	Video       *OnlineResource   `json:"video,omitempty"`       // URL of the video. normally on YouTube, BitChute, Rumble, or S3
 	Resources   []OnlineResource  `json:"resources,omitempty"`   // list of online resources for this message (links, docs, video, etc)
 	initialized bool              `json:"-"`                     // has this object been initialized?
 }
-
-// transcript cache is a map of year to list of available transcript names. the list of names is
-// just the message name, which is the base name of the transcript file without extension
-var transcriptCache map[int][]string
-var transcriptCacheOnce sync.Once
-var transcriptCacheMu sync.Mutex
 
 // +---------------------------------------------------------------------------
 // | Constructors
@@ -68,11 +52,6 @@ func (m *CatalogMessage) Initialize() error {
 		return nil
 	}
 	defer func() { m.initialized = true }()
-
-	// clean audio
-	if m.Audio != nil && !strings.Contains(m.Audio.URL, "://") {
-		m.Audio = nil
-	}
 
 	// clean video
 	if m.Video != nil && !strings.Contains(m.Video.URL, "://") {
@@ -133,150 +112,6 @@ func (m *CatalogMessage) DateString() string {
 // SpeakerString gets all the speakers in a descriptive string
 func (m *CatalogMessage) SpeakerString() string {
 	return strings.Join(m.Speakers, ", ")
-}
-
-func (m *CatalogMessage) HasAudio() bool {
-	return m != nil && m.Audio != nil && strings.Contains(m.Audio.URL, "://")
-}
-
-func (m *CatalogMessage) HasVideo() bool {
-	return m != nil && m.Video != nil && strings.Contains(m.Video.URL, "://")
-}
-
-// GetAudioSize gets the size of the audio file in bytes. Returns -1 on error,
-// or 0 if no audio URL. Note this makes network calls to get the content size
-func (m *CatalogMessage) GetAudioSize() int {
-	m.Initialize()
-	if m.Audio == nil {
-		return 0
-	}
-
-	resp, err := http.Head(m.Audio.URL)
-	if err != nil {
-		log.Printf("WARNING: Could not get file size of %s: %s", m.Audio.URL, err.Error())
-		return -1
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("WARNING: Unsuccessful status code getting file size of %s: %d", m.Audio.URL, resp.StatusCode)
-		return -1
-	}
-
-	length, err := strconv.Atoi(resp.Header.Get("Content-Length"))
-	if err != nil {
-		log.Printf("WARNING: Could not parse the file size '%s': %s", resp.Header.Get("Content-Length"), err.Error())
-		return -1
-	}
-
-	return length
-}
-
-func (m *CatalogMessage) HasTranscript() bool {
-	// fast fail if no audio
-	m.Initialize()
-	if !m.HasAudio() {
-		return false
-	}
-
-	// on first call, load all years 2005-current in parallel
-	transcriptCacheOnce.Do(m.LoadTranscriptsCache)
-
-	yearMessages := transcriptCache[m.Date.Year()]
-	if len(yearMessages) == 0 {
-		return false
-	}
-
-	audioURL, err := url.Parse(m.Audio.URL)
-	if err != nil {
-		log.Printf("WARNING: Could not parse audio URL %q: %s", m.Audio.URL, err.Error())
-		return false
-	}
-	audioName := filepath.Base(audioURL.Path)
-	audioName = strings.TrimSuffix(audioName, filepath.Ext(audioName))
-	audioName = strings.ReplaceAll(audioName, "+", " ")
-
-	// TODO(km)
-	// if strings.Contains(audioName, "%") || strings.Contains(audioName, ",") {
-	// 	log.Printf("Checking for transcript for message %q in year %d", audioName, m.Date.Year())
-	// 	time.Sleep(4 * time.Second)
-	// }
-	return slices.Contains(yearMessages, audioName)
-}
-
-// LoadTranscriptsCache loads the transcript cache for all years from 2005 to the current year
-// in parallel. This is called once (via sync.Once) on the first HasTranscript call.
-func (m *CatalogMessage) LoadTranscriptsCache() {
-	transcriptCache = make(map[int][]string)
-	currentYear := time.Now().Year()
-	var wg sync.WaitGroup
-	for year := 2005; year <= currentYear; year++ {
-		wg.Go(func() {
-			log.Printf("(Researching transcripts for %d)", year)
-			names := m.LoadTranscriptCacheForYear(year)
-			transcriptCacheMu.Lock()
-			transcriptCache[year] = names
-			transcriptCacheMu.Unlock()
-		})
-	}
-	wg.Wait()
-}
-
-// LoadTranscriptCacheForYear loads the transcript cache for the specified year. Given the year,
-// this will call the aws cli to list the transcript files for s3://wordoflife.mn.audio/<year>/xscript/
-// and return a list of the base names (without extensions) of each transcript file ending with
-// .text for that year.
-func (m *CatalogMessage) LoadTranscriptCacheForYear(year int) []string {
-	// get the list of transcript files from S3
-	cmd := exec.Command("aws", "s3", "ls", fmt.Sprintf("s3://wordoflife.mn.audio/%d/xscript/", year))
-	output, err := cmd.Output()
-	if err != nil {
-		return []string{}
-	}
-
-	// parse the output to get the base names
-	var xscriptBaseNames []string
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		if !strings.HasSuffix(line, ".text") {
-			continue
-		}
-		line = strings.TrimSuffix(line, ".text")
-
-		// the line is in the format "date time size filename", and filename may contain spaces.
-		// get the filename by compressing spaces, then parsing on up to 3 spaces
-		line = strings.Join(strings.Fields(line), " ")
-		parts := strings.SplitN(line, " ", 4)
-		xscriptBaseNames = append(xscriptBaseNames, strings.TrimSpace(parts[3]))
-	}
-
-	// TODO(km)
-	// log.Printf("List of transcripts for year %d:\n%#v", year, xscriptBaseNames)
-	// time.Sleep(5 * time.Second)
-
-	return xscriptBaseNames
-}
-
-func (m *CatalogMessage) GetTranscriptURL(ext string) string {
-	if !m.HasAudio() {
-		return ""
-	}
-
-	if !strings.HasPrefix(ext, ".") {
-		ext = "." + ext
-	}
-
-	xscriptURL := strings.Replace(m.Audio.URL, ".mp3", ext, 1)
-	lastSlash := strings.LastIndex(xscriptURL, "/")
-	if lastSlash == -1 {
-		return ""
-	}
-	xscriptURL = xscriptURL[:lastSlash+1] + "xscript/" + xscriptURL[lastSlash+1:]
-	return xscriptURL
 }
 
 // +---------------------------------------------------------------------------
