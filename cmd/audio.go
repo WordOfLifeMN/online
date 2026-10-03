@@ -273,26 +273,35 @@ func processOneAudio(info *MessageInfo) error {
 		return fmt.Errorf("no video file was provided to extract audio from. aborting")
 	}
 
-	// extract the audio from the video if needed
+	// extract the audio from the video if needed.
+	//
+	// NOTE: these reuse checks require a non-empty file. A failed run leaves its
+	// intermediates behind on purpose so the failed step can be retried, but a tool
+	// that reports success while writing nothing leaves a zero-length file, and
+	// treating that as "already done" skips the step on every future run.
 	info.AudioPath = getAudioPathFromVideoPath(info.VideoPath)
-	if !util.IsFile(info.AudioPath) {
+	if !util.IsNonEmptyFile(info.AudioPath) {
 		info.ExtractTime = util.NewStopWatch()
 		info.AudioPath, err = extractAudioFromVideo(info.VideoPath)
 		info.ExtractTime.Stop()
 		if err != nil {
 			return err
 		}
+	} else {
+		log.Printf("Reusing existing audio %s", info.AudioPath)
 	}
 
 	// transcribe the audio file if needed
 	info.TranscriptPath = getTranscribePathFromAudioPath(info.AudioPath)
-	if !util.IsFile(info.TranscriptPath) {
+	if !util.IsNonEmptyFile(info.TranscriptPath) {
 		info.TranscribeTime = util.NewStopWatch()
 		info.TranscriptPath, err = transcribeAudio(info.AudioPath)
 		info.TranscribeTime.Stop()
 		if err != nil {
 			return err
 		}
+	} else {
+		log.Printf("Reusing existing transcript %s", info.TranscriptPath)
 	}
 
 	// generate the message summary
@@ -392,16 +401,23 @@ func printMessageInfo(index int, info *MessageInfo) {
 	fmt.Printf("Video file: %s\n", filepath.Base(info.VideoPath))
 	fmt.Printf("Speaker   : %s\n", info.SpeakerName)
 
-	if info.Packet != nil {
+	switch {
+	case info.Packet != nil:
 		info.Packet.Print()
-	} else {
-		// no packet, so show what we were able to generate on its own
+
+	case info.PacketError != nil:
+		// the message was processed but could not be matched to a spreadsheet row
 		fmt.Printf("\nCould not assemble an upload packet:\n  %s\n", info.PacketError)
-		fmt.Printf("\nGenerated title and summary (not yet matched to a spreadsheet row):\n")
+		fmt.Printf("\nGenerated title and summary (not matched to a spreadsheet row):\n")
 		fmt.Printf("╭───────────────────────────────────────────────────────────────────────────────────┄┄\n")
 		fmt.Printf("│ Title\n%s\n", info.Title)
 		fmt.Printf("│ Summary\n%s\n", info.Summary)
 		fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
+
+	default:
+		// processing failed before there was anything to assemble. the error itself
+		// is reported by the caller, so do not invent a second, emptier one here.
+		fmt.Printf("\nNot processed - see the error below.\n")
 	}
 
 	printRiskNotes(info)

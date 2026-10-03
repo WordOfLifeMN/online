@@ -31,6 +31,10 @@ title and description, looks the message up in the Google Sheet for its series,
 track, ministry and visibility, and assembles everything needed to upload the
 message by hand.`,
 	SilenceUsage: true,
+
+	// Execute() reports the error through cobra.CheckErr. Without this, cobra prints
+	// it too and every failure appears twice.
+	SilenceErrors: true,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
