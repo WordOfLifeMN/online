@@ -3,7 +3,6 @@ package catalog
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -24,15 +23,6 @@ type OnlineResource struct {
 	// these will be nil
 	Seri    *CatalogSeri    `json:"-"`
 	Message *CatalogMessage `json:"-"`
-
-	// cached or generated data
-
-	// URL of small thumbnail for the resource, optional. this is generated
-	// dynamically for the current context of the resource display
-	thumbnail string `json:"-"` // TODO(km) delete?
-	// short string to clarify the type of the resource. generated dynamically to help the user
-	// identify what will happen when they click on it, like "video", "pdf"
-	classifier string `json:"-"` // TODO(km) delete?
 }
 
 // NewResourceFromString creates a new OnlineResource from a string definition. If the input
@@ -172,94 +162,3 @@ func (r *OnlineResource) GetFileName() string {
 	return filepath.Base(url.Path)
 }
 
-// GetThumbnail returns the path to the thumbnail to use for this file type. The thumbnail is
-// bigger than the icon and can be use in place of the resource. For instance, the thumbnail is
-// an image the user can click on to go to the resource (as opposed to a decorator for the link)
-func (r *OnlineResource) GetThumbnail() string {
-	switch {
-	case strings.Contains(r.URL, "youtube"), strings.Contains(r.URL, "youtu.be"):
-		return "static/all.thumbnail_youtube_light.png"
-	case strings.Contains(r.URL, "rumble"):
-		return "static/all.thumbnail_rumble_light.png"
-	case strings.Contains(r.URL, "bitchute"):
-		return "static/all.thumbnail_bitchute.png"
-	}
-	return "static/all.thumbnail_video.png"
-}
-
-// GetIcon returns the path to the icon for this file type. The icon is very small and is a
-// suitable as a decorator for the link
-func (r *OnlineResource) GetIcon() string {
-	switch {
-	case strings.HasSuffix(r.URL, ".pdf"):
-		return "static/all.icon_pdf.png"
-	case strings.HasSuffix(r.URL, ".mp3"):
-		return "static/all.icon_mp3.png"
-	case strings.HasSuffix(r.URL, ".wmv"):
-		return "static/all.icon_wmv.png"
-	case strings.HasSuffix(r.URL, ".mov"):
-		return "static/all.icon_mov.png"
-	case strings.HasSuffix(r.URL, ".doc"), strings.HasSuffix(r.URL, ".docx"):
-		return "static/all.icon_word.png"
-	case strings.Contains(r.URL, "youtube"), strings.Contains(r.URL, "youtu.be"):
-		return "static/all.icon_youtube.png"
-	}
-	return "static/all.icon_web.png"
-}
-
-// GetClassifier returns a short description of the file type. Examples: YouTube video, PDF,
-// Microsoft Word, etc
-func (r *OnlineResource) GetClassifier() string {
-	switch {
-	case strings.HasSuffix(r.URL, ".pdf"):
-		return "PDF file"
-	case strings.Contains(r.URL, "youtube"), strings.Contains(r.URL, "youtu.be"):
-		return "YouTube video"
-	case strings.Contains(r.URL, "rumble"):
-		return "Rumble video"
-	case strings.Contains(r.URL, "bitchute"):
-		return "BitChute video"
-	}
-	return "Internet link"
-}
-
-// GetEmbeddedURL returns a version of the URL used for embedding the resource in an iframe. For
-// example, the format for a YouTube URL is different depending on whether it's a clickable link
-// or a reference to a video to play in an iframe.
-func (r *OnlineResource) GetEmbeddedURL() string {
-	switch {
-	case strings.Contains(r.URL, "//youtu.be/"):
-		return strings.ReplaceAll(r.URL, "//youtu.be/", "//www.youtube.com/embed/")
-	case strings.Contains(r.URL, "//rumble.com/"):
-		// rumble videos have different IDs for embedded vs. direct links. The URL should be for
-		// the direct link, but the embedded URL can be in an "iframe" metadata field
-		if v, ok := r.Metadata["iframe"]; ok {
-			return v
-		}
-		return r.URL
-	}
-	return r.URL
-}
-
-func (r *OnlineResource) GetEmbeddedVideo(width int) template.HTML {
-	switch {
-	case strings.Contains(r.URL, "//youtu.be/"):
-		height := width * 9 / 16
-		return template.HTML(
-			fmt.Sprintf(
-				`<iframe width="%dpx" height="%dpx" src="%s" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`,
-				width, height, r.GetEmbeddedURL()),
-		)
-	case strings.Contains(r.URL, "rumble"):
-		return template.HTML(
-			fmt.Sprintf(
-				`<iframe class="rumble" src="%s" style="width:%dpx;overflow:hidden" frameborder="0" allowfullscreen></iframe>`,
-				r.GetEmbeddedURL(), width),
-		)
-	}
-	return template.HTML(
-		fmt.Sprintf(
-			`<a href="%s" target="wolmVideo"><img src="%s" height="64px" alt="%s" /></a>`,
-			r.URL, r.GetThumbnail(), r.GetClassifier()),
-	)
-}

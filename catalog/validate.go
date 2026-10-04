@@ -312,21 +312,6 @@ func (m *CatalogMessage) IsValid(report *util.IndentingReport) bool {
 		}
 	}
 
-	// audio
-	if m.Audio != nil && !strings.Contains(m.Audio.URL, "://") {
-		found := false
-		for _, expected := range possibleAudioVideoStates {
-			if m.Audio.URL == expected {
-				found = true
-				break
-			}
-		}
-		if !found {
-			report.Printf("Audio '%s' isn't valid. It is neither a URL nor one of the expected values %v", m.Audio.URL, possibleAudioVideoStates)
-			valid = false
-		}
-	}
-
 	// video
 	if m.Video != nil && !strings.Contains(m.Video.URL, "://") {
 		found := false

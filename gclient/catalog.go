@@ -33,151 +33,9 @@ func NewCatalogFromSheet(service *sheets.Service, documentID string) (*catalog.C
 		return &catalog, err
 	}
 	catalog.Messages = messages
-
-	// Series tab is a fallback: only append entries whose name isn't already in msgSeries
-	tabSeries, err := readSeriesFromDocument(service, documentID)
-	if err != nil {
-		return &catalog, err
-	}
-	series := msgSeries
-	for _, s := range tabSeries {
-		if !seriesContainsName(series, s.Name) {
-			log.Printf("MIGRATION: Series %s is missing from message tabs", s.Name)
-			series = append(series, s)
-		} else {
-			log.Printf("MIGRATION: FOUND series %s in message tab", s.Name)
-		}
-	}
-	catalog.Series = series
+	catalog.Series = msgSeries
 
 	return &catalog, nil
-}
-
-// seriesContainsName reports whether any entry in series has the given name.
-func seriesContainsName(series []catalog.CatalogSeri, name string) bool {
-	for _, s := range series {
-		if s.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
-const (
-	seriesName        string = "Name"
-	seriesID          string = "ID"
-	seriesDescription string = "Description"
-	seriesStartDate   string = "Date Started"
-	seriesEndDate     string = "Date Ended"
-	seriesBooklets    string = "Booklets"
-	seriesVisibility  string = "Visibility"
-	seriesCDJacket    string = "CD Jacket"
-	seriesDVDJacket   string = "DVD Jacket"
-	seriesThumbnail   string = "Cover Art"
-)
-
-var requiredSeriesColumns []string = []string{
-	seriesName, seriesID, seriesDescription,
-	seriesStartDate, seriesEndDate,
-	seriesVisibility,
-	seriesBooklets,
-	seriesCDJacket, seriesDVDJacket, seriesThumbnail,
-}
-
-// readSeriesFromDocument finds the "Series" tab and reads the series data from
-// it. If the tab does not exist, it returns an empty slice and no error so the
-// caller can treat the tab as an optional fallback.
-func readSeriesFromDocument(service *sheets.Service, documentID string) ([]catalog.CatalogSeri, error) {
-	tabName := "Series"
-	log.Printf("Reading the Series from tab '%s'\n", tabName)
-
-	// get the first row as column titles
-	columns, err := getIndexOfColumns(service, documentID, tabName, 1)
-	if err != nil {
-		log.Printf("Series tab '%s' not found or unreadable, skipping: %v", tabName, err)
-		return nil, nil
-	}
-	log.Printf("  Found %d columns\n", len(columns))
-	// for k, v := range columns {
-	// 	log.Printf("    Column %d: %s\n", v, k)
-	// }
-
-	// validate that the columns we are expecting are actually there
-	for _, requiredColumn := range requiredSeriesColumns {
-		if _, ok := columns[requiredColumn]; !ok {
-			return nil, fmt.Errorf("required column '%s' cannot be found in sheet '%s'",
-				requiredColumn, tabName)
-		}
-	}
-
-	// prepare the series
-	var series []catalog.CatalogSeri
-
-	// read a the series data from the spreadsheet
-	seriesRange := fmt.Sprintf("'%s'!2:80000", tabName)
-	values, err := service.Spreadsheets.Values.Get(documentID, seriesRange).Do()
-	if err != nil {
-		log.Printf("Unable to read the series: %v", err)
-		return series, err
-	}
-
-	// iterate through all the results, creating a new series for each one
-	log.Printf("  Found %d series", len(values.Values))
-	for seriesIndex, seriesRow := range values.Values {
-		seri, err := newCatalogSeriFromRow(columns, seriesRow)
-		if err != nil {
-			log.Printf("Unable to read series from row %d: %s", seriesIndex+2, err)
-		}
-		series = append(series, seri)
-	}
-
-	return series, nil
-}
-
-// newCatalogSeriFromRow generates a new CatalogSeri object from the raw sheet
-// data. The columns contains the index of column names to column indices, and
-// all the required columns must be present when called. rowData is the raw row
-// data from the sheet
-func newCatalogSeriFromRow(columns map[string]int, rowData []any) (catalog.CatalogSeri, error) {
-	seri := catalog.CatalogSeri{}
-
-	// simple mapping
-	seri.ID = getCellString(rowData, columns[seriesID])
-	seri.Name = getCellString(rowData, columns[seriesName])
-	seri.Description = getCellString(rowData, columns[seriesDescription])
-	seri.Visibility = catalog.NewViewFromString(getCellString(rowData, columns[seriesVisibility]))
-	seri.Thumbnail = getCellString(rowData, columns[seriesThumbnail])
-
-	// get dates
-	dString := getCellString(rowData, columns[seriesStartDate])
-	if dString == "" {
-		seri.StartDate = catalog.DateOnly{} // zero date
-	} else if d, err := catalog.ParseDateOnly(dString); err == nil {
-		seri.StartDate = d
-	} else {
-		log.Printf("WARNING: Cannot parse start date '%s' for series '%s'", dString, seri.Name)
-		seri.StartDate = catalog.DateOnly{} // zero date
-	}
-	dString = getCellString(rowData, columns[seriesEndDate])
-	if dString == "" {
-		seri.StopDate = catalog.DateOnly{} // zero date
-	} else if d, err := catalog.ParseDateOnly(dString); err == nil {
-		seri.StopDate = d
-	} else {
-		log.Printf("WARNING: Cannot parse end date '%s' for series '%s'", dString, seri.Name)
-		seri.StopDate = catalog.DateOnly{} // zero date
-	}
-
-	// jacket prefers the DVD, then CD
-	seri.Jacket = getCellString(rowData, columns[seriesDVDJacket])
-	if seri.Jacket == "" {
-		seri.Jacket = getCellString(rowData, columns[seriesCDJacket])
-	}
-
-	// unpack resources
-	seri.Booklets = catalog.NewResourcesFromString(getCellString(rowData, columns[seriesBooklets]))
-
-	return seri, nil
 }
 
 const (
@@ -191,7 +49,6 @@ const (
 	msgSeriesIndex string = "Track"
 	msgDescription string = "Description"
 	msgThumb       string = "Thumb"
-	msgAudio       string = "Audio"
 	msgVideo       string = "Video"
 	msgResources   string = "Resources"
 )
@@ -201,7 +58,7 @@ var requiredMessageColumns []string = []string{
 	msgSpeakers,
 	msgType, msgVisibility,
 	msgSeries, msgSeriesIndex,
-	msgAudio, msgVideo,
+	msgVideo,
 	msgResources,
 }
 
@@ -229,9 +86,6 @@ func readMessagesFromDocument(
 		log.Printf("Checking sheet %s\n", title)
 		if strings.HasPrefix(title, "_") {
 			log.Printf("Ignoring sheet '%s' (starts with '_')\n", title)
-			continue
-		}
-		if strings.EqualFold(title, "Series") {
 			continue
 		}
 		sheetMessages, sheetSeries, err := readMessagesFromSheet(service, documentID, title, title)
@@ -335,7 +189,6 @@ func newCatalogMessageFromRow(columns map[string]int, rowData []any, defaultMini
 	if colIdx, ok := columns[msgThumb]; ok {
 		msg.Thumb = catalog.NewResourceFromString(getCellString(rowData, colIdx))
 	}
-	msg.Audio = catalog.NewResourceFromString(getCellString(rowData, columns[msgAudio]))
 	msg.Video = catalog.NewResourceFromString(getCellString(rowData, columns[msgVideo]))
 
 	// get date

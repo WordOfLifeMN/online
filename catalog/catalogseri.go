@@ -21,7 +21,6 @@ type CatalogSeri struct {
 	Description string           `json:"description,omitempty"` // detailed description of contents of series
 	Booklets    []OnlineResource `json:"booklets,omitempty"`    // list of study booklets for this series (pdf)
 	Visibility  View             `json:"visibility"`            // visibility of this series as a whole
-	Jacket      string           `json:"jacket,omitempty"`      // link to the DVD (or CD) jacket for this series
 	Thumbnail   string           `json:"thumbnail,omitempty"`   // link to the thumbnail to use for the series
 
 	// cached or generated data. note that this data could be customized for different views of
@@ -259,56 +258,6 @@ func (s *CatalogSeri) GetID() string {
 	s.ID = prefix + util.ComputeHash(s.Name)
 
 	return s.ID
-}
-
-// GetViewID gets an ID for the series for a specific view. If the view is public, then the
-// mystic ID is the same as the normal ID. However, if the view is partner or private, then the
-// mystic ID is additionally hashed to obscure/uniqueify the name
-func (s *CatalogSeri) GetViewID(view View) string {
-	// get the base ID for a public view
-	id := s.GetID()
-
-	// the public view is just the ID
-	if view == Public {
-		return id
-	}
-
-	// all other views have an additional hash
-	return id + "-" + util.ComputeHash(id+string(view))
-}
-
-// GetCatalogFileName returns the file name of this seri with the specified view
-func (s *CatalogSeri) GetCatalogFileName(view View) string {
-	return s.GetViewID(view) + ".html"
-}
-
-// DateString gets the date of the series in a displayable string
-func (s *CatalogSeri) DateString() string {
-	if s.State == State_Unknown || s.State == State_HasNotStarted {
-		// hasn't started
-		return "Coming Soon"
-	}
-
-	if s.State == State_InProgress {
-		// started, but not finished
-		return "Started " + s.StartDate.Time.Format("Jan 2, 2006")
-	}
-
-	if s.StartDate.Year() == s.StopDate.Year() {
-		if s.StartDate.Month() == s.StopDate.Month() {
-			if s.StartDate.Time == s.StopDate.Time {
-				// started & stopped on the same day
-				return s.StartDate.Time.Format("Jan 2, 2006")
-			}
-			// started & stopped in same month
-			return s.StartDate.Time.Format("Jan 2") + "-" + s.StopDate.Time.Format("2, 2006")
-		}
-		// started & stopped in same year
-		return s.StartDate.Time.Format("Jan 2") + " - " + s.StopDate.Time.Format("Jan 2, 2006")
-	}
-
-	// spans multiple years
-	return s.StartDate.Time.Format("Jan 2, 2006") + " - " + s.StopDate.Time.Format("Jan 2, 2006")
 }
 
 // Gets the Ministry of a series
