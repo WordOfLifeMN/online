@@ -3,6 +3,7 @@ module github.com/WordOfLifeMN/online
 go 1.26
 
 require (
+	github.com/agnivade/levenshtein v1.2.1
 	github.com/anthropics/anthropic-sdk-go v1.78.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1

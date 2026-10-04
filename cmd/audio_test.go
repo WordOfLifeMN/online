@@ -128,10 +128,15 @@ func (t *AudioTestSuite) TestSpeaker_PromptsWhenNothingKnown() {
 	})
 }
 
+// untitledVideo carries a date and nothing else, so the file name offers no opinion
+// about which row is right. The prompt then behaves as it did before ranking existed:
+// no default, and blank means skip.
+const untitledVideo = "2026-05-17.mp4"
+
 func (t *AudioTestSuite) TestChoice_PicksFirst() {
 	ambiguous := t.newAmbiguity()
 	t.withStdin("1\n", func() {
-		chosen := promptUserForMessageChoice(ambiguous)
+		chosen := promptUserForMessageChoice(ambiguous, untitledVideo)
 		t.Require().NotNil(chosen)
 		t.Equal("Power of Prayer", chosen.Name)
 	})
@@ -140,23 +145,23 @@ func (t *AudioTestSuite) TestChoice_PicksFirst() {
 func (t *AudioTestSuite) TestChoice_PicksSecond() {
 	ambiguous := t.newAmbiguity()
 	t.withStdin("2\n", func() {
-		chosen := promptUserForMessageChoice(ambiguous)
+		chosen := promptUserForMessageChoice(ambiguous, untitledVideo)
 		t.Require().NotNil(chosen)
 		t.Equal("Power of Prayer: Q&A", chosen.Name)
 	})
 }
 
-func (t *AudioTestSuite) TestChoice_BlankSkips() {
+func (t *AudioTestSuite) TestChoice_BlankSkipsWithoutADefault() {
 	ambiguous := t.newAmbiguity()
 	t.withStdin("\n", func() {
-		t.Nil(promptUserForMessageChoice(ambiguous))
+		t.Nil(promptUserForMessageChoice(ambiguous, untitledVideo))
 	})
 }
 
 func (t *AudioTestSuite) TestChoice_RejectsOutOfRangeThenAccepts() {
 	ambiguous := t.newAmbiguity()
 	t.withStdin("9\n0\nnonsense\n2\n", func() {
-		chosen := promptUserForMessageChoice(ambiguous)
+		chosen := promptUserForMessageChoice(ambiguous, untitledVideo)
 		t.Require().NotNil(chosen)
 		t.Equal("Power of Prayer: Q&A", chosen.Name)
 	})
@@ -166,8 +171,122 @@ func (t *AudioTestSuite) TestChoice_RejectsOutOfRangeThenAccepts() {
 func (t *AudioTestSuite) TestChoice_ClosedStdinSkips() {
 	ambiguous := t.newAmbiguity()
 	t.withStdin("", func() {
-		t.Nil(promptUserForMessageChoice(ambiguous))
+		t.Nil(promptUserForMessageChoice(ambiguous, untitledVideo))
 	})
+}
+
+// +---------------------------------------------------------------------------
+// | Ranking candidates by the file name
+// +---------------------------------------------------------------------------
+
+// Enter takes the best match when the file name clearly points at one row
+func (t *AudioTestSuite) TestChoice_EnterTakesBestMatch() {
+	ambiguous := t.newAmbiguity()
+	t.withStdin("\n", func() {
+		chosen := promptUserForMessageChoice(ambiguous, "2026-05-17 Power of Prayer QA.mp4")
+		t.Require().NotNil(chosen)
+		t.Equal("Power of Prayer: Q&A", chosen.Name)
+	})
+}
+
+// the numbers follow the ranked order, not the spreadsheet order
+func (t *AudioTestSuite) TestChoice_NumbersFollowRankedOrder() {
+	ambiguous := t.newAmbiguity()
+	t.withStdin("1\n", func() {
+		chosen := promptUserForMessageChoice(ambiguous, "2026-05-17 Power of Prayer QA.mp4")
+		t.Require().NotNil(chosen)
+		t.Equal("Power of Prayer: Q&A", chosen.Name)
+	})
+}
+
+// a default must not swallow the ability to decline
+func (t *AudioTestSuite) TestChoice_SkipKeyWithADefault() {
+	ambiguous := t.newAmbiguity()
+	t.withStdin("s\n", func() {
+		t.Nil(promptUserForMessageChoice(ambiguous, "2026-05-17 Power of Prayer QA.mp4"))
+	})
+}
+
+// the operator can still overrule the suggestion
+func (t *AudioTestSuite) TestChoice_OverrulesBestMatch() {
+	ambiguous := t.newAmbiguity()
+	t.withStdin("2\n", func() {
+		chosen := promptUserForMessageChoice(ambiguous, "2026-05-17 Power of Prayer QA.mp4")
+		t.Require().NotNil(chosen)
+		t.Equal("Power of Prayer", chosen.Name)
+	})
+}
+
+func (t *AudioTestSuite) TestRank_OrdersByDistance() {
+	candidates := []catalog.CatalogMessage{
+		{Name: "The Works of God"},
+		{Name: "The Importance of Voting"},
+	}
+
+	// the leading article differs, which edit distance tolerates and equality would not
+	ranked, hasDefault := rankCandidatesByFileName(
+		"2026-10-04 Importance of Voting.mp4", candidates)
+
+	t.True(hasDefault)
+	t.Equal("The Importance of Voting", ranked[0].Name)
+	t.Equal("The Works of God", ranked[1].Name)
+}
+
+// a file name with no title offers no opinion, so the order is left alone and no
+// default is suggested
+func (t *AudioTestSuite) TestRank_NoTitleMeansNoOpinion() {
+	candidates := []catalog.CatalogMessage{
+		{Name: "The Works of God"},
+		{Name: "The Importance of Voting"},
+	}
+
+	ranked, hasDefault := rankCandidatesByFileName(untitledVideo, candidates)
+
+	t.False(hasDefault)
+	t.Equal("The Works of God", ranked[0].Name)
+	t.Equal("The Importance of Voting", ranked[1].Name)
+}
+
+// an equally good match for both is no match at all: offering a default here would
+// invite a confirming keystroke it has not earned
+func (t *AudioTestSuite) TestRank_TieOffersNoDefault() {
+	candidates := []catalog.CatalogMessage{
+		{Name: "Morning"},
+		{Name: "Evening"},
+	}
+
+	ranked, hasDefault := rankCandidatesByFileName("2026-10-04 Zzzzzzz.mp4", candidates)
+
+	t.False(hasDefault)
+	t.Len(ranked, 2)
+}
+
+// ranking must not lose or duplicate a candidate
+func (t *AudioTestSuite) TestRank_PreservesEveryCandidate() {
+	candidates := []catalog.CatalogMessage{
+		{Name: "Alpha"}, {Name: "Beta"}, {Name: "Gamma"},
+	}
+
+	ranked, _ := rankCandidatesByFileName("2026-10-04 Beta.mp4", candidates)
+
+	t.Len(ranked, 3)
+	names := []string{ranked[0].Name, ranked[1].Name, ranked[2].Name}
+	t.ElementsMatch([]string{"Alpha", "Beta", "Gamma"}, names)
+	t.Equal("Beta", ranked[0].Name)
+}
+
+// two rows sharing a name must both survive - scores are held per candidate, not
+// keyed by name
+func (t *AudioTestSuite) TestRank_HandlesDuplicateNames() {
+	candidates := []catalog.CatalogMessage{
+		{Name: "Same Title", Speakers: []string{"Pastor Vern Peltz"}},
+		{Name: "Same Title", Speakers: []string{"Pastor Mary Peltz"}},
+	}
+
+	ranked, hasDefault := rankCandidatesByFileName("2026-10-04 Same Title.mp4", candidates)
+
+	t.Len(ranked, 2)
+	t.False(hasDefault) // identical names cannot be told apart by name
 }
 
 // +---------------------------------------------------------------------------

@@ -15,6 +15,7 @@ import (
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
+	"github.com/agnivade/levenshtein"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -258,7 +259,7 @@ func findMessageForVideo(
 	// track 0 - so ask rather than guess.
 	var ambiguous *catalog.AmbiguousLookupError
 	if errors.As(err, &ambiguous) {
-		chosen := promptUserForMessageChoice(ambiguous)
+		chosen := promptUserForMessageChoice(ambiguous, videoPath)
 		if chosen == nil {
 			return nil, nil, err
 		}
@@ -389,22 +390,88 @@ func processOneAudio(info *MessageInfo) error {
 	return nil
 }
 
+// rankCandidatesByFileName orders candidates by how closely each spreadsheet name
+// resembles the title in the video file name, closest first, and reports whether the
+// winner is a clear one.
+//
+// The title in the file name is the one thing that distinguishes two videos recorded
+// on the same date, and until now it was the one thing the lookup ignored. It is still
+// not trusted to decide alone: the two sides disagree about leading articles,
+// abbreviations and punctuation, so edit distance orders the list and preselects a
+// default while the operator still sees every candidate.
+//
+// "Clear" means strictly better than the runner up. On a tie there is no default and
+// nothing is marked, because a best-match arrow that is only a coin toss is worse than
+// no arrow - it invites a confirming keystroke it has not earned.
+func rankCandidatesByFileName(
+	videoPath string,
+	candidates []catalog.CatalogMessage,
+) ([]catalog.CatalogMessage, bool) {
+	target := normalizeForMatch(getTitleFromFileName(videoPath))
+	if target == "" {
+		// nothing but markers in the file name, so there is no opinion to offer
+		return slices.Clone(candidates), false
+	}
+
+	// scored rather than a map keyed by name, because two rows on one date can share a
+	// name - a message and its second service, say
+	type scored struct {
+		msg      catalog.CatalogMessage
+		distance int
+	}
+
+	ranked := make([]scored, len(candidates))
+	for index := range candidates {
+		ranked[index] = scored{
+			msg:      candidates[index],
+			distance: levenshtein.ComputeDistance(target, normalizeForMatch(candidates[index].Name)),
+		}
+	}
+
+	// stable, so equally distant candidates keep their spreadsheet order
+	slices.SortStableFunc(ranked, func(a, b scored) int {
+		return a.distance - b.distance
+	})
+
+	out := make([]catalog.CatalogMessage, len(ranked))
+	for index := range ranked {
+		out[index] = ranked[index].msg
+	}
+
+	return out, len(ranked) > 1 && ranked[0].distance < ranked[1].distance
+}
+
 // promptUserForMessageChoice asks which of several equally-matching spreadsheet rows
 // describes the video being processed. Returns nil if the operator declines to choose.
-func promptUserForMessageChoice(ambiguous *catalog.AmbiguousLookupError) *catalog.CatalogMessage {
+func promptUserForMessageChoice(
+	ambiguous *catalog.AmbiguousLookupError,
+	videoPath string,
+) *catalog.CatalogMessage {
 	reader := getStdin()
+	candidates, hasDefault := rankCandidatesByFileName(videoPath, ambiguous.Candidates)
 
 	fmt.Printf("\n%d spreadsheet rows match %s / %s:\n",
-		len(ambiguous.Candidates),
+		len(candidates),
 		ambiguous.Lookup.Date.String(),
 		ambiguous.Lookup.DescribeType())
-	for index := range ambiguous.Candidates {
-		fmt.Printf("  %d. %s\n", index+1, ambiguous.Candidates[index].DescribeForChoice())
+	for index := range candidates {
+		fmt.Printf("  %d. %s", index+1, candidates[index].DescribeForChoice())
+		if index == 0 && hasDefault {
+			fmt.Printf("   <- best match")
+		}
+		fmt.Println()
+	}
+
+	// the skip key moves off blank when blank has been given a meaning, so that
+	// accepting the best match and declining to choose stay distinct answers
+	prompt := fmt.Sprintf("Which one is this video [1-%d, or blank to skip]? ", len(candidates))
+	if hasDefault {
+		prompt = fmt.Sprintf("Which one is this video [1-%d, Enter for 1, s to skip]? ",
+			len(candidates))
 	}
 
 	for {
-		fmt.Printf("Which one is this video [1-%d, or blank to skip]? ",
-			len(ambiguous.Candidates))
+		fmt.Print(prompt)
 		answer, err := reader.ReadString('\n')
 		if err != nil && strings.TrimSpace(answer) == "" {
 			// stdin closed or unreadable - treat as a skip rather than looping forever
@@ -412,17 +479,24 @@ func promptUserForMessageChoice(ambiguous *catalog.AmbiguousLookupError) *catalo
 			return nil
 		}
 		answer = strings.Trim(answer, "\"' \r\n")
+
 		if answer == "" {
+			if hasDefault {
+				return &candidates[0]
+			}
+			return nil
+		}
+		if hasDefault && strings.EqualFold(answer, "s") {
 			return nil
 		}
 
 		choice, err := strconv.Atoi(answer)
-		if err != nil || choice < 1 || choice > len(ambiguous.Candidates) {
-			fmt.Printf("Please enter a number between 1 and %d.\n", len(ambiguous.Candidates))
+		if err != nil || choice < 1 || choice > len(candidates) {
+			fmt.Printf("Please enter a number between 1 and %d.\n", len(candidates))
 			continue
 		}
 
-		return &ambiguous.Candidates[choice-1]
+		return &candidates[choice-1]
 	}
 }
 

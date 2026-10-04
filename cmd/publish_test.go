@@ -340,6 +340,43 @@ func (t *PublishTestSuite) TestTypeInference() {
 	}
 }
 
+func (t *PublishTestSuite) TestTitleInference() {
+	cases := map[string]string{
+		// the same naming conventions the type and speaker inference already handle
+		"2026-03-08 Walking in Faith.mp4":     "Walking in Faith",
+		"2026-03-08-v Walking in Faith.mp4":   "Walking in Faith",
+		"2026-03-08 Walking in Faith-v.mp4":   "Walking in Faith",
+		"2026-03-08-vp Opening Prayer.mp4":    "Opening Prayer",
+		"2026-03-08p Opening Prayer.mp4":      "Opening Prayer",
+		"2026-10-04 Importance of Voting.mp4": "Importance of Voting",
+
+		// a title opening with a short word keeps it - the marker is consumed before
+		// the gap, so there is nothing left to eat into the title
+		"2026-03-08-v A New Day.mp4": "A New Day",
+		"2026-03-08 A New Day.mp4":   "A New Day",
+
+		// a title ending in a short word keeps it, because the trailing initial
+		// convention requires the hyphen
+		"2026-03-08 The Great I Am.mp4": "The Great I Am",
+
+		// a full path is fine, and so is a date with nothing after it
+		`C:\Videos\2026-10-04 The Works of God.mp4`: "The Works of God",
+		"2026-03-08.mp4":                            "",
+	}
+
+	for name, expected := range cases {
+		t.Equal(expected, getTitleFromFileName(name), "file %q", name)
+	}
+}
+
+func (t *PublishTestSuite) TestNormalizeForMatch() {
+	// case, punctuation and run-together spacing are all house style, not meaning
+	t.Equal("power of prayer q a", normalizeForMatch("Power of Prayer: Q&A"))
+	t.Equal("power of prayer qa", normalizeForMatch("Power  of   Prayer QA"))
+	t.Equal("the importance of voting", normalizeForMatch("The Importance of Voting"))
+	t.Equal("", normalizeForMatch("   "))
+}
+
 func (t *PublishTestSuite) TestDateInference() {
 	date, err := getDateFromFileName("2026-03-08-v Walking in Faith.mp4")
 	t.NoError(err)
