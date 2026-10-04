@@ -387,6 +387,11 @@ worth renaming this round — the types are still the right types.
   TBO.
 - **Summarizer.** Moving from OpenAI to Claude, with structured outputs replacing the
   hand-rolled JSON recovery.
+- **Models (measured 2026-10-03).** Transcription uses `small` - swept eight models
+  over a real 80 minute service; `tiny.en` writes an empty transcript while reporting
+  success and must never be used. Summarization uses `claude-haiku-4-5`, steadier than
+  `claude-opus-5` and about a fifth the cost. Full evidence is in `tasks.md` and in the
+  `defaultWhisperModel` comment.
 
 ## Deferred to a Later Change
 
@@ -405,9 +410,7 @@ These do not block starting, but should be settled before the new site cuts over
 1. **The CORE playlist prefix.** Needs agreement with the website developer on what
    they can actually filter on. Also needs a decision on whether existing CORE
    playlists get renamed retroactively.
-2. **Summarization model.** `claude-opus-5` by default; `claude-haiku-4-5` is likely
-   sufficient and much cheaper for a task this small. Worth measuring on real messages.
-3. **Do the risk notes earn their place?** Task 2.23 validates them against real F&F
+2. **Do the risk notes earn their place?** Task 2.23 validates them against real F&F
    messages. If precision is poor — flagging ordinary preaching — the feature should be
    dropped rather than tuned indefinitely. A notice the operator learns to skip is
    worse than no notice.

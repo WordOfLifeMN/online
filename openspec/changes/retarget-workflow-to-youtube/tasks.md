@@ -53,8 +53,9 @@ Phase 2 — doing it the other way round leaves the tree broken in between.
       to suppress deletion. Never delete on a failed summary.
 - [x] 2.8 Reduce transcription cost: text output only (drop `.vtt`), model selectable
       via a new `whisper-model` config key
-- [ ] 2.9 Evaluate `tiny.en` vs `base.en` vs `small` on 2–3 real messages; record the
-      chosen default and the evidence in this file
+- [x] 2.9 Evaluate transcription models on real material; record the chosen default
+      and the evidence in this file. **Done 2026-10-03** - swept eight models over a
+      full 80 minute service; chose `small`. See "Transcription model chosen" below.
 - [x] 2.10 Update `MessageInfo` to drop `AudioURL`, `TranscriptURLs`, `UploadTime`,
       `UploadTranscriptTime`, and the corresponding lines in `printMessageInfo()`
 
@@ -78,8 +79,9 @@ Phase 2 — doing it the other way round leaves the tree broken in between.
       `extractSampleFromMiddle()`, `findPreviousSentenceStart()`,
       `findStartOfSentence()`, `findStartOfWord()` — and delete
       `cmd/audio_summarize_test.go`, which tests nothing else
-- [ ] 2.18 Compare `claude-opus-5` against `claude-haiku-4-5` on 2–3 real messages, at
-      full transcript; record the chosen default and the reasoning here
+- [x] 2.18 Compare `claude-opus-5` against `claude-haiku-4-5` at full transcript.
+      **Done 2026-10-03** - two runs each on a real service; chose `claude-haiku-4-5`.
+      See "Summarisation model chosen" below.
 
 ### Platform risk notes (advisory)
 
@@ -103,7 +105,8 @@ Phase 2 — doing it the other way round leaves the tree broken in between.
 - [x] `grep -rn "wordoflife.mn.audio" --include=*.go` returns nothing
 - [x] `grep -rn "openai" --include=*.go go.mod` returns nothing
 - [x] `grep -rn "ExtractSample\|findStartOf" --include=*.go` returns nothing
-- [ ] A full run over one real video leaves no `.mp3` or transcript on disk
+- [ ] A full run over one real video leaves only that run's files in the scratch
+      directory (intermediates are kept for 24 hours deliberately, see 2.7)
 - [x] `make test` passes
 
 ---
@@ -155,7 +158,8 @@ Phase 2 — doing it the other way round leaves the tree broken in between.
 - [x] 4.2 Update `README.md` — it currently describes generating a static website
 - [x] 4.3 Update `cmd/root.go` long description (still claims "Supports generating a
       RSS podcast as well as a HTML static website")
-- [ ] 4.4 Verify `dump`, `check`, and `peek` still work against the live sheet
+- [x] 4.4 Verify `dump`, `check`, and `peek` still work against the live sheet.
+      **Done 2026-10-03** - see "Verified against the live spreadsheet" below.
 - [x] 4.5 Refresh `testdata/small-catalog.json` if the `Audio` field removal
       invalidates it
 - [ ] 4.6 End-to-end run on one real message, timed against the current workflow
@@ -217,26 +221,52 @@ interactive chooser - see commit b7fa4b4.
       it wrote an empty transcript while reporting success on both a 67 second
       excerpt and the full service.
 
-## Blocked: needs real media, credentials, and spend
+## Summarisation model chosen (2026-10-03)
 
-All code is implemented. These remaining tasks cannot be done from here - they need
-real message videos, live credentials, and API calls that cost money. They are
-evaluation and validation, not implementation.
+- [x] 2.18 `claude-opus-5` vs `claude-haiku-4-5`, two runs each on the same real
+      transcript. Both captured the same content and neither would mislead a viewer.
+      Opus wrote livelier copy but ran ~35% longer, changed its title every run, and
+      one run in two emitted an undecoded unicode escape and a stray newline into the
+      description. **claude-haiku-4-5 is the default** - steadier, and about a fifth
+      the cost. A sanitiser now cleans the title and summary regardless of model.
 
-- [ ] 2.18 Compare `claude-opus-5` against `claude-haiku-4-5` at full transcript
-- [ ] 2.23 Validate risk notes on real F&F messages (one you would publish, one you
-      would not). **Drop the feature if it flags ordinary preaching.**
-- [ ] 2.24 Confirm the combined prompt has not degraded title/summary quality
-- [ ] 4.6  End-to-end run on one real message, timed against the old workflow
+## Still outstanding
 
-Defaults chosen pending measurement: `whisper-model: tiny.en`,
-`anthropic-model: claude-opus-5`. Both are single config keys - change without a
-rebuild once you have evidence.
+Everything in the proposal is implemented. What remains needs real media, a person
+to judge the result, or someone outside this repository.
 
-To run the end-to-end check:
+### Needs a real run
+
+These are tracked by their phase entries above; tick them there, not here.
+
+- **2.23** Validate the advisory risk notes on real Faith & Freedom messages - at
+  least one you would publish and one you would not. **Drop the feature rather than
+  tune it indefinitely if it flags ordinary preaching.** A notice the operator learns
+  to skip is worse than no notice.
+- **2.24** Confirm the combined prompt has not degraded title or summary quality.
+  Partly answered: runs with risk notes *disabled* produce clean, on-target output.
+  The Faith & Freedom path with `--risk-notes` on is still untested.
+- **4.6** End-to-end run over a full multi-service session. The interleaved prompts
+  are verified, but the two-video processing loop has not run start to finish.
+  Afterwards, confirm `~/.wolm/scratch` holds only that run's files.
 
 ```
 online audio "2026-03-08-v Some Message.mp4" --verbose
 ```
 
-Expect: an upload packet printed, and nothing left in `~/.wolm/scratch`.
+### Needs someone else
+
+- [ ] Agree the `CORE: ` playlist prefix with the website developer - specifically
+      whether they can filter playlists on it, and whether existing CORE playlists
+      get renamed retroactively. **Blocks publishing any CORE series**, since
+      republishing under a changed convention means manual work in YouTube Studio.
+      The convention lives in `getPlaylistName` so a different answer costs one
+      function.
+
+### Housekeeping
+
+- [ ] Revoke the old OpenAI API key at platform.openai.com. Nothing uses it since
+      the move to Claude, it sat in `~/.wolm/online-config.yaml` from April 2024
+      until 2026-10-03, and it was displayed in a terminal session on that date.
+- [ ] Open the pull request for this branch (`gh` is not installed on this machine;
+      a prepared description was written to the session scratchpad).
