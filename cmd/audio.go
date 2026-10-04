@@ -8,8 +8,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
@@ -18,8 +20,9 @@ import (
 )
 
 // defaultScratchDir is where intermediate audio and transcript files are written when
-// no 'scratch-dir' is configured. These files are deleted once they have served their
-// purpose, so they deliberately do not live beside the source video.
+// no 'scratch-dir' is configured. They are working files rather than content, so they
+// deliberately do not live beside the source video, and they are swept once they are
+// older than scratchRetention.
 const defaultScratchDir = "~/.wolm/scratch"
 
 type MessageInfo struct {
@@ -58,10 +61,11 @@ Given one or more video files, will do the following for each file:
 1. Extract the audio to a temporary .mp3
 2. Transcribe the audio to a temporary transcript
 3. Send the transcript to Claude for a suggested title and description
-4. Delete the temporary files
 
-The audio and transcript are intermediates only - they are not published or
-preserved. Pass --keep-intermediates to leave them on disk.`,
+The audio and transcript are intermediates - they are never published. They are
+kept in the scratch directory for 24 hours so that re-running a message reuses
+them instead of extracting and transcribing it again, then swept on the next run.
+Pass --keep-intermediates to disable the sweep.`,
 	RunE: audio,
 }
 
@@ -72,7 +76,7 @@ func init() {
 	viper.BindPFlag("speaker", rootCmd.PersistentFlags().Lookup("speaker"))
 
 	audioCmd.Flags().Bool("keep-intermediates", false,
-		"Do not delete the extracted audio and transcript after processing")
+		"Do not sweep old audio and transcript files from the scratch directory")
 	viper.BindPFlag("keep-intermediates", audioCmd.Flags().Lookup("keep-intermediates"))
 
 	audioCmd.Flags().String("type", "",
@@ -86,6 +90,9 @@ func init() {
 
 func audio(cmd *cobra.Command, args []string) error {
 	initLogging()
+
+	// housekeeping runs however this exits, including an early return or a failure
+	defer cleanUpScratchDir()
 
 	// read the spreadsheet once up front, before any questions, so that the questions
 	// about each video can be answered from it
@@ -370,9 +377,6 @@ func processOneAudio(info *MessageInfo) error {
 			info.Message, info.Seri, info.Summary, getThumbnailPath(info.VideoPath))
 	}
 
-	// everything succeeded, so the intermediates have served their purpose
-	cleanUpIntermediates(info)
-
 	return nil
 }
 
@@ -426,24 +430,78 @@ func getThumbnailPath(videoPath string) string {
 	return ""
 }
 
-// cleanUpIntermediates deletes the extracted audio and the transcript. These are
-// working files, not content. Suppressed by --keep-intermediates.
-func cleanUpIntermediates(info *MessageInfo) {
+// scratchRetention is how long an extracted audio file or transcript is kept before
+// being swept. Long enough that re-running a message later the same day reuses the
+// work rather than redoing it, short enough that the directory does not grow without
+// limit - the audio for one service is around 75MB.
+const scratchRetention = 24 * time.Hour
+
+// scratchExtensions are the files this application creates in the scratch directory.
+// Only these are ever deleted, so anything else put there by hand is left alone.
+var scratchExtensions = []string{".mp3", ".text"}
+
+// cleanUpScratchDir sweeps intermediates older than the retention period.
+//
+// It runs when the command exits rather than after each message, and it works on age
+// rather than on what this run happened to produce. That means a failed or
+// interrupted run leaves its audio and transcript behind, and re-running the same
+// message picks them up instead of extracting and transcribing again - which for an
+// eighty minute service is several minutes saved. Files from this run are minutes
+// old, so they are never swept by the run that created them.
+//
+// Suppressed entirely by --keep-intermediates.
+func cleanUpScratchDir() {
 	if viper.GetBool("keep-intermediates") {
-		log.Printf("Keeping intermediates: %s, %s", info.AudioPath, info.TranscriptPath)
+		log.Printf("Keeping intermediates: --keep-intermediates was given")
 		return
 	}
 
-	for _, path := range []string{info.AudioPath, info.TranscriptPath} {
-		if path == "" || !util.IsFile(path) {
+	dir := getScratchDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		// nothing to sweep if the directory was never created
+		log.Printf("Not sweeping %s: %s", dir, err)
+		return
+	}
+
+	cutoff := time.Now().Add(-scratchRetention)
+	var deleted int
+	var freed int64
+
+	for _, entry := range entries {
+		if entry.IsDir() {
 			continue
 		}
+
+		ext := strings.ToLower(filepath.Ext(entry.Name()))
+		if !slices.Contains(scratchExtensions, ext) {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().After(cutoff) {
+			// recent enough to be worth reusing, including everything this run made
+			log.Printf("Keeping recent intermediate %s", entry.Name())
+			continue
+		}
+
+		path := filepath.Join(dir, entry.Name())
 		if err := os.Remove(path); err != nil {
-			// not fatal - the message was processed successfully, we just left a file behind
-			log.Printf("WARNING: could not delete intermediate %s: %s", path, err)
+			// not fatal, we just leave a file behind
+			log.Printf("WARNING: could not delete %s: %s", path, err)
 			continue
 		}
-		log.Printf("Deleted intermediate %s", path)
+		log.Printf("Swept %s", entry.Name())
+		deleted++
+		freed += info.Size()
+	}
+
+	if deleted > 0 {
+		fmt.Printf("Cleaned %d intermediate file(s) over %s old from %s (%.0f MB)\n",
+			deleted, scratchRetention, dir, float64(freed)/(1024*1024))
 	}
 }
 

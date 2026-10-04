@@ -22,9 +22,14 @@ longer generates a website. The last version that did is tagged `v1-static-site`
       └─ assemble ────────► UPLOAD PACKET, printed for copy-paste
 ```
 
-Upload itself is manual: paste the packet into YouTube Studio. The audio and
-transcript are intermediates and are deleted once the summary is generated
-(pass `--keep-intermediates` to keep them).
+Upload itself is manual: paste the packet into YouTube Studio.
+
+The audio and transcript are intermediates and are never published, but they are
+kept in the scratch directory for 24 hours. Re-running a message within that
+window reuses them instead of extracting and transcribing again, which saves
+several minutes on a full service and matters when a run fails late. Each run
+sweeps whatever is already older than that; `--keep-intermediates` disables the
+sweep entirely.
 
 ```
 online audio "2026-03-08-v Walking in Faith.mp4"
