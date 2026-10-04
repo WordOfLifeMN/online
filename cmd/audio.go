@@ -238,15 +238,19 @@ func findMessageForVideo(
 		return nil, nil, err
 	}
 
+	// an operator-supplied --type is an assertion and is matched exactly. one read off
+	// the file name is only a hint, and the lookup trusts it accordingly.
 	msgType := catalog.NewMessageTypeFromString(viper.GetString("type"))
-	if msgType == catalog.UnknownType {
+	typeIsHint := msgType == catalog.UnknownType
+	if typeIsHint {
 		msgType = getMessageTypeFromFileName(videoPath)
 	}
 
 	msg, seri, err := cat.FindMessage(catalog.MessageLookup{
-		Date:  date,
-		Type:  msgType,
-		Track: viper.GetInt("track"),
+		Date:       date,
+		Type:       msgType,
+		Track:      viper.GetInt("track"),
+		TypeIsHint: typeIsHint,
 	})
 
 	// several rows share this date and type. the track number often cannot tell them
@@ -388,7 +392,7 @@ func promptUserForMessageChoice(ambiguous *catalog.AmbiguousLookupError) *catalo
 	fmt.Printf("\n%d spreadsheet rows match %s / %s:\n",
 		len(ambiguous.Candidates),
 		ambiguous.Lookup.Date.String(),
-		string(ambiguous.Lookup.Type))
+		ambiguous.Lookup.DescribeType())
 	for index := range ambiguous.Candidates {
 		fmt.Printf("  %d. %s\n", index+1, ambiguous.Candidates[index].DescribeForChoice())
 	}

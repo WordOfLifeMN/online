@@ -116,6 +116,122 @@ func (t *LookupTestSuite) TestFindMessage_GoodTypeHintStillNarrows() {
 	t.Equal("Opening Prayer", msg.Name)
 }
 
+// newServiceDayCatalog reproduces 2026-10-04 in the live sheet: one service produced a
+// prayer, a training and a message, and two of them were filmed. Neither video file
+// name can say which of the last two it is.
+func (t *LookupTestSuite) newServiceDayCatalog() *Catalog {
+	return &Catalog{
+		Messages: []CatalogMessage{
+			{
+				Name: "Pay Attention", Date: MustParseDateOnly("2026-10-04"),
+				Type: Prayer, Speakers: []string{"Pastor Vern Peltz"},
+				Ministry: WordOfLife, Visibility: Public,
+			},
+			{
+				Name: "The Importance of Voting", Date: MustParseDateOnly("2026-10-04"),
+				Type: Training, Speakers: []string{"Pastor Vern Peltz"},
+				Ministry: WordOfLife, Visibility: Public,
+			},
+			{
+				Name: "The Works of God", Date: MustParseDateOnly("2026-10-04"),
+				Type: Message, Speakers: []string{"Pastor Vern Peltz"},
+				Ministry: WordOfLife, Visibility: Public,
+			},
+		},
+	}
+}
+
+// An inferred "message" must not silently claim the one row literally typed "message"
+// while a training sits beside it. Both are candidates and the operator decides.
+func (t *LookupTestSuite) TestFindMessage_InferredTypeDoesNotHideOtherTypes() {
+	cat := t.newServiceDayCatalog()
+
+	_, _, err := cat.FindMessage(MessageLookup{
+		Date:       MustParseDateOnly("2026-10-04"),
+		Type:       Message,
+		TypeIsHint: true,
+	})
+
+	var ambiguous *AmbiguousLookupError
+	t.ErrorAs(err, &ambiguous)
+	t.Len(ambiguous.Candidates, 2)
+
+	names := []string{ambiguous.Candidates[0].Name, ambiguous.Candidates[1].Name}
+	t.Contains(names, "The Importance of Voting")
+	t.Contains(names, "The Works of God")
+
+	// the prayer is never a candidate - that is the one distinction the file name
+	// genuinely makes
+	t.NotContains(names, "Pay Attention")
+}
+
+// an inferred prayer stays exact, so the prayer resolves without a question
+func (t *LookupTestSuite) TestFindMessage_InferredPrayerStaysExact() {
+	cat := t.newServiceDayCatalog()
+
+	msg, _, err := cat.FindMessage(MessageLookup{
+		Date:       MustParseDateOnly("2026-10-04"),
+		Type:       Prayer,
+		TypeIsHint: true,
+	})
+
+	t.NoError(err)
+	t.Equal("Pay Attention", msg.Name)
+}
+
+// --type is an assertion, so it narrows to exactly what was asked for
+func (t *LookupTestSuite) TestFindMessage_AssertedTypeNarrowsExactly() {
+	cat := t.newServiceDayCatalog()
+
+	training, _, err := cat.FindMessage(MessageLookup{
+		Date: MustParseDateOnly("2026-10-04"),
+		Type: Training,
+	})
+	t.NoError(err)
+	t.Equal("The Importance of Voting", training.Name)
+
+	message, _, err := cat.FindMessage(MessageLookup{
+		Date: MustParseDateOnly("2026-10-04"),
+		Type: Message,
+	})
+	t.NoError(err)
+	t.Equal("The Works of God", message.Name)
+}
+
+// a hint that matches nothing still widens to the date rather than reporting the
+// message missing - here every row on the date is a prayer
+func (t *LookupTestSuite) TestFindMessage_HintMatchingNothingStillWidens() {
+	cat := &Catalog{
+		Messages: []CatalogMessage{
+			{
+				Name: "Opening Prayer", Date: MustParseDateOnly("2026-10-11"),
+				Type: Prayer, Ministry: WordOfLife, Visibility: Public,
+			},
+		},
+	}
+
+	msg, _, err := cat.FindMessage(MessageLookup{
+		Date:       MustParseDateOnly("2026-10-11"),
+		Type:       Message,
+		TypeIsHint: true,
+	})
+
+	t.NoError(err)
+	t.Equal("Opening Prayer", msg.Name)
+}
+
+func (t *LookupTestSuite) TestDescribeType() {
+	// a hint covers more than the one type it names, and says so
+	t.Equal("message (or similar)",
+		MessageLookup{Type: Message, TypeIsHint: true}.DescribeType())
+
+	// an inferred prayer is exact, so it is named plainly
+	t.Equal("prayer", MessageLookup{Type: Prayer, TypeIsHint: true}.DescribeType())
+
+	// an asserted type is exact whatever it is
+	t.Equal("message", MessageLookup{Type: Message}.DescribeType())
+}
+
 func (t *LookupTestSuite) TestFindMessage_NotFound() {
 	cat := t.newLookupCatalog()
 
@@ -269,6 +385,24 @@ func (t *LookupTestSuite) TestDescribeForChoice() {
 		Speakers: []string{"Pastor Vern Peltz"},
 	}
 	t.Equal("Power of Prayer: Q&A  (Pastor Vern Peltz)", standalone.DescribeForChoice())
+
+	// a row that is not an ordinary message says so, because that is what tells it
+	// apart from the message beside it on the same date
+	training := CatalogMessage{
+		Name:     "The Importance of Voting",
+		Type:     Training,
+		Speakers: []string{"Pastor Vern Peltz"},
+	}
+	t.Equal("The Importance of Voting  <training>  (Pastor Vern Peltz)",
+		training.DescribeForChoice())
+
+	// an ordinary message does not, so the common case stays uncluttered
+	ordinary := CatalogMessage{
+		Name:     "The Works of God",
+		Type:     Message,
+		Speakers: []string{"Pastor Vern Peltz"},
+	}
+	t.Equal("The Works of God  (Pastor Vern Peltz)", ordinary.DescribeForChoice())
 }
 
 func (t *LookupTestSuite) TestFindMessage_MessageWithNoSeries() {
