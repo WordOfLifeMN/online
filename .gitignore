@@ -1,2 +1,7 @@
 online
-online.exe
+
+# online.exe plus the variants Go leaves behind. Building on Windows while the
+# previous binary is still running cannot overwrite it, so Go renames it to
+# "online.exe~" and writes a fresh one - which is how a 33 MB binary came to be
+# committed, and how a stale copy of it came to block a pull.
+online.exe*
