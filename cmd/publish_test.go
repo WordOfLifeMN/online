@@ -307,3 +307,41 @@ func (t *PublishTestSuite) TestDateInference_NoDate() {
 	t.Error(err)
 	t.Contains(err.Error(), "2025-03-09")
 }
+
+// +---------------------------------------------------------------------------
+// | Model output sanitising
+// +---------------------------------------------------------------------------
+
+// Both of these were produced by claude-opus-5 on a real message and would have
+// reached the YouTube description unaltered.
+func (t *PublishTestSuite) TestSanitize_LiteralUnicodeEscape() {
+	// the model escaped the backslash in its own JSON, so correct parsing leaves the
+	// seven characters — rather than an em dash
+	in := `seven keys—leading yourself, and staying teachable—plus the model`
+	t.Equal("seven keys—leading yourself, and staying teachable—plus the model",
+		sanitizeModelText(in))
+}
+
+func (t *PublishTestSuite) TestSanitize_EmbeddedNewlines() {
+	// a summary that breaks its own lines scrambles the description layout, which
+	// uses blank lines to separate the summary from the resource links
+	in := "He walked through seven keys\ninjecting humor along the way\nlike leading yourself."
+	t.Equal("He walked through seven keys injecting humor along the way like leading yourself.",
+		sanitizeModelText(in))
+}
+
+func (t *PublishTestSuite) TestSanitize_LeavesGoodTextAlone() {
+	// real em dashes, apostrophes and emoji must survive untouched
+	in := "Real leadership is humble service—modeling what you want to see. 🙌"
+	t.Equal(in, sanitizeModelText(in))
+}
+
+func (t *PublishTestSuite) TestSanitize_CollapsesAndTrims() {
+	t.Equal("one two three", sanitizeModelText("  one   two \t three\r\n "))
+	t.Equal("", sanitizeModelText("   \n\t  "))
+}
+
+func (t *PublishTestSuite) TestSanitize_MalformedEscapeIsLeftAsIs() {
+	// not a valid \uXXXX - must not be mangled further
+	t.Equal(`a \u20 b \uZZZZ c`, sanitizeModelText(`a \u20 b \uZZZZ c`))
+}

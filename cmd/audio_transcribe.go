@@ -15,17 +15,33 @@ import (
 
 // defaultWhisperModel is the transcription model used when none is configured.
 //
-// The transcript is a disposable input to title and description generation and is
-// never published, so the cheapest model that still yields usable text is the right
-// default - but "cheapest" turned out to be further up the range than expected.
-// Measured on a real message:
+// Measured on a real 80 minute service (CUDA, 2026-10-03), word error rate taken
+// against large-v3 over content words only:
 //
-//	tiny.en   produced an EMPTY transcript while reporting success
-//	base.en   worked, but is not bundled and has to be downloaded, and misheard words
-//	small     worked, is already bundled, and was the most accurate of the three
+//	model             time    speed   contentWER
+//	tiny.en          2m28s      39x   EMPTY OUTPUT - reports success, writes nothing
+//	base.en          2m04s      39x    8.5%
+//	small            3m06s      26x    7.0%
+//	small.en         4m04s      20x    6.7%
+//	distil-large-v3  6m27s      13x    6.9%
+//	medium           6m40s      12x    6.1%
+//	large-v3-turbo   8m09s      10x    5.6%
+//	large-v3        17m59s       4x    reference
 //
-// On a CUDA machine small runs at roughly 34 audio-seconds per second, so even a two
-// hour service transcribes in about four minutes. There is no reason to go lower.
+// No model comes within 5% of large-v3, but that threshold turned out to be the wrong
+// test. Feeding each transcript to the summariser produced the same title and the same
+// three sentences - same speaker, same seven points, same closing image - all the way
+// down to base.en. The differences the error rate is counting are filler words,
+// contractions and the occasional mishearing, none of which survive summarisation.
+//
+// small is the default because it is bundled (no download), takes about three minutes
+// for a full service, and leaves quality headroom for a guest speaker or poorer audio
+// than this sample. base.en would save roughly a minute at the bottom of the measured
+// quality range; large-v3-turbo is the best accuracy per minute if fidelity ever
+// matters more than waiting.
+//
+// tiny.en must not be used. It wrote an empty transcript while reporting success on
+// both a 67 second excerpt and the full 80 minute service.
 const defaultWhisperModel = "small"
 
 // whisperExe is the faster-whisper binary. Overridable with the 'whisper-exe' config key.

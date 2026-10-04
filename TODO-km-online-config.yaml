@@ -13,9 +13,16 @@ sheet-id: 1z4XIiEPMFPpeRgGpdhshiQpmY7A45KzCyZzQ7Ohe85E
 # history and the process list. Keep this file out of version control.
 anthropic-api-key: sk-ant-paste-the-church-key-here
 
-# Model used to generate titles and descriptions (default: claude-opus-5).
-#anthropic-model: claude-haiku-4-5
+# Model used to generate titles and descriptions. Compared against claude-opus-5
+# on a real 80 minute service: both captured the same content, but Opus ran ~35%
+# longer, changed its title every run, and one run in two emitted an undecoded
+# unicode escape into the description. Haiku is steadier and about a fifth the cost.
+anthropic-model: claude-haiku-4-5
 
-# Transcription model (default: tiny.en) and where intermediate files are written
-#whisper-model: tiny.en
-#scratch-dir: ~/.wolm/scratch
+# Transcription model. Measured over a full 80 minute service: small takes about
+# 3 minutes and its transcript summarises identically to large-v3, which takes 18.
+# NEVER use tiny.en - it writes an empty transcript while reporting success.
+whisper-model: small
+
+# Where the intermediate .mp3 and transcript are written before being deleted
+scratch-dir: ~/.wolm/scratch

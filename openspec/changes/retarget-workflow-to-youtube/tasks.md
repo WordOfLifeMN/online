@@ -199,13 +199,30 @@ messages sit in an ambiguous (date, type) group and only 21 of the 60 groups hav
 distinct non-zero tracks. The track tie-breaker was therefore replaced with an
 interactive chooser - see commit b7fa4b4.
 
+## Transcription model chosen (2026-10-03)
+
+- [x] 2.9  Swept eight models over a real 80 minute service on CUDA. Times and
+      content-word error rate against large-v3:
+      tiny.en 2m28s EMPTY OUTPUT | base.en 2m04s 8.5% | small 3m06s 7.0% |
+      small.en 4m04s 6.7% | distil-large-v3 6m27s 6.9% | medium 6m40s 6.1% |
+      large-v3-turbo 8m09s 5.6% | large-v3 17m59s reference
+
+      Nothing met the 5% bar, but the bar was the wrong test: summarising each
+      transcript produced the same title and the same three sentences all the way
+      down to base.en. The error rate counts fillers, contractions and occasional
+      mishearings, none of which survive summarisation.
+
+      **small stays the default** - bundled, ~3 minutes per service, with quality
+      headroom for a guest speaker or worse audio. **tiny.en must never be used**:
+      it wrote an empty transcript while reporting success on both a 67 second
+      excerpt and the full service.
+
 ## Blocked: needs real media, credentials, and spend
 
 All code is implemented. These remaining tasks cannot be done from here - they need
 real message videos, live credentials, and API calls that cost money. They are
 evaluation and validation, not implementation.
 
-- [ ] 2.9  Evaluate `tiny.en` vs `base.en` vs `small` on 2-3 real messages
 - [ ] 2.18 Compare `claude-opus-5` against `claude-haiku-4-5` at full transcript
 - [ ] 2.23 Validate risk notes on real F&F messages (one you would publish, one you
       would not). **Drop the feature if it flags ordinary preaching.**

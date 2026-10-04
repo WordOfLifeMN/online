@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/WordOfLifeMN/online/util"
@@ -16,11 +17,19 @@ import (
 	"github.com/spf13/viper"
 )
 
-// defaultAnthropicModel is the model used to generate titles and summaries when none
-// is configured. The task is small - a transcript in, a six-word title and three
-// sentences out - so a cheaper model may well do as well; set 'anthropic-model' to
-// try one.
-const defaultAnthropicModel = "claude-opus-5"
+// defaultAnthropicModel is the model used to generate titles and summaries.
+//
+// Compared against claude-opus-5 on a real 80 minute service, two runs each
+// (2026-10-03). Both identified the speaker, his organisation, the seven points and
+// the closing image, and neither would mislead a viewer. Opus wrote livelier copy,
+// reaching for specifics - "the guy who never learned to make a bed" - where Haiku
+// stayed abstract, but it also ran about 35% longer, picked a different title every
+// run, and one run in two emitted an undecoded unicode escape and a stray newline
+// into the description. Haiku was steadier and costs roughly a fifth as much.
+//
+// The summary is the part people actually read and the speaker overwrites the title
+// anyway, so steadiness wins. Set 'anthropic-model' to try something else.
+const defaultAnthropicModel = "claude-haiku-4-5"
 
 // RiskNote is one advisory observation about a passage a platform reviewer might act
 // on. It is never a verdict: it names the area, quotes the passage so the operator can
@@ -252,11 +261,44 @@ func generateMessageSummary(info *MessageInfo) (*MessageInfo, error) {
 		}
 	}
 
-	info.Title = summary.Title
-	info.Summary = summary.Summary
+	info.Title = sanitizeModelText(summary.Title)
+	info.Summary = sanitizeModelText(summary.Summary)
 	info.RiskNotes = summary.RiskNotes
 
 	return info, nil
+}
+
+// literalUnicodeEscape matches a \uXXXX sequence that survived as literal text rather
+// than being decoded into the character it names
+var literalUnicodeEscape = regexp.MustCompile(`\\u[0-9a-fA-F]{4}`)
+
+// sanitizeModelText cleans a generated title or description before it goes anywhere
+// near a YouTube field.
+//
+// Two things have been observed coming back from the model, both on claude-opus-5:
+//
+//   - A literal — in the text. The model escaped the backslash in its own JSON,
+//     so correct parsing yields the seven characters rather than an em dash. Pasted
+//     into a description that is visible garbage.
+//   - Newlines inside the summary. The description is assembled with blank lines
+//     separating the summary from the resource links, so a summary that breaks its
+//     own lines scrambles that layout.
+//
+// Neither is something the caller should have to think about, and neither is worth
+// risking in front of a congregation, so both are fixed here rather than hoping the
+// model behaves.
+func sanitizeModelText(s string) string {
+	// turn any literal \uXXXX back into the character it names
+	s = literalUnicodeEscape.ReplaceAllStringFunc(s, func(match string) string {
+		code, err := strconv.ParseInt(match[2:], 16, 32)
+		if err != nil {
+			return match
+		}
+		return string(rune(code))
+	})
+
+	// collapse every run of whitespace, newlines included, into a single space
+	return strings.Join(strings.Fields(s), " ")
 }
 
 // summarySchema builds the JSON schema constraining the model's response
