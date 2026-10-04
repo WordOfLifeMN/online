@@ -5,3 +5,7 @@ online
 # "online.exe~" and writes a fresh one - which is how a 33 MB binary came to be
 # committed, and how a stale copy of it came to block a pull.
 online.exe*
+
+# and any other executable built from this module - "online-windows.exe",
+# "online-test.exe" and whatever else gets built alongside them
+online*.exe
