@@ -162,7 +162,9 @@ Phase 2 — doing it the other way round leaves the tree broken in between.
       **Done 2026-10-03** - see "Verified against the live spreadsheet" below.
 - [x] 4.5 Refresh `testdata/small-catalog.json` if the `Audio` field removal
       invalidates it
-- [ ] 4.6 End-to-end run on one real message, timed against the current workflow
+- [x] 4.6 End-to-end run on one real message, timed against the current workflow.
+      **Done 2026-10-04** - ran two services from one day. The interleaved prompts
+      worked; the run found a lookup bug, now fixed. See "End-to-end run" below.
 
 **Quality Gate:**
 - [x] `make test` passes
@@ -230,6 +232,24 @@ interactive chooser - see commit b7fa4b4.
       description. **claude-haiku-4-5 is the default** - steadier, and about a fifth
       the cost. A sanitiser now cleans the title and summary regardless of model.
 
+## End-to-end run (2026-10-04)
+
+- [x] 4.6  Two services from one day, entered in one session. The interleaved
+      prompts behaved as designed: each question stayed attached to the file it
+      was about.
+
+      The run found a real bug. Both videos were assigned the same spreadsheet
+      row. That date carried a prayer, a training ("The Importance of Voting")
+      and a message ("The Works of God"); both file names infer type `message`,
+      which matched exactly one row, so the lookup thought it had resolved the
+      video and never offered the chooser.
+
+      A file name distinguishes a prayer from everything else and nothing more.
+      An inferred `message` now means "not a prayer", so every non-prayer row on
+      the date stays a candidate and the operator is asked. An inferred `prayer`
+      stays exact, and an explicit `--type` is still matched literally. Fixed in
+      commit b7cd900, with regression tests built from this date.
+
 ## Still outstanding
 
 Everything in the proposal is implemented. What remains needs real media, a person
@@ -246,12 +266,9 @@ These are tracked by their phase entries above; tick them there, not here.
 - **2.24** Confirm the combined prompt has not degraded title or summary quality.
   Partly answered: runs with risk notes *disabled* produce clean, on-target output.
   The Faith & Freedom path with `--risk-notes` on is still untested.
-- **4.6** End-to-end run over a full multi-service session. The interleaved prompts
-  are verified, but the two-video processing loop has not run start to finish.
-  Afterwards, confirm `~/.wolm/scratch` holds only that run's files.
 
 ```
-online audio "2026-03-08-v Some Message.mp4" --verbose
+online audio "2026-10-04 Some Faith And Freedom Message.mp4" --risk-notes --verbose
 ```
 
 ### Needs someone else
