@@ -187,13 +187,53 @@ const titleDateFormat = "January 2, 2006"
 // otherwise be titled "... | Scheduled for October 2, 2026".
 func getUploadTitle(msg *catalog.CatalogMessage) string {
 	parts := []string{msg.Name}
-	if speakers := msg.SpeakerString(); speakers != "" {
+	if speakers := getTitleSpeakers(msg); speakers != "" {
 		parts = append(parts, speakers)
 	}
 	if !msg.Date.IsZero() {
 		parts = append(parts, msg.Date.Time.Format(titleDateFormat))
 	}
 	return strings.Join(parts, " | ")
+}
+
+// speakerTitles are honorifics stripped from the speaker name in the YouTube title.
+//
+// This is about title length. YouTube truncates titles in search results, in the
+// sidebar and on mobile, and "Pastor " costs seven characters of a budget the message
+// name and the date have the stronger claim on. The description is not length
+// constrained, so it keeps the honorific - see getUploadDescription.
+//
+// A list of one today. Extend it rather than reaching for a general honorific matcher:
+// over-matching silently renames a real person in a published video title.
+var speakerTitles = []string{"Pastor"}
+
+// stripSpeakerTitle removes a leading honorific from one speaker's name
+func stripSpeakerTitle(speaker string) string {
+	speaker = strings.TrimSpace(speaker)
+
+	for _, title := range speakerTitles {
+		prefix := title + " "
+		// the length test leaves a speaker recorded as bare "Pastor" alone rather than
+		// reducing them to an empty name
+		if len(speaker) > len(prefix) && strings.EqualFold(speaker[:len(prefix)], prefix) {
+			return strings.TrimSpace(speaker[len(prefix):])
+		}
+	}
+
+	return speaker
+}
+
+// getTitleSpeakers renders the speakers for the YouTube title, without honorifics.
+// Deliberately not CatalogMessage.SpeakerString, which keeps them for the description.
+func getTitleSpeakers(msg *catalog.CatalogMessage) string {
+	names := make([]string, 0, len(msg.Speakers))
+	for _, speaker := range msg.Speakers {
+		if name := stripSpeakerTitle(speaker); name != "" {
+			names = append(names, name)
+		}
+	}
+
+	return strings.Join(names, ", ")
 }
 
 // getUploadDescription builds the YouTube description: the generated summary followed
