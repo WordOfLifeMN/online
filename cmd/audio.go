@@ -273,31 +273,36 @@ func findMessageForVideo(
 
 // resolveSpeaker determines who spoke, in order of authority:
 //
-//  1. an explicit --speaker flag
-//  2. an initial in the file name, which is unambiguous when present
-//  3. otherwise ask, defaulting to whatever the spreadsheet says
+//  1. an explicit --speaker flag, which is the operator overriding everything
+//  2. the spreadsheet row, which is the record of who actually preached
+//  3. an initial in the file name, when there is no row to consult
+//  4. otherwise ask, defaulting to a guess from the file name
 //
-// Before the spreadsheet was consulted this early, step 3 defaulted to a guess based
-// on whether the file name looked like a prayer. The spreadsheet knows the answer, so
-// it supplies the default now and accepting it is a single keystroke.
+// The spreadsheet outranks the file name initial, and asking is skipped entirely when
+// the row names a speaker. Confirming it was worth doing when the prompt predated the
+// lookup and the only alternative was a guess, but a question whose default is right
+// every time teaches the operator to hit Enter without reading it.
+//
+// Taking the row also keeps the summary and the title consistent. The title is built
+// from the row's speakers, so resolving a different name here - which a stale or wrong
+// initial in the file name could do - would have the summary introduce one person and
+// the title credit another.
 func resolveSpeaker(videoPath string, msg *catalog.CatalogMessage) string {
 	if speaker := viper.GetString("speaker"); speaker != "" {
 		return speaker
+	}
+
+	if msg != nil {
+		if speaker := msg.SpeakerString(); speaker != "" {
+			return speaker
+		}
 	}
 
 	if speaker := getSpeakerInitialFromFileName(videoPath); speaker != "" {
 		return speaker
 	}
 
-	defaultSpeaker := ""
-	if msg != nil {
-		defaultSpeaker = msg.SpeakerString()
-	}
-	if defaultSpeaker == "" {
-		defaultSpeaker = guessSpeakerFromFileName(videoPath)
-	}
-
-	return PromptUserForSpeaker(defaultSpeaker)
+	return PromptUserForSpeaker(guessSpeakerFromFileName(videoPath))
 }
 
 // processAllVideos processes each video in turn, updating the message information
