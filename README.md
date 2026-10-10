@@ -41,8 +41,27 @@ video file so it can be dragged into the window.
 The message is matched to a spreadsheet row by **date and type**. A service
 usually produces both a prayer and a message on the same date, so type is what
 tells them apart; it is inferred from the file name (`p` next to the date means
-prayer) and can be set with `--type`. If two rows share a date and type, pass
-`--track` to say which.
+prayer).
+
+A file name can only tell a prayer from everything else, so an inferred
+`message` is read as "not a prayer" rather than literally - a date carrying both
+a training and a message keeps both as candidates. An explicit `--type` is taken
+literally instead.
+
+Where several rows still match, the choice is offered rather than guessed. The
+candidates are ranked by how closely the title in the file name resembles the
+spreadsheet name, with the closest preselected when it beats the rest outright,
+so accepting it is one keystroke. `--track` picks a row by its track number
+without being asked.
+
+The speaker comes from the spreadsheet row and is not confirmed. Use
+`--speaker` to override it.
+
+A thumbnail is found in the message folder and reported in the packet as a local
+path, for attaching by hand - it is never uploaded anywhere. An image sharing the
+video's name wins; otherwise any image in the folder with "thumb" in its name,
+which is how one series thumbnail covers every message in a series folder;
+otherwise the generic artwork in `thumb-dir`.
 
 # Commands
 
@@ -66,11 +85,18 @@ override the configuration file.
 |-----|---------|---------|
 | `sheet-id` | Google spreadsheet holding the series and messages | - |
 | `anthropic-api-key` | API key for the church's Anthropic Console account | - |
-| `anthropic-model` | Model used for titles and descriptions | `claude-opus-5` |
-| `whisper-model` | Transcription model | `tiny.en` |
+| `anthropic-model` | Model used for titles and descriptions | `claude-haiku-4-5` |
+| `whisper-model` | Transcription model | `small` |
 | `whisper-exe` | Path to the faster-whisper executable | (see `audio_transcribe.go`) |
 | `scratch-dir` | Where intermediate audio and transcripts are written | `~/.wolm/scratch` |
 | `thumb-dir` | Where the generic fallback thumbnails live | (none) |
+
+**Never set `whisper-model` to `tiny.en`.** Measured over a real 80 minute
+service, it writes an empty transcript while reporting success - so the failure
+surfaces later, as a summary of nothing, rather than as an error. `small` takes
+about 3 minutes per service and summarises identically to `large-v3`, which takes
+18. The full comparison is in the `defaultWhisperModel` comment in
+`cmd/audio_transcribe.go`.
 
 ## Credentials
 
