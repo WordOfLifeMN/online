@@ -383,8 +383,11 @@ func processOneAudio(info *MessageInfo) error {
 	// missing row is not a reason to throw away the summary we just generated, so the
 	// error is recorded and shown rather than returned.
 	if info.Message != nil {
+		// the row's type, not the one inferred from the file name, for the same reason
+		// the speaker comes from the row: it is the record of what this actually is
+		thumbnail := getThumbnailPath(info.VideoPath, info.Message.Type)
 		info.Packet, info.PacketError = NewUploadPacket(
-			info.Message, info.Seri, info.Summary, getThumbnailPath(info.VideoPath))
+			info.Message, info.Seri, info.Summary, thumbnail)
 	}
 
 	return nil
@@ -500,17 +503,114 @@ func promptUserForMessageChoice(
 	}
 }
 
-// getThumbnailPath returns the local thumbnail to upload with the video, if one sits
-// beside the video file. Thumbnails go to YouTube with the video; they are not
-// uploaded anywhere else.
-func getThumbnailPath(videoPath string) string {
+// thumbnailExtensions are the image types recognised as a thumbnail
+var thumbnailExtensions = []string{".jpg", ".jpeg", ".png"}
+
+// getThumbnailPath returns the local thumbnail to upload with the video. Thumbnails go
+// to YouTube with the video; they are not uploaded anywhere else.
+//
+// The search runs from most specific to least, so artwork made for this message always
+// beats a generic fallback:
+//
+//  1. an image beside the video sharing its name - artwork for this one message
+//  2. any other image in that directory with "thumb" in the name - the series
+//     thumbnail, shared by every message in the series folder
+//  3. a generic fallback from 'thumb-dir', named for the message type
+//
+// Returns "" when none of those exist, which the packet renders by omitting the line
+// rather than by claiming a thumbnail that is not there.
+func getThumbnailPath(videoPath string, msgType catalog.MessageType) string {
+	if path := thumbnailNamedForVideo(videoPath); path != "" {
+		return path
+	}
+	if path := thumbnailInVideoDir(videoPath); path != "" {
+		return path
+	}
+	return fallbackThumbnail(msgType)
+}
+
+// thumbnailNamedForVideo finds an image sharing the video's name
+func thumbnailNamedForVideo(videoPath string) string {
 	base := strings.TrimSuffix(videoPath, filepath.Ext(videoPath))
-	for _, ext := range []string{".jpg", ".jpeg", ".png"} {
+	for _, ext := range thumbnailExtensions {
 		if util.IsFile(base + ext) {
 			return base + ext
 		}
 	}
 	return ""
+}
+
+// thumbnailInVideoDir finds the series thumbnail: an image in the video's directory
+// with "thumb" in its name, which covers every message in that series folder. One
+// image is dropped in once and each message in the series picks it up, so a series
+// does not need artwork produced per message.
+//
+// It ranks below a name match because a message with its own artwork should use it;
+// the series thumbnail is the fallback for the rest of the folder.
+//
+// Sorted, so a folder holding more than one such image picks the same file every run
+// instead of depending on the order the file system happens to return.
+func thumbnailInVideoDir(videoPath string) string {
+	entries, err := os.ReadDir(filepath.Dir(videoPath))
+	if err != nil {
+		return ""
+	}
+
+	var found []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !strings.Contains(strings.ToLower(name), "thumb") {
+			continue
+		}
+		if slices.Contains(thumbnailExtensions, strings.ToLower(filepath.Ext(name))) {
+			found = append(found, name)
+		}
+	}
+	if len(found) == 0 {
+		return ""
+	}
+
+	slices.Sort(found)
+	return filepath.Join(filepath.Dir(videoPath), found[0])
+}
+
+// fallbackThumbnail returns the generic artwork for a message type from 'thumb-dir'.
+//
+// A type with no artwork of its own falls back to the message artwork rather than to
+// nothing, since every type that is not a prayer is a message as far as the cover image
+// is concerned. Returns "" when 'thumb-dir' is not configured - this step is the only
+// one that consults it, so an unset key simply means there is no generic fallback.
+func fallbackThumbnail(msgType catalog.MessageType) string {
+	dir := viper.GetString("thumb-dir")
+	if dir == "" {
+		return ""
+	}
+	dir = util.NormalizePath(dir)
+
+	for _, t := range []catalog.MessageType{msgType, catalog.Message} {
+		path := filepath.Join(dir, thumbnailFileName(t))
+		if util.IsFile(path) {
+			return path
+		}
+	}
+
+	return ""
+}
+
+// thumbnailFileName renders the generic artwork name for a message type, matching how
+// the files are named on disk: "WOL Thumbnail - Message.jpg".
+func thumbnailFileName(msgType catalog.MessageType) string {
+	words := strings.Split(string(msgType), "-")
+	for index, word := range words {
+		if word != "" {
+			words[index] = strings.ToUpper(word[:1]) + word[1:]
+		}
+	}
+
+	return fmt.Sprintf("WOL Thumbnail - %s.jpg", strings.Join(words, "-"))
 }
 
 // scratchRetention is how long an extracted audio file or transcript is kept before

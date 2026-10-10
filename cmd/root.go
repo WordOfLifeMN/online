@@ -64,6 +64,9 @@ func init() {
 
 	rootCmd.PersistentFlags().String("whisper-model", "", "Transcription model to use")
 	viper.BindPFlag("whisper-model", rootCmd.PersistentFlags().Lookup("whisper-model"))
+
+	rootCmd.PersistentFlags().String("thumb-dir", "", "Directory holding the generic fallback thumbnails")
+	viper.BindPFlag("thumb-dir", rootCmd.PersistentFlags().Lookup("thumb-dir"))
 }
 
 // initConfig reads in config file and ENV variables if set.

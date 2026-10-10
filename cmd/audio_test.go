@@ -176,6 +176,173 @@ func (t *AudioTestSuite) TestChoice_ClosedStdinSkips() {
 }
 
 // +---------------------------------------------------------------------------
+// | Thumbnails
+// +---------------------------------------------------------------------------
+
+// withThumbDir creates a fallback thumbnail directory holding the named files and
+// points 'thumb-dir' at it
+func (t *AudioTestSuite) withThumbDir(names ...string) string {
+	dir := t.T().TempDir()
+	viper.Set("thumb-dir", dir)
+	t.T().Cleanup(func() { viper.Set("thumb-dir", "") })
+
+	for _, name := range names {
+		t.Require().NoError(os.WriteFile(filepath.Join(dir, name), []byte("image"), 0666))
+	}
+	return dir
+}
+
+// withVideoDir creates a message directory holding the named files and returns the
+// path of the video inside it
+func (t *AudioTestSuite) withVideoDir(video string, others ...string) string {
+	dir := t.T().TempDir()
+	for _, name := range append([]string{video}, others...) {
+		t.Require().NoError(os.WriteFile(filepath.Join(dir, name), []byte("x"), 0666))
+	}
+	return filepath.Join(dir, video)
+}
+
+func (t *AudioTestSuite) TestThumb_NamedForTheVideo() {
+	video := t.withVideoDir("2026-10-04 Message.mp4", "2026-10-04 Message.jpg")
+
+	t.Equal(filepath.Join(filepath.Dir(video), "2026-10-04 Message.jpg"),
+		getThumbnailPath(video, catalog.Message))
+}
+
+func (t *AudioTestSuite) TestThumb_NamedForTheVideoAcceptsPngAndJpeg() {
+	video := t.withVideoDir("2026-10-04 Message.mp4", "2026-10-04 Message.png")
+	t.Equal(filepath.Join(filepath.Dir(video), "2026-10-04 Message.png"),
+		getThumbnailPath(video, catalog.Message))
+}
+
+// one image dropped into a series folder covers every message in that series
+func (t *AudioTestSuite) TestThumb_SeriesThumbnailInTheFolder() {
+	video := t.withVideoDir("2026-10-04 Message.mp4", "Offense series thumb.png")
+
+	t.Equal(filepath.Join(filepath.Dir(video), "Offense series thumb.png"),
+		getThumbnailPath(video, catalog.Message))
+}
+
+// every message in the folder resolves to the same series thumbnail
+func (t *AudioTestSuite) TestThumb_SeriesThumbnailCoversEveryMessage() {
+	dir := t.T().TempDir()
+	for _, name := range []string{
+		"2026-10-04 Part One.mp4", "2026-10-11 Part Two.mp4", "Offense thumb.jpg",
+	} {
+		t.Require().NoError(os.WriteFile(filepath.Join(dir, name), []byte("x"), 0666))
+	}
+
+	expected := filepath.Join(dir, "Offense thumb.jpg")
+	t.Equal(expected,
+		getThumbnailPath(filepath.Join(dir, "2026-10-04 Part One.mp4"), catalog.Message))
+	t.Equal(expected,
+		getThumbnailPath(filepath.Join(dir, "2026-10-11 Part Two.mp4"), catalog.Message))
+}
+
+// a message with its own artwork uses it, while the rest of the series folder still
+// falls back to the series thumbnail
+func (t *AudioTestSuite) TestThumb_OwnArtworkOverridesSeriesThumbnail() {
+	dir := t.T().TempDir()
+	for _, name := range []string{
+		"2026-10-04 Part One.mp4", "2026-10-04 Part One.jpg",
+		"2026-10-11 Part Two.mp4", "Offense thumb.jpg",
+	} {
+		t.Require().NoError(os.WriteFile(filepath.Join(dir, name), []byte("x"), 0666))
+	}
+
+	t.Equal(filepath.Join(dir, "2026-10-04 Part One.jpg"),
+		getThumbnailPath(filepath.Join(dir, "2026-10-04 Part One.mp4"), catalog.Message))
+	t.Equal(filepath.Join(dir, "Offense thumb.jpg"),
+		getThumbnailPath(filepath.Join(dir, "2026-10-11 Part Two.mp4"), catalog.Message))
+}
+
+func (t *AudioTestSuite) TestThumb_ThumbMatchIsCaseInsensitive() {
+	video := t.withVideoDir("2026-10-04 Message.mp4", "Sunday THUMB.JPG")
+
+	t.Equal(filepath.Join(filepath.Dir(video), "Sunday THUMB.JPG"),
+		getThumbnailPath(video, catalog.Message))
+}
+
+// a name match beats a loose "thumb" match, however the directory is ordered
+func (t *AudioTestSuite) TestThumb_NameMatchWinsOverThumbMatch() {
+	video := t.withVideoDir(
+		"2026-10-04 Message.mp4", "2026-10-04 Message.jpg", "aaa-thumb.jpg")
+
+	t.Equal(filepath.Join(filepath.Dir(video), "2026-10-04 Message.jpg"),
+		getThumbnailPath(video, catalog.Message))
+}
+
+// several loose matches must resolve to the same file every run
+func (t *AudioTestSuite) TestThumb_MultipleThumbsPickDeterministically() {
+	video := t.withVideoDir("2026-10-04 Message.mp4", "b-thumb.jpg", "a-thumb.jpg")
+
+	t.Equal(filepath.Join(filepath.Dir(video), "a-thumb.jpg"),
+		getThumbnailPath(video, catalog.Message))
+}
+
+// a non-image with "thumb" in the name is not artwork
+func (t *AudioTestSuite) TestThumb_IgnoresNonImages() {
+	t.withThumbDir()
+	video := t.withVideoDir("2026-10-04 Message.mp4", "thumb-notes.txt")
+
+	t.Equal("", getThumbnailPath(video, catalog.Message))
+}
+
+func (t *AudioTestSuite) TestThumb_FallsBackToTypeArtwork() {
+	dir := t.withThumbDir("WOL Thumbnail - Message.jpg", "WOL Thumbnail - Prayer.jpg")
+	video := t.withVideoDir("2026-10-04 Message.mp4")
+
+	t.Equal(filepath.Join(dir, "WOL Thumbnail - Prayer.jpg"),
+		getThumbnailPath(video, catalog.Prayer))
+	t.Equal(filepath.Join(dir, "WOL Thumbnail - Message.jpg"),
+		getThumbnailPath(video, catalog.Message))
+}
+
+// a type with no artwork of its own is still a message as far as the cover image is
+// concerned
+func (t *AudioTestSuite) TestThumb_UnknownTypeFallsBackToMessageArtwork() {
+	dir := t.withThumbDir("WOL Thumbnail - Message.jpg")
+	video := t.withVideoDir("2026-10-04 Training.mp4")
+
+	t.Equal(filepath.Join(dir, "WOL Thumbnail - Message.jpg"),
+		getThumbnailPath(video, catalog.Training))
+}
+
+// local artwork beats the generic fallback
+func (t *AudioTestSuite) TestThumb_LocalBeatsFallback() {
+	t.withThumbDir("WOL Thumbnail - Message.jpg")
+	video := t.withVideoDir("2026-10-04 Message.mp4", "2026-10-04 Message.jpg")
+
+	t.Equal(filepath.Join(filepath.Dir(video), "2026-10-04 Message.jpg"),
+		getThumbnailPath(video, catalog.Message))
+}
+
+// an empty fallback directory is not an error, it just means no thumbnail
+func (t *AudioTestSuite) TestThumb_NothingAnywhere() {
+	t.withThumbDir()
+	video := t.withVideoDir("2026-10-04 Message.mp4")
+
+	t.Equal("", getThumbnailPath(video, catalog.Message))
+}
+
+// thumb-dir is consulted by the fallback step alone, so leaving it unset simply means
+// there is no fallback
+func (t *AudioTestSuite) TestThumb_UnconfiguredThumbDir() {
+	viper.Set("thumb-dir", "")
+	video := t.withVideoDir("2026-10-04 Message.mp4")
+
+	t.Equal("", getThumbnailPath(video, catalog.Message))
+}
+
+func (t *AudioTestSuite) TestThumbnailFileName() {
+	t.Equal("WOL Thumbnail - Message.jpg", thumbnailFileName(catalog.Message))
+	t.Equal("WOL Thumbnail - Prayer.jpg", thumbnailFileName(catalog.Prayer))
+
+	// a hyphenated type capitalises each word, matching how the files are named
+	t.Equal("WOL Thumbnail - Special-Event.jpg", thumbnailFileName(catalog.SpecialEvent))
+}
+
+// +---------------------------------------------------------------------------
 // | Ranking candidates by the file name
 // +---------------------------------------------------------------------------
 

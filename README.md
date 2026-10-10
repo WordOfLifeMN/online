@@ -70,6 +70,7 @@ override the configuration file.
 | `whisper-model` | Transcription model | `tiny.en` |
 | `whisper-exe` | Path to the faster-whisper executable | (see `audio_transcribe.go`) |
 | `scratch-dir` | Where intermediate audio and transcripts are written | `~/.wolm/scratch` |
+| `thumb-dir` | Where the generic fallback thumbnails live | (none) |
 
 ## Credentials
 

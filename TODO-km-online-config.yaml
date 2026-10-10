@@ -26,3 +26,9 @@ whisper-model: small
 
 # Where the intermediate .mp3 and transcript are written before being deleted
 scratch-dir: ~/.wolm/scratch
+
+# Where the generic fallback thumbnails live, used only when a message has no
+# artwork of its own beside the video. Files are named "WOL Thumbnail - <Type>.jpg"
+# - currently Message and Prayer - and a type with no file of its own falls back to
+# "WOL Thumbnail - Message.jpg". Leave unset for no fallback at all.
+thumb-dir: C:\Users\WordofLifeMNMedia\Documents\WOLMessages
