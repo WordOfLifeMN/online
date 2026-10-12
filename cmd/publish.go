@@ -267,6 +267,12 @@ func getUploadDescription(
 
 // collectResources gathers the resources belonging to a message and its series,
 // skipping duplicates by URL. Message resources come first.
+//
+// Only the series' booklets are series-wide. CatalogSeri.Resources is NOT the
+// series' own resource list - Normalize() clears it and refills it with the
+// resources of every message in the series, so including it here would put the
+// sermon notes for all eight messages in the description of message eight. A
+// Series row's own resources are parsed into Booklets, not Resources.
 func collectResources(
 	msg *catalog.CatalogMessage,
 	seri *catalog.CatalogSeri,
@@ -287,7 +293,6 @@ func collectResources(
 	add(msg.Resources)
 	if seri != nil {
 		add(seri.Booklets)
-		add(seri.Resources)
 	}
 
 	return resources

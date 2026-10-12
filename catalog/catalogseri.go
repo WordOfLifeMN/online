@@ -30,8 +30,8 @@ type CatalogSeri struct {
 	// consistent with the view
 	View        View             `json:"-"`                   // view of this cached data, "Raw" if unfiltered yet
 	Messages    []CatalogMessage `json:"-"`                   // list of messages in the series
-	Speakers    []string         `json:"speakers,omitempty"`  // list of speakers in the series (does not include message speakers)
-	Resources   []OnlineResource `json:"resources,omitempty"` // any other online resources (links, docs, youtube, etc) (does not include message resources)
+	Speakers    []string         `json:"speakers,omitempty"`  // every speaker of every message in the series, gathered by Normalize()
+	Resources   []OnlineResource `json:"resources,omitempty"` // every resource of every message in the series, gathered by Normalize(). NOT the series' own resources - a Series row's resources are parsed into Booklets
 	State       SeriesState      `json:"state,omitempty"`     // is the series in progress?
 	initialized bool             `json:"-"`                   // has this object been initialized?
 }

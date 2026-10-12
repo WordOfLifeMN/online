@@ -251,21 +251,46 @@ func (t *PublishTestSuite) TestDescription_OneResource() {
 	t.Contains(result, "https://x/notes.pdf")
 }
 
-func (t *PublishTestSuite) TestDescription_ManyResourcesIncludingSeries() {
+func (t *PublishTestSuite) TestDescription_MessageResourcesAndSeriesBooklet() {
 	msg := catalog.CatalogMessage{
 		Name:      "MSG",
 		Resources: []catalog.OnlineResource{{URL: "https://x/notes.pdf", Name: "Notes"}},
 	}
 	seri := catalog.CatalogSeri{
-		Name:      "SERIES",
-		Booklets:  []catalog.OnlineResource{{URL: "https://x/booklet.pdf", Name: "Booklet"}},
-		Resources: []catalog.OnlineResource{{URL: "https://x/extra.pdf", Name: "Extra"}},
+		Name:     "SERIES",
+		Booklets: []catalog.OnlineResource{{URL: "https://x/booklet.pdf", Name: "Booklet"}},
 	}
 
 	result := getUploadDescription(&msg, &seri, "Summary.")
 	t.Contains(result, "https://x/notes.pdf")
 	t.Contains(result, "https://x/booklet.pdf")
-	t.Contains(result, "https://x/extra.pdf")
+}
+
+// A real series carries the resources of every message it contains, because
+// Normalize() gathers them there. Only this message's own may reach its
+// description - the notes for message 1 do not belong on message 8.
+func (t *PublishTestSuite) TestDescription_ExcludesOtherMessagesInTheSeries() {
+	mine := catalog.CatalogMessage{
+		Name:      "Servanthood",
+		Resources: []catalog.OnlineResource{{URL: "https://x/2026-10-11+Servanthood.pdf", Name: "Notes"}},
+	}
+	theirs := catalog.CatalogMessage{
+		Name:      "Humility",
+		Resources: []catalog.OnlineResource{{URL: "https://x/2026-09-20+Humility.pdf", Name: "Notes"}},
+	}
+
+	seri := catalog.CatalogSeri{
+		Name:     "SERIES",
+		Booklets: []catalog.OnlineResource{{URL: "https://x/booklet.pdf", Name: "Booklet"}},
+		Messages: []catalog.CatalogMessage{mine, theirs},
+	}
+	seri.Normalize()
+	t.Len(seri.Resources, 2, "Normalize() should have gathered both messages' resources")
+
+	result := getUploadDescription(&mine, &seri, "Summary.")
+	t.Contains(result, "https://x/2026-10-11+Servanthood.pdf")
+	t.Contains(result, "https://x/booklet.pdf", "the series booklet is genuinely series-wide")
+	t.NotContains(result, "Humility", "another message's notes must not appear")
 }
 
 func (t *PublishTestSuite) TestDescription_DeduplicatesResources() {
