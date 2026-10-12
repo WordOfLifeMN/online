@@ -46,6 +46,7 @@ const askThePastorPlaylist = "Ask the Pastor"
 type UploadPacket struct {
 	Channel     YouTubeChannel
 	Title       string
+	Alternative string // the generated title, when it differs from Title. May be empty.
 	Description string
 	Playlist    string
 	Position    int
@@ -61,6 +62,7 @@ type UploadPacket struct {
 func NewUploadPacket(
 	msg *catalog.CatalogMessage,
 	seri *catalog.CatalogSeri,
+	generatedTitle string,
 	summary string,
 	thumbnailPath string,
 ) (*UploadPacket, error) {
@@ -76,6 +78,7 @@ func NewUploadPacket(
 	packet := UploadPacket{
 		Channel:     getYouTubeChannel(msg.Ministry),
 		Title:       getUploadTitle(msg),
+		Alternative: getAlternativeTitle(msg, generatedTitle),
 		Description: getUploadDescription(msg, seri, summary),
 		Playlist:    getPlaylistName(msg, seri),
 		Position:    getPlaylistPosition(msg),
@@ -186,7 +189,34 @@ const titleDateFormat = "January 2, 2006"
 // uploaded right now - and a message recorded ahead of its service date would
 // otherwise be titled "... | Scheduled for October 2, 2026".
 func getUploadTitle(msg *catalog.CatalogMessage) string {
-	parts := []string{msg.Name}
+	return formatTitle(msg, msg.Name)
+}
+
+// getAlternativeTitle renders the generated title in the same shape as the real one, so
+// the two can be read against each other and either can be pasted.
+//
+// Returns "" when there is nothing worth showing: no generated title, or one that says
+// the same thing as the sheet's. "Walking In Faith" and "Walking in Faith" are the same
+// title, and offering a choice between them teaches the operator that this line is
+// noise. The comparison ignores case and punctuation for that reason, which is the same
+// thing normalizeForMatch does when ranking a file name against the sheet.
+//
+// Only the name is compared. Speaker and date come from the row either way, so they are
+// identical on both lines by construction and would dilute the comparison.
+func getAlternativeTitle(msg *catalog.CatalogMessage, generated string) string {
+	generated = strings.TrimSpace(generated)
+	if generated == "" {
+		return ""
+	}
+	if normalizeForMatch(generated) == normalizeForMatch(msg.Name) {
+		return ""
+	}
+	return formatTitle(msg, generated)
+}
+
+// formatTitle assembles "Name | Speaker | Date" around a name
+func formatTitle(msg *catalog.CatalogMessage, name string) string {
+	parts := []string{name}
 	if speakers := getTitleSpeakers(msg); speakers != "" {
 		parts = append(parts, speakers)
 	}
@@ -319,7 +349,14 @@ func (p *UploadPacket) Print() {
 		fmt.Printf("Thumb   : %s\n", p.Thumbnail)
 	}
 
-	fmt.Printf("\n%s\n│ Title\n%s\n%s\n", open, p.Title, close)
+	// the alternative shares the Title block's fence: it is the same field, offered
+	// twice, and a reader comparing them should not have to look between two boxes
+	if p.Alternative == "" {
+		fmt.Printf("\n%s\n│ Title\n%s\n%s\n", open, p.Title, close)
+	} else {
+		fmt.Printf("\n%s\n│ Title\n%s\n│ Alternative\n%s\n%s\n",
+			open, p.Title, p.Alternative, close)
+	}
 	fmt.Printf("%s\n│ Description\n%s\n%s\n", open, p.Description, close)
 	if p.Playlist != "" {
 		fmt.Printf("%s\n│ Playlist\n%s\n%s\n", open, p.Playlist, close)

@@ -308,6 +308,50 @@ func (t *PublishTestSuite) TestDescription_DeduplicatesResources() {
 }
 
 // +---------------------------------------------------------------------------
+// | Alternative title
+// +---------------------------------------------------------------------------
+
+func (t *PublishTestSuite) TestAlternative_ShownWhenItDiffers() {
+	msg := catalog.CatalogMessage{
+		Name:     "Walking in Faith",
+		Speakers: []string{"Pastor Vern Peltz"},
+		Date:     catalog.MustParseDateOnly("2021-03-08"),
+	}
+
+	t.Equal("Trusting the Unseen | Vern Peltz | March 8, 2021",
+		getAlternativeTitle(&msg, "Trusting the Unseen"))
+}
+
+// A title that says the same thing is not an alternative. Offering a choice between
+// "Walking In Faith" and "Walking in Faith" teaches the operator to stop reading the
+// line, which costs the real alternatives their audience.
+func (t *PublishTestSuite) TestAlternative_SuppressedWhenItAgrees() {
+	msg := catalog.CatalogMessage{
+		Name:     "Power of Prayer: Q&A",
+		Speakers: []string{"Pastor Vern Peltz"},
+		Date:     catalog.MustParseDateOnly("2021-03-08"),
+	}
+
+	t.Empty(getAlternativeTitle(&msg, "Power of Prayer: Q&A"), "identical")
+	t.Empty(getAlternativeTitle(&msg, "power of prayer: q&a"), "case only")
+	t.Empty(getAlternativeTitle(&msg, "Power of Prayer - Q&A"), "punctuation only")
+	t.Empty(getAlternativeTitle(&msg, "  Power of Prayer: Q&A  "), "whitespace only")
+
+	// rewording is not punctuation, so this does count as an alternative. The rule is
+	// deliberately literal: judging whether two phrasings mean the same thing is the
+	// operator's job, and this line exists to put the question in front of them.
+	t.NotEmpty(getAlternativeTitle(&msg, "Power of Prayer - Q and A"))
+}
+
+// no generated title - the model was never called, or returned nothing
+func (t *PublishTestSuite) TestAlternative_SuppressedWhenAbsent() {
+	msg := catalog.CatalogMessage{Name: "Walking in Faith"}
+
+	t.Empty(getAlternativeTitle(&msg, ""))
+	t.Empty(getAlternativeTitle(&msg, "   "))
+}
+
+// +---------------------------------------------------------------------------
 // | Packet assembly
 // +---------------------------------------------------------------------------
 
@@ -322,15 +366,35 @@ func (t *PublishTestSuite) TestPacket_Public() {
 	}
 	seri := catalog.CatalogSeri{Name: "Walking in Faith"}
 
-	packet, err := NewUploadPacket(&msg, &seri, "A summary.", "/path/thumb.jpg")
+	packet, err := NewUploadPacket(&msg, &seri, "Walking in Faith", "A summary.", "/path/thumb.jpg")
 	t.NoError(err)
 
 	t.Equal(ChannelWOL, packet.Channel)
 	t.Equal("Walking in Faith | Vern Peltz | March 8, 2021", packet.Title)
+	t.Empty(packet.Alternative, "the generated title agrees with the sheet")
 	t.Equal("Walking in Faith", packet.Playlist)
 	t.Equal(3, packet.Position)
 	t.Equal(PrivacyPublic, packet.Privacy)
 	t.Equal("/path/thumb.jpg", packet.Thumbnail)
+}
+
+func (t *PublishTestSuite) TestPacket_AlternativeTitle() {
+	msg := catalog.CatalogMessage{
+		Name:       "Walking in Faith",
+		Speakers:   []string{"Pastor Vern Peltz"},
+		Date:       catalog.MustParseDateOnly("2021-03-08"),
+		Ministry:   catalog.WordOfLife,
+		Visibility: catalog.Public,
+	}
+
+	packet, err := NewUploadPacket(&msg, nil, "Trusting the Unseen", "A summary.", "")
+	t.NoError(err)
+
+	// the sheet still supplies the title that will be pasted
+	t.Equal("Walking in Faith | Vern Peltz | March 8, 2021", packet.Title)
+
+	// the alternative is offered in the same shape, so either can be pasted whole
+	t.Equal("Trusting the Unseen | Vern Peltz | March 8, 2021", packet.Alternative)
 }
 
 func (t *PublishTestSuite) TestPacket_RawIsRefused() {
@@ -340,7 +404,7 @@ func (t *PublishTestSuite) TestPacket_RawIsRefused() {
 		Visibility: catalog.Raw,
 	}
 
-	packet, err := NewUploadPacket(&msg, nil, "A summary.", "")
+	packet, err := NewUploadPacket(&msg, nil, "Raw Stream", "A summary.", "")
 	t.Nil(packet)
 	t.Error(err)
 	t.Contains(err.Error(), "livestream")

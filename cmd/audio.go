@@ -371,7 +371,7 @@ func processOneAudio(info *MessageInfo) error {
 		// the speaker comes from the row: it is the record of what this actually is
 		thumbnail := getThumbnailPath(info.VideoPath, info.Message.Type)
 		info.Packet, info.PacketError = NewUploadPacket(
-			info.Message, info.Seri, info.Summary, thumbnail)
+			info.Message, info.Seri, info.Title, info.Summary, thumbnail)
 	}
 
 	return nil
