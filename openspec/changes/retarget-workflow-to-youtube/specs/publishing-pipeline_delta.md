@@ -31,29 +31,40 @@ file path.
 
 ---
 
-### Requirement: Message Type Inferred From the Filename
+### Requirement: Only the Date and Title Are Read From the Filename
 
-Because the sheet lookup keys on date **and type**, the type must be derived from the
-video file. The existing filename conventions already encode it: a `p` adjacent to the
-date marks a prayer (the patterns `-MM-DD-pV `, `-MM-DDp `, and `-MM-DD-Vp ` are
-already recognized by `getSpeakerFromFileName()`). Anything else is a message.
+A filename is read as `<date>[<discriminator>][-<obsolete markup>] <title>.<ext>`. The
+date keys the sheet lookup and the title ranks the candidates. Everything between them
+is tolerated and discarded.
 
-#### Scenario: Prayer inferred
+Type and speaker were previously inferred here — a `p` adjacent to the date for a
+prayer, a letter for the speaker — and are not any more. Both come from the sheet row,
+which is the record of what a message is and who preached it. The markers are optional
+in practice, so their absence cannot be read as information: a prayer whose filename
+omits the `p` had its row eliminated by the type filter and the message beside it
+returned in its place, with no question asked.
+
+#### Scenario: Plain filename
+- GIVEN a video named `2026-10-11 Servanthood.mp4`
+- WHEN the filename is parsed
+- THEN the date is 2026-10-11 and the title is "Servanthood"
+
+#### Scenario: Discriminator and obsolete markup are tolerated
+- GIVEN a video named `2026-10-11b-mp Learning at Moriah.mp4`
+- WHEN the filename is parsed
+- THEN the date is 2026-10-11 and the title is "Learning at Moriah" — the discriminator
+  `b` keeps two files of one date apart on disk, and `-mp` means nothing
+
+#### Scenario: Trailing markup is tolerated
+- GIVEN a video named `2026-10-04 The Works of God-v.mp4`
+- WHEN the filename is parsed
+- THEN the title is "The Works of God"
+
+#### Scenario: A prayer filename carries no type
 - GIVEN a video named `2026-03-08-pv Opening Prayer.mp4`
-- WHEN the type is inferred
-- THEN it is `prayer`
-
-#### Scenario: Message inferred
-- GIVEN a video named `2026-03-08-v Walking in Faith.mp4`
-- WHEN the type is inferred
-- THEN it is `message`
-
-#### Scenario: Operator overrides the inference
-- GIVEN a video whose filename does not follow the convention, or which is one of the
-  less common types (`testimony`, `training`, `song`, `special-event`, `word`,
-  `ministry-time`)
-- WHEN the operator passes an explicit type flag
-- THEN that type is used and no inference is attempted
+- WHEN the filename is parsed
+- THEN the title is "Opening Prayer" and no type is derived — whether the row is a
+  prayer is the sheet's business
 
 ---
 

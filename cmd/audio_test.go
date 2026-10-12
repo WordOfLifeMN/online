@@ -45,7 +45,6 @@ func (t *AudioTestSuite) newAmbiguity() *catalog.AmbiguousLookupError {
 	return &catalog.AmbiguousLookupError{
 		Lookup: catalog.MessageLookup{
 			Date: catalog.MustParseDateOnly("2026-05-17"),
-			Type: catalog.Message,
 		},
 		Candidates: []catalog.CatalogMessage{
 			{Name: "Power of Prayer", Speakers: []string{"Pastor Vern Peltz"}},
@@ -58,25 +57,16 @@ func (t *AudioTestSuite) newAmbiguity() *catalog.AmbiguousLookupError {
 // | Speaker resolution
 // +---------------------------------------------------------------------------
 
-// Each case runs with stdin closed. Were the prompt still being reached, the read
-// would fail and the result would fall back to the default rather than the expected
-// name - so these tests prove the question is skipped, not merely answered.
+// Each case that expects a name without supplying input runs with stdin closed. Were
+// the prompt still being reached, the read would fail and the result would be empty
+// rather than the expected name - so these tests prove the question is skipped, not
+// merely answered.
 
 func (t *AudioTestSuite) TestSpeaker_SpreadsheetIsAuthoritative() {
 	msg := &catalog.CatalogMessage{Speakers: []string{"Pastor Mary Peltz"}}
 
 	t.withStdin("", func() {
-		t.Equal("Pastor Mary Peltz", resolveSpeaker("2026-10-04 Message.mp4", msg))
-	})
-}
-
-// the row outranks an initial in the file name, so the summary cannot introduce one
-// person while the title - built from the same row - credits another
-func (t *AudioTestSuite) TestSpeaker_SpreadsheetBeatsFileNameInitial() {
-	msg := &catalog.CatalogMessage{Speakers: []string{"Pastor Mary Peltz"}}
-
-	t.withStdin("", func() {
-		t.Equal("Pastor Mary Peltz", resolveSpeaker("2026-10-04-v Message.mp4", msg))
+		t.Equal("Pastor Mary Peltz", resolveSpeaker(msg))
 	})
 }
 
@@ -86,8 +76,7 @@ func (t *AudioTestSuite) TestSpeaker_MultipleSpeakersFromSheet() {
 	}
 
 	t.withStdin("", func() {
-		t.Equal("Pastor Vern Peltz, Pastor Mary Peltz",
-			resolveSpeaker("2026-10-04 Message.mp4", msg))
+		t.Equal("Pastor Vern Peltz, Pastor Mary Peltz", resolveSpeaker(msg))
 	})
 }
 
@@ -99,32 +88,24 @@ func (t *AudioTestSuite) TestSpeaker_FlagOverridesSpreadsheet() {
 	msg := &catalog.CatalogMessage{Speakers: []string{"Pastor Vern Peltz"}}
 
 	t.withStdin("", func() {
-		t.Equal("Guest Preacher", resolveSpeaker("2026-10-04-v Message.mp4", msg))
+		t.Equal("Guest Preacher", resolveSpeaker(msg))
 	})
 }
 
-// with no row - the lookup failed, or the sheet was unreadable - the file name initial
-// is still worth having
-func (t *AudioTestSuite) TestSpeaker_FallsBackToFileNameInitial() {
-	t.withStdin("", func() {
-		t.Equal("Pastor Vern Peltz", resolveSpeaker("2026-10-04-v Message.mp4", nil))
-	})
-}
-
-// a row that names nobody is not an answer, so it falls through rather than
-// resolving to an empty speaker
+// a row that names nobody is not an answer, so it falls through to the prompt rather
+// than resolving to an empty speaker
 func (t *AudioTestSuite) TestSpeaker_EmptyRowFallsThrough() {
 	msg := &catalog.CatalogMessage{}
 
-	t.withStdin("", func() {
-		t.Equal("Pastor Mary Peltz", resolveSpeaker("2026-10-04-m Message.mp4", msg))
+	t.withStdin("m\n", func() {
+		t.Equal("Pastor Mary Peltz", resolveSpeaker(msg))
 	})
 }
 
-// nothing to go on at all: ask, and honour the answer
+// no row at all - the lookup failed, or the sheet was unreadable - so ask
 func (t *AudioTestSuite) TestSpeaker_PromptsWhenNothingKnown() {
-	t.withStdin("m\n", func() {
-		t.Equal("Pastor Mary Peltz", resolveSpeaker("2026-10-04 Message.mp4", nil))
+	t.withStdin("Guest Preacher\n", func() {
+		t.Equal("Guest Preacher", resolveSpeaker(nil))
 	})
 }
 

@@ -38,24 +38,38 @@ online audio "2026-03-08-v Walking in Faith.mp4"
 Or run `bin/wolm-audio.bat`, which launches the same thing and prompts for the
 video file so it can be dragged into the window.
 
-The message is matched to a spreadsheet row by **date and type**. A service
-usually produces both a prayer and a message on the same date, so type is what
-tells them apart; it is inferred from the file name (`p` next to the date means
-prayer).
+The message is matched to a spreadsheet row by **date**, and by nothing else.
 
-A file name can only tell a prayer from everything else, so an inferred
-`message` is read as "not a prayer" rather than literally - a date carrying both
-a training and a message keeps both as candidates. An explicit `--type` is taken
-literally instead.
+Where a date carries several rows - a service usually produces at least a prayer
+and a message - the choice is offered rather than guessed. The candidates are
+ranked by how closely the title in the file name resembles the spreadsheet name,
+with the closest preselected when it beats the rest outright, so accepting it is
+one keystroke. `--track` picks a row by its track number without being asked.
 
-Where several rows still match, the choice is offered rather than guessed. The
-candidates are ranked by how closely the title in the file name resembles the
-spreadsheet name, with the closest preselected when it beats the rest outright,
-so accepting it is one keystroke. `--track` picks a row by its track number
-without being asked.
+Type and speaker used to be read out of the file name as well, and no longer
+are. Both now come from the spreadsheet row, which is the record of what a
+message is and who preached it. The markers were optional in practice, so their
+absence could not be trusted to mean anything - a prayer whose file name omitted
+the `p` had its row eliminated and the message beside it returned instead,
+silently.
+
+So a file name is read as:
+
+```
+  <date>[<discriminator>][-<obsolete markup>] <title>.<ext>
+
+  2026-10-11 Servanthood.mp4
+  2026-10-11b-mp Learning at Moriah.mp4
+  2026-10-04 The Works of God-v.mp4
+```
+
+Only the date and the title mean anything. The discriminator is a single letter
+that keeps two files of one date apart on disk, for your filing rather than for
+this program, and the old speaker and prayer markers are tolerated wherever they
+appear so that existing files still work.
 
 The speaker comes from the spreadsheet row and is not confirmed. Use
-`--speaker` to override it.
+`--speaker` to override it; you are only asked when no row names one.
 
 A thumbnail is found in the message folder and reported in the packet as a local
 path, for attaching by hand - it is never uploaded anywhere. An image sharing the

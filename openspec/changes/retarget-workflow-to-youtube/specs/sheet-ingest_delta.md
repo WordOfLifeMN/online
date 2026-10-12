@@ -9,51 +9,58 @@
 
 ### Requirement: Look Up a Single Message
 
-The sheet is no longer read only in bulk. Given the date and message type inferred from
-a video filename, the tool finds the one message row that describes it, so the upload
-packet can be filled in with series, track, ministry, visibility, and resources.
+The sheet is no longer read only in bulk. Given the date taken from a video filename,
+the tool finds the message row that describes it, so the upload packet can be filled in
+with series, track, ministry, visibility, and resources.
 
-**Date and type — not speaker — are the lookup key.** A single service commonly
-produces both a Prayer and a Message on the same date, frequently from the same
-speaker, so speaker does not discriminate between them. Type does.
+**Date is the lookup key, and the only one.** Neither speaker nor type discriminates
+reliably: a service commonly produces several rows on one date, frequently from the
+same speaker, and the filename cannot state the type of any of them. Every row on the
+date is a candidate, and where there is more than one the operator chooses.
 
-#### Scenario: Unique match on date and type
-- GIVEN a sheet containing exactly one row dated 2026-03-08 with type `message`
-- WHEN the tool looks up that date and type
+#### Scenario: Only row on the date
+- GIVEN a sheet containing exactly one row dated 2026-03-08
+- WHEN the tool looks up that date
 - THEN it returns that message together with the series it belongs to
+
+#### Scenario: Type is never compared
+- GIVEN a sheet containing exactly one row dated 2026-10-02, with type `training`
+- WHEN the tool looks up that date
+- THEN it returns that row — a `training`, `word`, `testimony`, `song` or
+  `special-event` is found exactly as a `message` is
 
 #### Scenario: Prayer and message on the same date
 - GIVEN a sheet containing a `prayer` row and a `message` row both dated 2026-03-08,
   both with speaker "Pastor Vern Peltz"
-- WHEN the tool looks up 2026-03-08 with type `message`
-- THEN it returns the message row and does not consider the prayer row
+- WHEN the tool looks up 2026-03-08
+- THEN both rows are candidates and the operator is asked which one the video is
 
 ---
 
 ### Requirement: Track Number Breaks Ties
 
-Track number is an optional tie-breaker. It is ignored when date and type already
-identify one row, and required when they do not.
+Track number is an optional tie-breaker, and the one way to resolve a date without
+being asked. It is ignored when the date already identifies one row.
 
 #### Scenario: Track supplied but unnecessary
-- GIVEN date and type match exactly one row
+- GIVEN the date matches exactly one row
 - WHEN the operator also supplies a track number
 - THEN the track number is ignored and the single matching row is returned, even if the
   supplied track does not match that row's track
 
 #### Scenario: Track resolves a genuine ambiguity
-- GIVEN two rows share a date and type, with tracks 4 and 5
-- WHEN the operator looks up that date and type with track 5
-- THEN the row with track 5 is returned
+- GIVEN two rows share a date, with tracks 4 and 5
+- WHEN the operator looks up that date with track 5
+- THEN the row with track 5 is returned without a question
 
 #### Scenario: Ambiguity with no track supplied
-- GIVEN two rows share a date and type
+- GIVEN two rows share a date
 - WHEN the operator looks them up without a track number
-- THEN the tool reports the ambiguity, lists the candidate message names and their
-  track numbers, and asks for a track number — rather than silently choosing one
+- THEN the tool reports the ambiguity and lists the candidate message names and their
+  track numbers, for the operator to choose between — rather than silently choosing one
 
 #### Scenario: Track supplied but matches nothing
-- GIVEN two rows share a date and type, with tracks 4 and 5
+- GIVEN two rows share a date, with tracks 4 and 5
 - WHEN the operator supplies track 9
 - THEN the tool reports that no candidate has that track, and lists the tracks that are
   available
@@ -63,8 +70,8 @@ identify one row, and required when they do not.
 ### Requirement: Missing Rows Do Not Halt the Pipeline
 
 #### Scenario: No match
-- GIVEN a video whose date and type appear in no sheet row
-- WHEN the tool looks up that date and type
+- GIVEN a video whose date appears in no sheet row
+- WHEN the tool looks up that date
 - THEN it reports what it searched for, and the pipeline continues with the
   sheet-derived packet fields left empty — the generated title and summary are still
   produced and printed

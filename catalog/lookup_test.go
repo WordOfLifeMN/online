@@ -43,13 +43,20 @@ func (t *LookupTestSuite) newLookupCatalog() *Catalog {
 	}
 }
 
-func (t *LookupTestSuite) TestFindMessage_UniqueOnDateAndType() {
-	cat := t.newLookupCatalog()
+// One row on the date needs no question, and carries its series with it
+func (t *LookupTestSuite) TestFindMessage_OnlyRowOnDate() {
+	cat := &Catalog{
+		Series: []CatalogSeri{{ID: "S1", Name: "SERIES", Visibility: Public}},
+		Messages: []CatalogMessage{
+			{
+				Name: "Walking in Faith", Date: MustParseDateOnly("2026-03-08"),
+				Type: Message, Ministry: WordOfLife, Visibility: Public,
+				Series: []SeriesReference{{Name: "SERIES", Index: 3}},
+			},
+		},
+	}
 
-	msg, seri, err := cat.FindMessage(MessageLookup{
-		Date: MustParseDateOnly("2026-03-08"),
-		Type: Message,
-	})
+	msg, seri, err := cat.FindMessage(MessageLookup{Date: MustParseDateOnly("2026-03-08")})
 
 	t.NoError(err)
 	t.Equal("Walking in Faith", msg.Name)
@@ -57,31 +64,10 @@ func (t *LookupTestSuite) TestFindMessage_UniqueOnDateAndType() {
 	t.Equal("SERIES", seri.Name)
 }
 
-func (t *LookupTestSuite) TestFindMessage_PrayerAndMessageSameDate() {
-	// the case speaker cannot disambiguate: same date, same speaker, different type
-	cat := t.newLookupCatalog()
-
-	prayer, _, err := cat.FindMessage(MessageLookup{
-		Date: MustParseDateOnly("2026-03-08"),
-		Type: Prayer,
-	})
-	t.NoError(err)
-	t.Equal("Opening Prayer", prayer.Name)
-
-	message, _, err := cat.FindMessage(MessageLookup{
-		Date: MustParseDateOnly("2026-03-08"),
-		Type: Message,
-	})
-	t.NoError(err)
-	t.Equal("Walking in Faith", message.Name)
-}
-
-// The file name can only tell a prayer from a message. It gives no signal for the
-// other types - training, word, testimony, song, special-event - which account for
-// roughly 400 messages in the live catalog. When the inferred type matches nothing on
-// that date, the type must be discarded as a bad hint rather than the message being
-// reported missing.
-func (t *LookupTestSuite) TestFindMessage_WrongTypeFallsBackToDate() {
+// A lone row resolves whatever its type. Nothing is compared against the type, so a
+// training, word, testimony, song or special-event is found exactly as a message is -
+// roughly 400 of the live catalog's rows that an inferred "message" used to risk.
+func (t *LookupTestSuite) TestFindMessage_TypeIsNeverCompared() {
 	cat := &Catalog{
 		Messages: []CatalogMessage{
 			{
@@ -92,28 +78,54 @@ func (t *LookupTestSuite) TestFindMessage_WrongTypeFallsBackToDate() {
 		},
 	}
 
-	// the file name implies "message", but the row is a "training"
-	msg, _, err := cat.FindMessage(MessageLookup{
-		Date: MustParseDateOnly("2026-10-02"),
-		Type: Message,
-	})
+	msg, _, err := cat.FindMessage(MessageLookup{Date: MustParseDateOnly("2026-10-02")})
 
 	t.NoError(err)
 	t.Equal("Leadership Training", msg.Name)
 	t.Equal("Terry Francis", msg.SpeakerString())
 }
 
-// widening on a bad type hint must not override a good one
-func (t *LookupTestSuite) TestFindMessage_GoodTypeHintStillNarrows() {
-	cat := t.newLookupCatalog() // a prayer and a message on the same date
+// A prayer and a message on one date are both candidates. Type used to separate them
+// silently, which is the whole problem: it was right often enough to be trusted and
+// wrong often enough to publish the wrong row.
+func (t *LookupTestSuite) TestFindMessage_PrayerIsAlwaysACandidate() {
+	cat := t.newLookupCatalog()
 
-	msg, _, err := cat.FindMessage(MessageLookup{
-		Date: MustParseDateOnly("2026-03-08"),
-		Type: Prayer,
-	})
+	_, _, err := cat.FindMessage(MessageLookup{Date: MustParseDateOnly("2026-03-08")})
 
-	t.NoError(err)
-	t.Equal("Opening Prayer", msg.Name)
+	var ambiguous *AmbiguousLookupError
+	t.ErrorAs(err, &ambiguous)
+	t.Len(ambiguous.Candidates, 2)
+
+	names := []string{ambiguous.Candidates[0].Name, ambiguous.Candidates[1].Name}
+	t.Contains(names, "Opening Prayer")
+	t.Contains(names, "Walking in Faith")
+}
+
+// Regression, 2026-10-11. "2026-10-11-m Learning at Moriah.mp4" resolved silently to
+// "Servanthood": the file name's "-m" was read as "not a prayer", which eliminated the
+// row the sheet calls a prayer and left exactly one survivor. The title - the one piece
+// of evidence that actually identified the video - was never consulted, because it is
+// only used to rank candidates and by then there was nothing to rank.
+func (t *LookupTestSuite) TestFindMessage_PrayerRowSurvivesAMessageFileName() {
+	cat := &Catalog{
+		Messages: []CatalogMessage{
+			{
+				Name: "Learning at Moriah", Date: MustParseDateOnly("2026-10-11"),
+				Type: Prayer, Ministry: WordOfLife, Visibility: Public,
+			},
+			{
+				Name: "Servanthood", Date: MustParseDateOnly("2026-10-11"),
+				Type: Message, Ministry: WordOfLife, Visibility: Public,
+			},
+		},
+	}
+
+	_, _, err := cat.FindMessage(MessageLookup{Date: MustParseDateOnly("2026-10-11")})
+
+	var ambiguous *AmbiguousLookupError
+	t.ErrorAs(err, &ambiguous)
+	t.Len(ambiguous.Candidates, 2, "the prayer row must reach the operator's choice")
 }
 
 // newServiceDayCatalog reproduces 2026-10-04 in the live sheet: one service produced a
@@ -141,95 +153,25 @@ func (t *LookupTestSuite) newServiceDayCatalog() *Catalog {
 	}
 }
 
-// An inferred "message" must not silently claim the one row literally typed "message"
-// while a training sits beside it. Both are candidates and the operator decides.
-func (t *LookupTestSuite) TestFindMessage_InferredTypeDoesNotHideOtherTypes() {
+// Every row on the date is offered, prayer included. Three rows on one service day
+// means a list of three, not a narrowed guess.
+func (t *LookupTestSuite) TestFindMessage_WholeServiceDayIsOffered() {
 	cat := t.newServiceDayCatalog()
 
-	_, _, err := cat.FindMessage(MessageLookup{
-		Date:       MustParseDateOnly("2026-10-04"),
-		Type:       Message,
-		TypeIsHint: true,
-	})
+	_, _, err := cat.FindMessage(MessageLookup{Date: MustParseDateOnly("2026-10-04")})
 
 	var ambiguous *AmbiguousLookupError
 	t.ErrorAs(err, &ambiguous)
-	t.Len(ambiguous.Candidates, 2)
+	t.Len(ambiguous.Candidates, 3)
 
-	names := []string{ambiguous.Candidates[0].Name, ambiguous.Candidates[1].Name}
+	names := []string{
+		ambiguous.Candidates[0].Name,
+		ambiguous.Candidates[1].Name,
+		ambiguous.Candidates[2].Name,
+	}
+	t.Contains(names, "Pay Attention")
 	t.Contains(names, "The Importance of Voting")
 	t.Contains(names, "The Works of God")
-
-	// the prayer is never a candidate - that is the one distinction the file name
-	// genuinely makes
-	t.NotContains(names, "Pay Attention")
-}
-
-// an inferred prayer stays exact, so the prayer resolves without a question
-func (t *LookupTestSuite) TestFindMessage_InferredPrayerStaysExact() {
-	cat := t.newServiceDayCatalog()
-
-	msg, _, err := cat.FindMessage(MessageLookup{
-		Date:       MustParseDateOnly("2026-10-04"),
-		Type:       Prayer,
-		TypeIsHint: true,
-	})
-
-	t.NoError(err)
-	t.Equal("Pay Attention", msg.Name)
-}
-
-// --type is an assertion, so it narrows to exactly what was asked for
-func (t *LookupTestSuite) TestFindMessage_AssertedTypeNarrowsExactly() {
-	cat := t.newServiceDayCatalog()
-
-	training, _, err := cat.FindMessage(MessageLookup{
-		Date: MustParseDateOnly("2026-10-04"),
-		Type: Training,
-	})
-	t.NoError(err)
-	t.Equal("The Importance of Voting", training.Name)
-
-	message, _, err := cat.FindMessage(MessageLookup{
-		Date: MustParseDateOnly("2026-10-04"),
-		Type: Message,
-	})
-	t.NoError(err)
-	t.Equal("The Works of God", message.Name)
-}
-
-// a hint that matches nothing still widens to the date rather than reporting the
-// message missing - here every row on the date is a prayer
-func (t *LookupTestSuite) TestFindMessage_HintMatchingNothingStillWidens() {
-	cat := &Catalog{
-		Messages: []CatalogMessage{
-			{
-				Name: "Opening Prayer", Date: MustParseDateOnly("2026-10-11"),
-				Type: Prayer, Ministry: WordOfLife, Visibility: Public,
-			},
-		},
-	}
-
-	msg, _, err := cat.FindMessage(MessageLookup{
-		Date:       MustParseDateOnly("2026-10-11"),
-		Type:       Message,
-		TypeIsHint: true,
-	})
-
-	t.NoError(err)
-	t.Equal("Opening Prayer", msg.Name)
-}
-
-func (t *LookupTestSuite) TestDescribeType() {
-	// a hint covers more than the one type it names, and says so
-	t.Equal("message (or similar)",
-		MessageLookup{Type: Message, TypeIsHint: true}.DescribeType())
-
-	// an inferred prayer is exact, so it is named plainly
-	t.Equal("prayer", MessageLookup{Type: Prayer, TypeIsHint: true}.DescribeType())
-
-	// an asserted type is exact whatever it is
-	t.Equal("message", MessageLookup{Type: Message}.DescribeType())
 }
 
 func (t *LookupTestSuite) TestFindMessage_NotFound() {
@@ -237,7 +179,6 @@ func (t *LookupTestSuite) TestFindMessage_NotFound() {
 
 	_, _, err := cat.FindMessage(MessageLookup{
 		Date: MustParseDateOnly("2026-03-15"),
-		Type: Message,
 	})
 
 	t.Error(err)
@@ -268,13 +209,20 @@ func (t *LookupTestSuite) newAmbiguousCatalog() *Catalog {
 }
 
 func (t *LookupTestSuite) TestTrack_IgnoredWhenUnnecessary() {
-	// date and type already identify one message, so a track that does not match it
-	// must not cause the obvious match to be rejected
-	cat := t.newLookupCatalog()
+	// the date already identifies one message, so a track that does not match it must
+	// not cause the obvious match to be rejected
+	cat := &Catalog{
+		Messages: []CatalogMessage{
+			{
+				Name: "Walking in Faith", Date: MustParseDateOnly("2026-03-08"),
+				Type: Message, Ministry: WordOfLife, Visibility: Public,
+				Series: []SeriesReference{{Name: "SERIES", Index: 3}},
+			},
+		},
+	}
 
 	msg, _, err := cat.FindMessage(MessageLookup{
 		Date:  MustParseDateOnly("2026-03-08"),
-		Type:  Message,
 		Track: 99,
 	})
 
@@ -287,7 +235,6 @@ func (t *LookupTestSuite) TestTrack_ResolvesAmbiguity() {
 
 	msg, _, err := cat.FindMessage(MessageLookup{
 		Date:  MustParseDateOnly("2026-03-08"),
-		Type:  Message,
 		Track: 5,
 	})
 
@@ -300,7 +247,6 @@ func (t *LookupTestSuite) TestTrack_AmbiguousWithNoTrack() {
 
 	_, _, err := cat.FindMessage(MessageLookup{
 		Date: MustParseDateOnly("2026-03-08"),
-		Type: Message,
 	})
 
 	t.Error(err)
@@ -317,7 +263,6 @@ func (t *LookupTestSuite) TestTrack_MatchesNothing() {
 
 	_, _, err := cat.FindMessage(MessageLookup{
 		Date:  MustParseDateOnly("2026-03-08"),
-		Type:  Message,
 		Track: 9,
 	})
 
@@ -351,7 +296,6 @@ func (t *LookupTestSuite) TestTrack_CannotResolveZeroTracks() {
 	// no track supplied
 	_, _, err := cat.FindMessage(MessageLookup{
 		Date: MustParseDateOnly("2026-05-17"),
-		Type: Message,
 	})
 	t.Error(err)
 
@@ -362,7 +306,6 @@ func (t *LookupTestSuite) TestTrack_CannotResolveZeroTracks() {
 	// supplying a track cannot help: neither candidate has one
 	_, _, err = cat.FindMessage(MessageLookup{
 		Date:  MustParseDateOnly("2026-05-17"),
-		Type:  Message,
 		Track: 1,
 	})
 	t.ErrorAs(err, &ambiguous)
@@ -417,7 +360,6 @@ func (t *LookupTestSuite) TestFindMessage_MessageWithNoSeries() {
 
 	msg, seri, err := cat.FindMessage(MessageLookup{
 		Date: MustParseDateOnly("2026-03-08"),
-		Type: Message,
 	})
 
 	t.NoError(err)

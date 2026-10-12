@@ -380,9 +380,12 @@ worth renaming this round — the types are still the right types.
 - **Privacy.** `partner` and `private` both map to `unlisted`, matching current
   practice. `raw` never enters the pipeline — the livestream is already on YouTube as
   `private` and the sheet points at it.
-- **Lookup key.** Date + message type, since a Prayer and a Message commonly share a
-  date and speaker. Track number is an optional tie-breaker: ignored when date + type
-  is unique, required when it is not.
+- **Lookup key.** Date, and nothing else. This was originally date + message type, on
+  the grounds that a Prayer and a Message commonly share a date and speaker — but the
+  type came from the filename, where the marker is optional, so its absence silently
+  eliminated the correct row (2026-10-11). Every row on the date is now a candidate,
+  ranked by title and chosen by the operator. Track number remains an optional
+  tie-breaker: ignored when the date is unique, and the one way to answer in advance.
 - **Channels.** Three — WOL (hosting `wol`, `core`, `ask-pastor`), Faith & Freedom, and
   TBO.
 - **Summarizer.** Moving from OpenAI to Claude, with structured outputs replacing the

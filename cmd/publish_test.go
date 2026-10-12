@@ -347,35 +347,32 @@ func (t *PublishTestSuite) TestPacket_RawIsRefused() {
 }
 
 // +---------------------------------------------------------------------------
-// | Message type and date inference
+// | Title and date inference
 // +---------------------------------------------------------------------------
 
-func (t *PublishTestSuite) TestTypeInference() {
-	cases := map[string]catalog.MessageType{
-		"2026-03-08-pv Opening Prayer.mp4":  catalog.Prayer,
-		"2026-03-08-vp Opening Prayer.mp4":  catalog.Prayer,
-		"2026-03-08p Opening Prayer.mp4":    catalog.Prayer,
-		"2026-03-08-v Walking in Faith.mp4": catalog.Message,
-		"2026-03-08 Walking in Faith-v.mp4": catalog.Message,
-		"2026-03-08-m Something Useful.mp4": catalog.Message,
-	}
-
-	for name, expected := range cases {
-		t.Equal(expected, getMessageTypeFromFileName(name), "file %q", name)
-	}
-}
-
+// The file name is <date>[<discriminator>][-<obsolete markup>] <title>.<ext>. Only the
+// date and the title are read; everything between them is tolerated and discarded,
+// whatever it once meant.
 func (t *PublishTestSuite) TestTitleInference() {
 	cases := map[string]string{
-		// the same naming conventions the type and speaker inference already handle
 		"2026-03-08 Walking in Faith.mp4":     "Walking in Faith",
-		"2026-03-08-v Walking in Faith.mp4":   "Walking in Faith",
-		"2026-03-08 Walking in Faith-v.mp4":   "Walking in Faith",
-		"2026-03-08-vp Opening Prayer.mp4":    "Opening Prayer",
-		"2026-03-08p Opening Prayer.mp4":      "Opening Prayer",
 		"2026-10-04 Importance of Voting.mp4": "Importance of Voting",
 
-		// a title opening with a short word keeps it - the marker is consumed before
+		// obsolete speaker initials, leading and trailing
+		"2026-03-08-v Walking in Faith.mp4": "Walking in Faith",
+		"2026-03-08 Walking in Faith-v.mp4": "Walking in Faith",
+
+		// obsolete prayer markers, with and without a speaker initial
+		"2026-03-08-vp Opening Prayer.mp4": "Opening Prayer",
+		"2026-03-08p Opening Prayer.mp4":   "Opening Prayer",
+
+		// a discriminator letter keeps two files of one date apart on disk, and may be
+		// followed by obsolete markup of any length
+		"2026-10-11b-mp Learning at Moriah.mp4": "Learning at Moriah",
+		"2026-10-11b Learning at Moriah.mp4":    "Learning at Moriah",
+		"2026-10-11-mp Learning at Moriah.mp4":  "Learning at Moriah",
+
+		// a title opening with a short word keeps it - the markers are consumed before
 		// the gap, so there is nothing left to eat into the title
 		"2026-03-08-v A New Day.mp4": "A New Day",
 		"2026-03-08 A New Day.mp4":   "A New Day",

@@ -80,12 +80,8 @@ func init() {
 		"Do not sweep old audio and transcript files from the scratch directory")
 	viper.BindPFlag("keep-intermediates", audioCmd.Flags().Lookup("keep-intermediates"))
 
-	audioCmd.Flags().String("type", "",
-		"Message type for the spreadsheet lookup (message, prayer, testimony, ...). Inferred from the file name if not given")
-	viper.BindPFlag("type", audioCmd.Flags().Lookup("type"))
-
 	audioCmd.Flags().Int("track", 0,
-		"Track number, to pick between several messages sharing a date and type")
+		"Track number, to pick between several messages sharing a date without being asked")
 	viper.BindPFlag("track", audioCmd.Flags().Lookup("track"))
 }
 
@@ -199,7 +195,7 @@ func newMessageInfo(videoPath string, cat *catalog.Catalog) *MessageInfo {
 		fmt.Printf("   Spreadsheet: %s\n", info.Message.DescribeForChoice())
 	}
 
-	info.SpeakerName = resolveSpeaker(videoPath, info.Message)
+	info.SpeakerName = resolveSpeaker(info.Message)
 
 	return &info
 }
@@ -239,24 +235,14 @@ func findMessageForVideo(
 		return nil, nil, err
 	}
 
-	// an operator-supplied --type is an assertion and is matched exactly. one read off
-	// the file name is only a hint, and the lookup trusts it accordingly.
-	msgType := catalog.NewMessageTypeFromString(viper.GetString("type"))
-	typeIsHint := msgType == catalog.UnknownType
-	if typeIsHint {
-		msgType = getMessageTypeFromFileName(videoPath)
-	}
-
 	msg, seri, err := cat.FindMessage(catalog.MessageLookup{
-		Date:       date,
-		Type:       msgType,
-		Track:      viper.GetInt("track"),
-		TypeIsHint: typeIsHint,
+		Date:  date,
+		Track: viper.GetInt("track"),
 	})
 
-	// several rows share this date and type. the track number often cannot tell them
-	// apart - a message and its Q&A, or several interviews on one date, all carry
-	// track 0 - so ask rather than guess.
+	// several rows share this date. the track number often cannot tell them apart - a
+	// message and its Q&A, or several interviews on one date, all carry track 0 - so
+	// ask rather than guess.
 	var ambiguous *catalog.AmbiguousLookupError
 	if errors.As(err, &ambiguous) {
 		chosen := promptUserForMessageChoice(ambiguous, videoPath)
@@ -276,19 +262,21 @@ func findMessageForVideo(
 //
 //  1. an explicit --speaker flag, which is the operator overriding everything
 //  2. the spreadsheet row, which is the record of who actually preached
-//  3. an initial in the file name, when there is no row to consult
-//  4. otherwise ask, defaulting to a guess from the file name
+//  3. otherwise ask
 //
-// The spreadsheet outranks the file name initial, and asking is skipped entirely when
-// the row names a speaker. Confirming it was worth doing when the prompt predated the
-// lookup and the only alternative was a guess, but a question whose default is right
-// every time teaches the operator to hit Enter without reading it.
+// Asking is skipped entirely when the row names a speaker. Confirming it was worth
+// doing when the prompt predated the lookup and the only alternative was a guess, but a
+// question whose default is right every time teaches the operator to hit Enter without
+// reading it.
 //
 // Taking the row also keeps the summary and the title consistent. The title is built
-// from the row's speakers, so resolving a different name here - which a stale or wrong
-// initial in the file name could do - would have the summary introduce one person and
-// the title credit another.
-func resolveSpeaker(videoPath string, msg *catalog.CatalogMessage) string {
+// from the row's speakers, so resolving a different name here would have the summary
+// introduce one person and the title credit another.
+//
+// The file name is not consulted. Its speaker initial used to sit between the row and
+// the prompt, which only mattered when the row was silent, and which could contradict
+// the row when it was not.
+func resolveSpeaker(msg *catalog.CatalogMessage) string {
 	if speaker := viper.GetString("speaker"); speaker != "" {
 		return speaker
 	}
@@ -299,11 +287,7 @@ func resolveSpeaker(videoPath string, msg *catalog.CatalogMessage) string {
 		}
 	}
 
-	if speaker := getSpeakerInitialFromFileName(videoPath); speaker != "" {
-		return speaker
-	}
-
-	return PromptUserForSpeaker(guessSpeakerFromFileName(videoPath))
+	return PromptUserForSpeaker()
 }
 
 // processAllVideos processes each video in turn, updating the message information
@@ -453,10 +437,9 @@ func promptUserForMessageChoice(
 	reader := getStdin()
 	candidates, hasDefault := rankCandidatesByFileName(videoPath, ambiguous.Candidates)
 
-	fmt.Printf("\n%d spreadsheet rows match %s / %s:\n",
+	fmt.Printf("\n%d spreadsheet rows are dated %s:\n",
 		len(candidates),
-		ambiguous.Lookup.Date.String(),
-		ambiguous.Lookup.DescribeType())
+		ambiguous.Lookup.Date.String())
 	for index := range candidates {
 		fmt.Printf("  %d. %s", index+1, candidates[index].DescribeForChoice())
 		if index == 0 && hasDefault {
@@ -857,15 +840,18 @@ func deleteExistingFile(audioPath string, prompt bool) error {
 	return nil
 }
 
-func PromptUserForSpeaker(defaultSpeaker string) string {
+// PromptUserForSpeaker asks who spoke. There is no default: it is only reached when
+// nothing - not the flag, not the spreadsheet row - knows the answer, and offering a
+// guess as the Enter key is how the wrong name gets accepted without being read.
+//
+// The v/m shortcuts are kept. They are the operator typing an abbreviation at a
+// prompt, not the program inferring a person from a file name.
+func PromptUserForSpeaker() string {
 	reader := getStdin()
-	fmt.Printf("Who is the speaker [Default:%s/Vern(v)/Mary(m)/Other]?\n", defaultSpeaker)
+	fmt.Printf("Who is the speaker [Vern(v)/Mary(m)/Other]?\n")
 	name, _ := reader.ReadString('\n')
 	name = strings.Trim(name, "\"' \r\n")
 
-	if name == "" {
-		name = defaultSpeaker
-	}
 	switch strings.ToUpper(name) {
 	case "V", "VERN":
 		return "Pastor Vern Peltz"

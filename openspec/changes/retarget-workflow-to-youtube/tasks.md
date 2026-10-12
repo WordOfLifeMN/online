@@ -250,6 +250,39 @@ interactive chooser - see commit b7fa4b4.
       stays exact, and an explicit `--type` is still matched literally. Fixed in
       commit b7cd900, with regression tests built from this date.
 
+      *Superseded on 2026-10-11: type was removed from the lookup entirely. See
+      below.*
+
+## End-to-end run (2026-10-11)
+
+- [x] Two problems, both from the same root: the filename was being believed.
+
+      **Resources.** The description of message 8 of a series carried the sermon
+      notes for all eight. `CatalogSeri.Resources` reads like the series' own
+      links but `Normalize()` fills it from every message in the series; a Series
+      row's own resources go to `Booklets`. The description now takes the
+      message's resources and the series' booklets, and nothing else. Fixed in
+      be542b6.
+
+      **Lookup.** `2026-10-11-m Learning at Moriah.mp4` resolved silently to
+      "Servanthood". The `-m` was read as "not a prayer", which eliminated the
+      row the sheet calls a prayer and left one survivor — so the chooser never
+      fired and the title, the one piece of evidence that identified the video,
+      was never consulted.
+
+      The 4.6 fix had narrowed the trust placed in an inferred type. This went
+      further and removed type from the lookup altogether. **The key is the date
+      and nothing else.** Where a date carries several rows the operator is
+      asked, ranked by title; `--track` still answers in advance. Inference by
+      filtering is the shape of the bug — a filter can eliminate the right
+      answer, where ranking can only order it badly.
+
+      The speaker initial went with it: the sheet row supplies the speaker, so
+      the initial could only agree redundantly or disagree silently. A filename
+      is now `<date>[<discriminator>][-<obsolete markup>] <title>.<ext>`, of
+      which only the date and title are read. Existing filenames still work —
+      the markers are tolerated, just not interpreted.
+
 ## Still outstanding
 
 Everything in the proposal is implemented. What remains needs real media, a person

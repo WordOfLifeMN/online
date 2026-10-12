@@ -7,51 +7,22 @@ import (
 
 // MessageLookup identifies a single message in the catalog.
 //
-// Date and Type - not speaker - are the key. A single service commonly produces both a
-// Prayer and a Message on the same date, frequently from the same speaker, so speaker
-// does not discriminate between them.
+// Date is the key, and the only one. Neither speaker nor type discriminates reliably:
+// a service commonly produces several rows on one date, frequently from the same
+// speaker, and the file name cannot name the type of any of them.
 //
-// Track is an optional tie-breaker. It is ignored when Date and Type already identify
-// one message, and required when they do not.
+// Type was once part of the key, inferred from a "p" next to the date. It was removed
+// because the inference was wrong often enough to matter and the failure was silent.
+// A video whose row the sheet calls a prayer, named without the marker, was not merely
+// left ambiguous - the type filter removed the correct row and returned the only
+// survivor as a confident answer. The file name's title is far better evidence than its
+// markers, and that is now what distinguishes the rows, by ranking rather than
+// filtering: ranking cannot eliminate the right answer, it can only order it badly.
 //
-// TypeIsHint records where Type came from, which decides how far it is trusted. See
-// matchesType.
+// Track is an optional tie-breaker, the one way to resolve a date without being asked.
 type MessageLookup struct {
-	Date       DateOnly
-	Type       MessageType
-	Track      int  // 0 means "not supplied"
-	TypeIsHint bool // Type was inferred from the file name rather than asserted
-}
-
-// matchesType reports whether a catalog message's type satisfies the lookup.
-//
-// An asserted type - one the operator supplied with --type - is taken literally. An
-// inferred one is trusted only as far as the file name can actually go: the name
-// distinguishes a prayer from everything else and nothing more, so an inferred
-// "message" means "not a prayer" rather than the literal Message type.
-//
-// Reading an inferred type literally was a bug. A service that also produced a
-// training, word, testimony, song or special event left date-plus-type matching
-// exactly one row, so the lookup believed it had resolved the video and never offered
-// the operator a choice - silently returning the wrong row. Widening only happened
-// when the type matched nothing at all, which is not this case.
-func (l MessageLookup) matchesType(msgType MessageType) bool {
-	if !l.TypeIsHint {
-		return msgType == l.Type
-	}
-	if l.Type == Prayer {
-		return msgType == Prayer
-	}
-	return msgType != Prayer
-}
-
-// DescribeType renders the type for a message to the operator, making clear when it is
-// only a hint and therefore covers more than the one type named.
-func (l MessageLookup) DescribeType() string {
-	if l.TypeIsHint && l.Type != Prayer {
-		return string(l.Type) + " (or similar)"
-	}
-	return string(l.Type)
+	Date  DateOnly
+	Track int // 0 means "not supplied"
 }
 
 // AmbiguousLookupError reports that a lookup matched more than one message and
@@ -59,7 +30,7 @@ func (l MessageLookup) DescribeType() string {
 // operator to choose.
 //
 // Track number alone is not enough in practice. Measured against the live catalog for
-// 2024 onward, 60 (date, type) groups are ambiguous and only 21 of them have distinct
+// 2024 onward, 60 groups sharing a date are ambiguous and only 21 of them have distinct
 // non-zero tracks. The rest are things like a message and its Q&A session, or several
 // candidate interviews on one date, which all carry track 0 because they are not in a
 // series. That is why the caller is expected to resolve this interactively.
@@ -122,59 +93,40 @@ type NotFoundLookupError struct {
 }
 
 func (e *NotFoundLookupError) Error() string {
-	return fmt.Sprintf("no message found dated %s with type %q",
-		e.Lookup.Date.String(), string(e.Lookup.Type))
+	return fmt.Sprintf("no message found dated %s", e.Lookup.Date.String())
 }
 
 // FindMessage locates the single message matching the lookup, together with the series
 // it belongs to (nil if it is not in one).
 //
-// Date is the reliable key; type only narrows, and how far it narrows depends on
-// whether it was asserted or inferred - see MessageLookup.matchesType. An inferred
-// "message" keeps every non-prayer row on the date as a candidate, because the file
-// name cannot tell a "training", "word", "testimony", "song" or "special-event" from a
-// message and those are roughly 400 of the catalog's messages.
+// Date is the whole key. Every row on the date is a candidate, and where there is more
+// than one the caller is expected to ask rather than narrow: nothing else available
+// here is reliable enough to eliminate a row, and eliminating the right one is a
+// failure the operator never sees. See MessageLookup.
 //
-// Should the type match nothing at all, it is discarded as a bad hint and the search
-// widens to the date alone rather than reporting the message missing.
-//
-// Returns *NotFoundLookupError if the date matches nothing at all, or
-// *AmbiguousLookupError if several messages match and the track number does not
-// resolve it. It never guesses between candidates.
+// Returns *NotFoundLookupError if the date matches nothing, or *AmbiguousLookupError if
+// several messages match and the track number does not resolve it. It never guesses
+// between candidates.
 func (c *Catalog) FindMessage(lookup MessageLookup) (*CatalogMessage, *CatalogSeri, error) {
 	// everything on this date, whatever its type
-	var onDate []CatalogMessage
+	var candidates []CatalogMessage
 	for index := range c.Messages {
 		if c.Messages[index].Date.Time.Equal(lookup.Date.Time) {
-			onDate = append(onDate, c.Messages[index])
+			candidates = append(candidates, c.Messages[index])
 		}
-	}
-	if len(onDate) == 0 {
-		return nil, nil, &NotFoundLookupError{Lookup: lookup}
-	}
-
-	// narrow by type where that leaves anything
-	candidates := onDate
-	var ofType []CatalogMessage
-	for index := range onDate {
-		if lookup.matchesType(onDate[index].Type) {
-			ofType = append(ofType, onDate[index])
-		}
-	}
-	if len(ofType) > 0 {
-		candidates = ofType
 	}
 
 	switch len(candidates) {
 	case 0:
 		return nil, nil, &NotFoundLookupError{Lookup: lookup}
 	case 1:
-		// date and type were enough. a supplied track number is redundant here, so it
-		// is ignored rather than used to reject the one obvious match.
+		// the date was enough. a supplied track number is redundant here, so it is
+		// ignored rather than used to reject the one obvious match.
 		return c.withSeries(&candidates[0])
 	}
 
-	// more than one candidate, so we need the track number to tell them apart
+	// more than one row on the date. an explicit track is the operator answering the
+	// question in advance; without one, the question gets asked.
 	if lookup.Track == 0 {
 		return nil, nil, &AmbiguousLookupError{Lookup: lookup, Candidates: candidates}
 	}

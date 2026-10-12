@@ -9,47 +9,38 @@ import (
 	"github.com/WordOfLifeMN/online/catalog"
 )
 
-// prayerPatterns match the file naming conventions that mark a prayer rather than a
-// message. The "p" sits next to the date, in one of the positions the speaker-initial
-// conventions already allow:
-//
-//	2025-03-09-pv Title.mp4    prayer, Vern
-//	2025-03-09-vp Title.mp4    prayer, Vern
-//	2025-03-09p Title.mp4      prayer
-var prayerPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`-[0-9][0-9]-[0-9][0-9]-P[A-Z] `),
-	regexp.MustCompile(`-[0-9][0-9]-[0-9][0-9]-[A-Z]P `),
-	regexp.MustCompile(`-[0-9][0-9]-[0-9][0-9]P`),
-}
-
 // datePattern extracts the leading ISO date from a file name
 var datePattern = regexp.MustCompile(`([0-9]{4}-[0-9]{2}-[0-9]{2})`)
 
-// getMessageTypeFromFileName infers the message type from the video file name.
+// The file name once supplied a message type, from a "p" next to the date, and a
+// speaker, from an initial. Neither is read any more. The spreadsheet row is the record
+// of what a message is and who preached it, and a second answer from the file name
+// could only agree redundantly or disagree silently - which is what it did.
 //
-// The sheet lookup keys on date and type, so the type has to come from somewhere; the
-// existing naming conventions already encode the only distinction that matters in
-// practice, which is prayer vs. message. Anything else needs --type.
-func getMessageTypeFromFileName(filePath string) catalog.MessageType {
-	name := strings.ToUpper(filepath.Base(filePath))
-	for _, pattern := range prayerPatterns {
-		if pattern.MatchString(name) {
-			return catalog.Prayer
-		}
-	}
-	return catalog.Message
-}
-
-// leadingMarkers matches what sits between the date and the title: an optional hyphen
-// and up to two letters of speaker initial and/or prayer marker, then the gap before
-// the title. The letter run is optional, so a plain "2026-10-04 Title" works too.
+// The date is now the only part of a file name that means anything. The rest is
+// tolerated, not interpreted:
 //
-// Anchored, so it can only ever eat the marker. A title beginning with a short word -
-// "2026-10-04-v A New Day" - keeps that word, because the letters have already been
-// consumed by the marker before the gap is matched.
-var leadingMarkers = regexp.MustCompile(`^-?[A-Za-z]{0,2}\s+`)
+//	<date>[<discriminator>][-<obsolete markup>] <title>.<ext>
+//
+//	2026-10-11 Servanthood.mp4
+//	2026-10-11b-mp Learning at Moriah.mp4
+//	2026-10-04-v The Works of God.mp4
+//	2026-10-04 The Works of God-v.mp4
+//
+// The discriminator is a single letter that keeps two files of one date apart on disk.
+// It is for the operator's filing, not for this program - which is exactly what the
+// markup after it has now become too.
 
-// trailingInitial matches the other convention, where the initial goes on the end:
+// leadingMarkers matches what sits between the date and the title: an optional
+// discriminator letter, an optional hyphen and run of obsolete markup letters, then the
+// gap before the title. Every part is optional, so a plain "2026-10-04 Title" works.
+//
+// Anchored, so it can only ever eat the markers. A title beginning with a short word -
+// "2026-10-04-v A New Day" - keeps that word, because the gap is what ends the match
+// and the letters before it have already been consumed.
+var leadingMarkers = regexp.MustCompile(`^[A-Za-z]?(-[A-Za-z]+)?\s+`)
+
+// trailingInitial matches the other convention, where the markup goes on the end:
 // "2026-10-04 Title-v.mp4".
 //
 // It requires the hyphen. Allowing a bare space would amputate titles that genuinely

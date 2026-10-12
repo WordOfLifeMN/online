@@ -110,10 +110,10 @@ func xscriptSummarize(cmd *cobra.Command, args []string) error {
 	}
 
 	// this subcommand works from a transcript alone, with no spreadsheet lookup, so
-	// the speaker comes from the file name or the operator
-	speaker := getSpeakerInitialFromFileName(xscriptPath)
+	// there is nobody to ask but the operator
+	speaker := viper.GetString("speaker")
 	if speaker == "" {
-		speaker = PromptUserForSpeaker(guessSpeakerFromFileName(xscriptPath))
+		speaker = PromptUserForSpeaker()
 	}
 
 	info := &MessageInfo{
@@ -417,55 +417,13 @@ func printRiskNotes(info *MessageInfo) {
 	fmt.Printf("  These are observations, not verdicts. Check each quote in context.\n")
 }
 
-// getSpeakerInitialFromFileName infers the speaker from an initial in the file name.
-// Returns "" when the file name carries no initial, which is the caller's signal to
-// look elsewhere.
+// The file name once named the speaker too, with an initial next to the date or at the
+// end - "-v" Vern, "-m" Mary, "-i" Igor, and so on. The spreadsheet row now supplies
+// the speaker, and it is the record of who actually preached, so the initial had
+// nothing left to contribute but a second answer that could disagree with the first.
 //
-//   - supported initials are V (Vern Peltz), M (Mary Peltz), J (Jim Isakson), I
-//     (Igor Kondratyuk), A (Anthony Leong), T (Tania Kondratyuk)
-//   - 2025-03-04 Message Title-[VMJIA].mp4
-//   - 2025-03-04-[vmjia] Message Title.mp4
-//   - 2025-03-04-p[vmjia] Message Title.mp4
-//   - 2025-03-04p-[vmjia] Message Title.mp4
-func getSpeakerInitialFromFileName(filePath string) string {
-	names := map[string]string{
-		"V": "Pastor Vern Peltz",
-		"M": "Pastor Mary Peltz",
-		"J": "Jim Isakson",
-		"I": "Pastor Igor Kondratyuk",
-		"T": "Pastor Tania Kondratyuk",
-		"A": "Anthony Leong",
-	}
-
-	// test for each possible location of the initials
-	ucFilePath := strings.ToUpper(filePath)
-	for initials, n := range names {
-		// initial at end of file name: "2025-03-09 Title-v.mp4"
-		re := fmt.Sprintf("-%s\\....$", initials)
-		if match, err := regexp.MatchString(re, ucFilePath); err == nil && match {
-			return n
-		}
-		// initial following date with optional prayer "p": "2025-03-09-[p]v[p] Title.mp4"
-		re = fmt.Sprintf("-[0-9][0-9]-[0-9][0-9]-P?%sP? ", initials)
-		if match, err := regexp.MatchString(re, ucFilePath); err == nil && match {
-			return n
-		}
-		// initial following prayer "p": "2025-03-09pv Title.mp4"
-		re = fmt.Sprintf("-[0-9][0-9]-[0-9][0-9]P%s ", initials)
-		if match, err := regexp.MatchString(re, ucFilePath); err == nil && match {
-			return n
-		}
-	}
-
-	return ""
-}
-
-// guessSpeakerFromFileName is the last-resort default for the speaker prompt, used
-// only when neither the file name nor the spreadsheet says who spoke. A prayer is
-// more often Mary, anything else more often Vern.
-func guessSpeakerFromFileName(filePath string) string {
-	if match, err := regexp.MatchString("-[0-9][0-9]p ", filePath); err == nil && match {
-		return "Mary"
-	}
-	return "Vern"
-}
+// It was also a lookup table of six people in a program that is published for a church
+// whose staff changes. Whoever preaches next does not need a code point allocated.
+//
+// Initials still appear in file names and the title parser skips over them - see
+// leadingMarkers in messagetype.go. They just no longer mean anything.
