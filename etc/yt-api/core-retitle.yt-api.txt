@@ -1,0 +1,505 @@
+# =============================================================================
+#  CORE retitle - proposed yt-api calls
+#  Generated 2026-10-12 15:08 from an 'online dump' of the catalog
+#  spreadsheet, correlated against live YouTube data fetched the same day.
+#
+#  APPLIED 2026-10-12 and verified. This file is now a HISTORICAL RECORD of what
+#  was run - see OUTCOME at the very bottom for where it diverges from live.
+#
+#  Scope: 47 CORE messages that have a YouTube video, in 19 series.
+#  Target video title format : CORE | <title> | <speaker> | <date>
+#  Target playlist title     : CORE | <series>
+# =============================================================================
+
+# -- WHY THESE USE --input AND NOT --title -------------------------------------
+#  yt-api does NOT read the existing resource before updating. It builds a fresh
+#  one from whatever you pass (internal/commands/update.go, updateVideo), and
+#  YouTube's videos.update deletes any mutable property the body leaves out. So
+#    yt-api update videos --id X --title '...'
+#  would blank the description, categoryId, tags and defaultLanguage.
+#
+#  Adding --part snippet does NOT fix it. yt-api always allocates a status
+#  object, so the body still carries 'status' while the part list no longer
+#  declares it, and the API rejects the call:
+#    {\
+#  (Confirmed against video Zq8IdYXb2nM on 2026-10-12. The call was rejected, so
+#  nothing was modified.)
+#
+#  There is also no flag for defaultLanguage, which 46 of the 47 videos have set.
+#  So each call below sends a complete JSON body instead: the live snippet and
+#  status, verbatim, with only the title changed.
+
+# -- --dry-run DOES NOT VALIDATE THESE -----------------------------------------
+#  handleUpdateDryRun only echoes the command-line flags; it never opens the
+#  --input file and never checks --part. A dry-run of these calls will print
+#  empty fields and tell you nothing. That is exactly why the earlier --part
+#  snippet form passed its dry-run and still failed for real.
+
+# -- SUGGESTED ORDER OF WORK ---------------------------------------------------
+#  1. Run ONE video call. Confirm in YouTube Studio, or re-list it and compare
+#     against etc/yt-api/core-retitle/videos/<id>.json - everything except the title
+#     should be byte-identical.
+#  2. Then the remaining videos, then the playlists.
+#  To run the whole file once you are happy:
+#     Get-Content etc/yt-api/core-retitle.yt-api.txt | Where-Object { $_ -like 'yt-api*' } |
+#       ForEach-Object { Invoke-Expression $_ }
+
+# =============================================================================
+#  VIDEOS  (47)
+# =============================================================================
+
+# --- ADHD and Bipolar ---
+#   now: ADHD and Bipolar: Bipolar; June 16, 2021
+#   new: CORE | Bipolar | Mary Peltz & Kim Wessel | June 16, 2021
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+yt-api update videos --input etc/yt-api/core-retitle/videos/Zq8IdYXb2nM.json
+
+#   now: Understanding ADHD and Bipolar Disorder: Bipolar Disorder Q&A
+#   new: CORE | Bipolar Q&A | Mary Peltz & Kim Wessel | June 16, 2021
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+yt-api update videos --input etc/yt-api/core-retitle/videos/3V-wFbZSS9c.json
+
+
+# --- All or Nothing Thinking ---
+#   now: All or Nothing Thinking, Part 1; April 3, 2019
+#   new: CORE | All or Nothing Thinking, Part 1 | Mary Peltz | April 3, 2019
+yt-api update videos --input etc/yt-api/core-retitle/videos/sOtJFJ-nue4.json
+
+#   now: All or Nothing Thinking, Part 2; April 3, 2019
+#   new: CORE | All or Nothing Thinking, Part 2 | Mary Peltz | April 3, 2019
+yt-api update videos --input etc/yt-api/core-retitle/videos/dT5ll-kr1F0.json
+
+
+# --- Arrested in Development ---
+#   now: Arrested in Development, Part 1; November 17, 2017
+#   new: CORE | Arrested in Development, Part 1 | Mary Peltz | November 17, 2017
+yt-api update videos --input etc/yt-api/core-retitle/videos/XNRZZ66tdlo.json
+
+#   now: Arrested in Development, Part 2; November 17, 2017
+#   new: CORE | Arrested in Development, Part 2 | Mary Peltz | November 17, 2017
+yt-api update videos --input etc/yt-api/core-retitle/videos/16UKsDSvn3s.json
+
+
+# --- Blockages to Comfort ---
+#   now: C.O.R.E.: Blockages To Comfort, Part 1; May 10, 2015
+#   new: CORE | Blockages to Comfort, Part 1 | Mary Peltz | May 10, 2015
+yt-api update videos --input etc/yt-api/core-retitle/videos/yqgnd3F6r5g.json
+
+#   now: C.O.R.E.: Blockages to Comfort, Part 2; May 17, 2015
+#   new: CORE | Blockages to Comfort, Part 2 | Mary Peltz | May 17, 2015
+yt-api update videos --input etc/yt-api/core-retitle/videos/_GMYNzgvP3M.json
+
+
+# --- Bringing Closure To Grief. ---
+#   now: Bringing Closure To Grief, Part 1; June 24, 2018
+#   new: CORE | Bringing Closure To Grief, Part 1 | Mary Peltz | June 24, 2018
+yt-api update videos --input etc/yt-api/core-retitle/videos/3rv-p2oHUXE.json
+
+#   now: Bringing Closure To Grief, Part 2; July 1, 2018
+#   new: CORE | Bringing Closure To Grief, Part 2 | Mary Peltz | July 1, 2018
+yt-api update videos --input etc/yt-api/core-retitle/videos/ccf8dFjDbVc.json
+
+#   now: Bringing Closure to Grief, Part 3; July 15, 2018
+#   new: CORE | Bringing Closure to Grief, Part 3 | Mary Peltz | July 15, 2018
+yt-api update videos --input etc/yt-api/core-retitle/videos/cUgZ2TdWlDU.json
+
+
+# --- Fabio and the Mistress ---
+#   now: C.O.R.E.: Fabio and the Mistress, Part 1; September 5, 2018a
+#   new: CORE | Fabio and the Mistress: The Lure of Adultery, Part 1 | Mary Peltz | September 5, 2018
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+yt-api update videos --input etc/yt-api/core-retitle/videos/OyVmGbi1kNo.json
+
+#   now: C.O.R.E.: Fabio and the Mistress, Part 2; September 5, 2018a
+#   new: CORE | Fabio and the Mistress: The Lure of Adultery, Part 2 | Mary Peltz | September 5, 2018
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+yt-api update videos --input etc/yt-api/core-retitle/videos/FU_6MkQGfBc.json
+
+
+# --- Filtered Hearing ---
+#   now: Filtered Hearing, Part 1; February 6, 2019
+#   new: CORE | Filtered Hearing, Part 1 | Mary Peltz | February 6, 2019
+yt-api update videos --input etc/yt-api/core-retitle/videos/2YsVzfbrtm8.json
+
+#   now: Filtered Hearing, Part 2; February 6, 2019
+#   new: CORE | Filtered Hearing, Part 2 | Mary Peltz | February 6, 2019
+yt-api update videos --input etc/yt-api/core-retitle/videos/o3DqMPOsSH8.json
+
+
+# --- From Hope to Faith ---
+#   now: C.O.R.E.: From Hope to Faith, Part 1; October 11, 2014
+#   new: CORE | From Hope to Faith, Part 1 | Mary Peltz | October 11, 2014
+yt-api update videos --input etc/yt-api/core-retitle/videos/Res6Prkop2w.json
+
+#   now: C.O.R.E.: From Hope to Faith, Part 2; October 18, 2014
+#   new: CORE | From Hope to Faith, Part 2 | Mary Peltz | October 18, 2014
+yt-api update videos --input etc/yt-api/core-retitle/videos/xHUJPfu7EpU.json
+
+
+# --- God's Magnetism ---
+#   now: God's Magnetism; November 18, 2017
+#   new: CORE | God's Magnetism | Mary Peltz | November 18, 2017
+yt-api update videos --input etc/yt-api/core-retitle/videos/HcpieIBpbo4.json
+
+
+# --- Grooming: Disarming Manipulative Control ---
+#   now: Grooming: Disarming Manipulative Control, Part 1; November 11, 2018
+#   new: CORE | Grooming: Disarming Manipulative Control, Part 1 | Mary Peltz | November 7, 2018
+#   NOTE: spreadsheet date is November 7, 2018, YouTube title says November 11, 2018 - see Q3
+yt-api update videos --input etc/yt-api/core-retitle/videos/H7cEx5xkqZ0.json
+
+#   now: Grooming: Disarming Manipulative Control, Part 2; November 11, 2018
+#   new: CORE | Grooming: Disarming Manipulative Control, Part 2 | Mary Peltz | November 7, 2018
+#   NOTE: spreadsheet date is November 7, 2018, YouTube title says November 11, 2018 - see Q3
+yt-api update videos --input etc/yt-api/core-retitle/videos/Ci17d1gF33E.json
+
+
+# --- Out of the Shadows ---
+#   now: C.O.R.E.: Freedom From Shame Redux; March 30, 2015
+#   new: CORE | Freedom from Shame | Mary Peltz | March 30, 2015
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+#   NOTE: visibility sheet=public youtube=private - see Q4
+yt-api update videos --input etc/yt-api/core-retitle/videos/L0vzADHkpLA.json
+
+#   now: C.O.R.E.: Overcoming Codependency Redux; April 13, 2015
+#   new: CORE | Understanding Codependency | Mary Peltz | April 13, 2015
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+yt-api update videos --input etc/yt-api/core-retitle/videos/PivYn0tf8jE.json
+
+
+# --- Road to Recovery. ---
+#   now: Road to Recovery, Part 1; December 5, 2018
+#   new: CORE | Road to Recovery, Part 1 | Mary Peltz | December 5, 2018
+yt-api update videos --input etc/yt-api/core-retitle/videos/DXGdnV3Kcdk.json
+
+#   now: Road to Recovery, Part 2; December 5, 2018
+#   new: CORE | Road to Recovery, Part 2 | Mary Peltz | December 5, 2018
+yt-api update videos --input etc/yt-api/core-retitle/videos/_N7mjNd0OgM.json
+
+
+# --- The House that Jack Built ---
+#   now: C.O.R.E.: The House that Jack Built; June 8, 2015
+#   new: CORE | The House that Jack Built | Mary Peltz | June 8, 2015
+yt-api update videos --input etc/yt-api/core-retitle/videos/qtpf8ll6O2o.json
+
+#   now: C.O.R.E.: The House that Jack Built Redux; June 15, 2015
+#   new: CORE | The House that Jack Built | Mary Peltz | June 15, 2015
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+yt-api update videos --input etc/yt-api/core-retitle/videos/eZrbNrwVU7s.json
+
+
+# --- The Interface ---
+#   now: Goat's Head; November 24, 2019
+#   new: CORE | Goat's Head | Mary Peltz | November 24, 2019
+yt-api update videos --input etc/yt-api/core-retitle/videos/tyPMSoun4hg.json
+
+#   now: Fear, Shame & Pride, Part 1; December 8, 2019
+#   new: CORE | Fear, Shame & Pride, Part 1 | Mary Peltz | December 8, 2019
+yt-api update videos --input etc/yt-api/core-retitle/videos/TUeSTEDIgzg.json
+
+#   now: Fear, Shame & Pride, Part 2; December 15, 2019
+#   new: CORE | Fear, Shame & Pride, Part 2 | Mary Peltz | December 15, 2019
+yt-api update videos --input etc/yt-api/core-retitle/videos/N3Zs-t19224.json
+
+#   now: Fear, Shame & Pride, Part 3; December 22, 2019
+#   new: CORE | Fear, Shame & Pride, Part 3 | Mary Peltz | December 22, 2019
+yt-api update videos --input etc/yt-api/core-retitle/videos/4HdBRxFNV34.json
+
+#   now: The Interrogation; January 26, 2020
+#   new: CORE | The Interrogation | Mary Peltz | January 26, 2020
+yt-api update videos --input etc/yt-api/core-retitle/videos/vDLZnknLX2I.json
+
+#   now: Learned Helplessness; February 2, 2020
+#   new: CORE | Learned Helplessness | Mary Peltz | February 2, 2020
+yt-api update videos --input etc/yt-api/core-retitle/videos/01LiNfRzMo8.json
+
+#   now: 10 Steps to Freedom; February 9, 2020
+#   new: CORE | 10 Steps to Freedom | Mary Peltz | February 9, 2020
+yt-api update videos --input etc/yt-api/core-retitle/videos/5PMVuBp59vs.json
+
+
+# --- The Mind of the Spirit ---
+#   now: C.O.R.E.: Don't Think About Pink Elephants; July 12, 2015
+#   new: CORE | Don't Think About Pink Elephants | Mary Peltz | July 12, 2015
+yt-api update videos --input etc/yt-api/core-retitle/videos/4uxWbf7LY1w.json
+
+#   now: C.O.R.E.: Putting Brush to Canvas; August 2, 2015
+#   new: CORE | Putting Brush to Canvas | Mary Peltz | August 2, 2015
+yt-api update videos --input etc/yt-api/core-retitle/videos/d0XZPduCa9A.json
+
+
+# --- The Orphan Spirit ---
+#   now: The Orphan Spirit; October 5, 2015
+#   new: CORE | The Orphan Spirit | Mary Peltz | October 5, 2015
+yt-api update videos --input etc/yt-api/core-retitle/videos/qsfyLtIjsAk.json
+
+#   now: The Orphan Spirit Q&A; October 5, 2015
+#   new: CORE | The Orphan Spirit, Q&A | Mary Peltz | October 5, 2015
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+yt-api update videos --input etc/yt-api/core-retitle/videos/6omfyOkUAag.json
+
+#   now: The Orphan Spirit; October 12, 2015
+#   new: CORE | The Orphan Spirit | Mary Peltz | October 12, 2015
+yt-api update videos --input etc/yt-api/core-retitle/videos/3albPX0YLPY.json
+
+
+# --- The Pink Elephant ---
+#   now: The Pink Elephant; February 17, 2018
+#   new: CORE | The Pink Elephant | Mary Peltz | February 17, 2018
+yt-api update videos --input etc/yt-api/core-retitle/videos/oQ70NIxUaZw.json
+
+
+# --- Understanding Vows, Life Commands and Soul Ties ---
+#   now: Understanding Vows, Life Commands & Soul Ties, Part 1; March 7, 2019
+#   new: CORE | Understanding Vows, Life Commands and Soul Ties, Part 1 | Mary Peltz | March 7, 2019
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+yt-api update videos --input etc/yt-api/core-retitle/videos/3UeqNi_WXKA.json
+
+#   now: Understanding Vows, Life Commands & Soul Ties, Part 2; March 7, 2019
+#   new: CORE | Understanding Vows, Life Commands and Soul Ties, Part 2 | Mary Peltz | March 7, 2019
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+yt-api update videos --input etc/yt-api/core-retitle/videos/f8n-4xM6YxA.json
+
+
+# --- Your Life in Perspective ---
+#   now: C.O.R.E.: Your Life in Perspective; August 2, 2014
+#   new: CORE | Your Life In Perspective, Part 1 | Mary Peltz | August 2, 2014
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+yt-api update videos --input etc/yt-api/core-retitle/videos/Zw4Ixj3WRl8.json
+
+#   now: C.O.R.E.: Your Life in Perspective; August 9, 2014
+#   new: CORE | Your Life In Perspective, Part 2 | Mary Peltz | August 9, 2014
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+yt-api update videos --input etc/yt-api/core-retitle/videos/ioojtf13rjQ.json
+
+
+# --- (not in a series) ---
+#   now: What is Your Achilles Heel?; November 28, 2016
+#   new: CORE | What is Your Achilles Heel? | Mary Peltz | November 28, 2016
+#   NOTE: visibility sheet=private youtube=public - see Q4
+yt-api update videos --input etc/yt-api/core-retitle/videos/m3D5yDaJWH4.json
+
+#   now: Effects of Alcohol - Dr. Randall Westerberg
+#   new: CORE | Effects of Alcohol | Dr. Randall Westerberg | October 28, 2020
+#   NOTE: title text differs between the spreadsheet and YouTube - see Q1
+yt-api update videos --input etc/yt-api/core-retitle/videos/UM8C1c95-fQ.json
+
+#   now: C.O.R.E. Programs: Understanding Suicidal Ideation
+#   new: CORE | Understanding Suicidal Ideation | Mary Peltz | May 13, 2022
+yt-api update videos --input etc/yt-api/core-retitle/videos/KzNawJtcCUg.json
+
+#   now: Hope Dealers, September 6, 2023
+#   new: CORE | Hope Dealers | Mary Peltz | September 6, 2023
+yt-api update videos --input etc/yt-api/core-retitle/videos/VXHmO7546ps.json
+
+# =============================================================================
+#  PLAYLISTS  (16 of 19 series have one)
+# =============================================================================
+
+#   now: All or Nothing Thinking
+#   new: CORE | All or Nothing Thinking
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4Htp4Vdwsgb5CaQH6v08ufiE.json
+
+#   now: Arrested in Development
+#   new: CORE | Arrested in Development
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4HuKI8HZql07mh6kOHAyDaxf.json
+
+#   now: C.O.R.E.: Blockages to Comfort
+#   new: CORE | Blockages to Comfort
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4Ht8_eCYT-78klh7dTwcTwgn.json
+
+#   now: Bringing Closure To Grief
+#   new: CORE | Bringing Closure To Grief
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4HtsIXP_2Z7uDUQUgMG-Yb7u.json
+
+#   now: Fabio and the Mistress
+#   new: CORE | Fabio and the Mistress
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4Hsaul_ZAWtqWP9NDU4ia5AD.json
+
+#   now: Filtered Hearing
+#   new: CORE | Filtered Hearing
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4HviP4xeUYfb46ee8GyOwAW5.json
+
+#   now: C.O.R.E.: From Hope to Faith
+#   new: CORE | From Hope to Faith
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4Htzy33D0J7EUl4HwCyMZ5yY.json
+
+#   now: Grooming
+#   new: CORE | Grooming: Disarming Manipulative Control
+#   NOTE: matched by prefix - playlist 'Grooming' vs series 'Grooming: Disarming Manipulative Control' - see Q2
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4HuZ4X8FlzuFEnsBZpP8hIrj.json
+
+#   now: C.O.R.E.: Out of the Shadows
+#   new: CORE | Out of the Shadows
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4HtSpXm2kuY7qoaG_ZuuKBvr.json
+
+#   now: Road to Recovery
+#   new: CORE | Road to Recovery
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4HuB2msDBGk3vupE9JabnOY-.json
+
+#   now: The House that Jack Built
+#   new: CORE | The House that Jack Built
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4HvwgVFaKdAGhIeFkmVk0vXh.json
+
+#   now: The Interface
+#   new: CORE | The Interface
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4HvPMrAzD7bZgd2NsTcl2Yp1.json
+
+#   now: C.O.R.E.: The Mind of the Spirit
+#   new: CORE | The Mind of the Spirit
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4Hvfg47uT9sGabKbOz5DQ_pv.json
+
+#   now: C.O.R.E.: The Orphan Spirit
+#   new: CORE | The Orphan Spirit
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4Hus5fDlKt6lEep30SAufiWt.json
+
+#   now: Understanding Vows, Life Commands & Soul Ties
+#   new: CORE | Understanding Vows, Life Commands and Soul Ties
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4Htu_xZGbaiZfcB0xjMn4lKj.json
+
+#   now: C.O.R.E.: Your Life in Perspective
+#   new: CORE | Your Life in Perspective
+yt-api update playlists --input etc/yt-api/core-retitle/playlists/PL_trbEzIM4HuZRWam-hkhYLtWBre7dKe8.json
+
+# --- series with NO playlist on the channel -----------------------------------
+#   ADHD and Bipolar  (2 message(s)) - no playlist exists. See Q5.
+#   God's Magnetism  (1 message(s)) - no playlist exists. See Q5.
+#   The Pink Elephant  (1 message(s)) - no playlist exists. See Q5.
+
+# =============================================================================
+#  OPEN QUESTIONS - please confirm before any of the above is run
+# =============================================================================
+#
+#  Q1. WHICH TITLE WINS?  13 of 47 videos have a spreadsheet title that
+#      differs from the live YouTube title by more than the 'C.O.R.E.:' prefix
+#      and the trailing date. These calls use the SPREADSHEET title, assuming
+#      the catalog is the system of record. That is a real content change, not
+#      a reformat. The ones that actually matter:
+#        Zq8IdYXb2nM
+#           sheet: Bipolar
+#           yt   : ADHD and Bipolar: Bipolar; June 16, 2021
+#        3V-wFbZSS9c
+#           sheet: Bipolar Q&A
+#           yt   : Understanding ADHD and Bipolar Disorder: Bipolar Disorder Q&A
+#        OyVmGbi1kNo
+#           sheet: Fabio and the Mistress: The Lure of Adultery, Part 1
+#           yt   : C.O.R.E.: Fabio and the Mistress, Part 1; September 5, 2018a
+#        FU_6MkQGfBc
+#           sheet: Fabio and the Mistress: The Lure of Adultery, Part 2
+#           yt   : C.O.R.E.: Fabio and the Mistress, Part 2; September 5, 2018a
+#        L0vzADHkpLA
+#           sheet: Freedom from Shame
+#           yt   : C.O.R.E.: Freedom From Shame Redux; March 30, 2015
+#        PivYn0tf8jE
+#           sheet: Understanding Codependency
+#           yt   : C.O.R.E.: Overcoming Codependency Redux; April 13, 2015
+#        eZrbNrwVU7s
+#           sheet: The House that Jack Built
+#           yt   : C.O.R.E.: The House that Jack Built Redux; June 15, 2015
+#        6omfyOkUAag
+#           sheet: The Orphan Spirit, Q&A
+#           yt   : The Orphan Spirit Q&A; October 5, 2015
+#        3UeqNi_WXKA
+#           sheet: Understanding Vows, Life Commands and Soul Ties, Part 1
+#           yt   : Understanding Vows, Life Commands & Soul Ties, Part 1; March 7, 2019
+#        f8n-4xM6YxA
+#           sheet: Understanding Vows, Life Commands and Soul Ties, Part 2
+#           yt   : Understanding Vows, Life Commands & Soul Ties, Part 2; March 7, 2019
+#        Zw4Ixj3WRl8
+#           sheet: Your Life In Perspective, Part 1
+#           yt   : C.O.R.E.: Your Life in Perspective; August 2, 2014
+#        ioojtf13rjQ
+#           sheet: Your Life In Perspective, Part 2
+#           yt   : C.O.R.E.: Your Life in Perspective; August 9, 2014
+#        UM8C1c95-fQ
+#           sheet: Effects of Alcohol
+#           yt   : Effects of Alcohol - Dr. Randall Westerberg
+#
+#  Q2. GROOMING PLAYLIST. The series is 'Grooming: Disarming Manipulative
+#      Control' but the playlist is just 'Grooming'. The call renames it to the
+#      full series name. Say if you would rather keep 'CORE | Grooming'.
+#
+#  Q3. GROOMING DATE. The spreadsheet dates both parts 2018-11-07; the current
+#      YouTube titles say November 11, 2018. The calls use the spreadsheet date.
+#      One of the two is wrong and I cannot tell which.
+#
+#  Q4. VISIBILITY DRIFT (nothing above changes it, just noticed):
+#        L0vzADHkpLA  sheet=public   youtube=private  'Freedom from Shame'
+#        m3D5yDaJWH4  sheet=private  youtube=public   'What is Your Achilles Heel?'
+#      Each JSON body echoes back the CURRENT YouTube privacy, so running these
+#      preserves the drift rather than resolving it.
+#
+#  Q5. MISSING PLAYLISTS. Three series have no playlist: 'ADHD and Bipolar'
+#      (2 messages), 'God's Magnetism' (1), 'The Pink Elephant' (1). The two
+#      single-message ones probably do not need one. For ADHD and Bipolar:
+#        yt-api insert playlists --title 'CORE | ADHD and Bipolar' --privacy public
+#      then add Zq8IdYXb2nM and 3V-wFbZSS9c as playlist items.
+#
+#  Q6. SPEAKER NAMING. The spreadsheet has 'Pastor Mary Peltz' on 9 rows and
+#      'Mary Peltz' on 35. These use the bare name throughout, to match the
+#      current channel style (e.g. 'Learning at Moriah | Mary Peltz | October
+#      11, 2026'). 'Dr. Randall Westerberg' is left intact.
+#
+#  Q7. The two 'Fabio and the Mistress' videos currently end '; September 5,
+#      2018a' - a stray 'a'. The retitle fixes that incidentally.
+#
+#  Q8. DATE ALREADY IN THE SPREADSHEET TITLE. 1 row(s) end in the message
+#      date, which would have put the date in the title twice. The trailing
+#      date was stripped before composing:
+#        VXHmO7546ps  'Hope Dealers, September 6, 2023' -> 'Hope Dealers'
+#      Worth fixing in the spreadsheet so the title column holds only a title.
+
+# =============================================================================
+#  OUTCOME - applied 2026-10-12, verified against live YouTube the same day
+# =============================================================================
+#
+#  Result: 45 of 45 WOL-owned CORE videos retitled, 16 of 16 playlists renamed,
+#  ZERO fields lost. Descriptions, categoryId, defaultLanguage and tags were all
+#  preserved on every video, which was the point of the --input approach.
+#
+#  This file and the JSON bodies under core-retitle/ are deliberately NOT being
+#  regenerated. They record what was actually run. Re-running
+#  scripts/gen-commands.ps1 would overwrite both, and this section with them.
+#
+#  Four known divergences between these files and live YouTube:
+#
+#  D1. TWO VIDEOS COULD NEVER BE UPDATED - still un-prefixed.
+#      Both live on the "The Bridge Outreach Media" channel, not WOL. They were
+#      uploaded there by someone else. WOL's OAuth can read them but not write
+#      them; the only fix is a re-upload to the WOL account.
+#        VXHmO7546ps  'Hope Dealers, September 6, 2023'
+#        UM8C1c95-fQ  'Effects of Alcohol - Dr. Randall Westerberg'
+#      These two calls are still listed above under "(not in a series)" and will
+#      fail if run. The generator should have filtered on snippet.channelId; see
+#      ../CLAUDE.md, "Check channel ownership before generating writes".
+#
+#  D2. FOUR TITLES ARE NEWER ON YOUTUBE THAN IN THESE BODIES.
+#      The spreadsheet gained ', Part N' for these after the bodies were
+#      generated, and both the sheet and YouTube were corrected by hand. Live is
+#      the more correct version; the JSON bodies below are stale.
+#        qtpf8ll6O2o  live: CORE | The House that Jack Built, Part 1 | ...
+#        eZrbNrwVU7s  live: CORE | The House that Jack Built, Part 2 | ...
+#        qsfyLtIjsAk  live: CORE | The Orphan Spirit, Part 1 | ...
+#        3albPX0YLPY  live: CORE | The Orphan Spirit, Part 2 | ...
+#      Do NOT re-run these four calls - doing so would revert the fix.
+#
+#  D3. ONE PRIVACY CHANGE, MADE DELIBERATELY AND NOT BY THESE CALLS.
+#        L0vzADHkpLA  'Freedom from Shame'  private -> public
+#      This resolves the Q4 drift in the spreadsheet's favour. The JSON body
+#      still says "privacyStatus": "private", so re-running that one call would
+#      put it back to private. Do not.
+#
+#  D4. THE TWO PLAYLIST QUESTIONS WERE ANSWERED BY ACCEPTING THE PROPOSAL.
+#      Q2 is settled: the playlist is now the full series name,
+#      'CORE | Grooming: Disarming Manipulative Control'. The Vows playlist took
+#      the spreadsheet's 'and' over YouTube's '&'. All 16 playlists now match
+#      their bodies exactly, so there is no playlist divergence.
+#
+#  Still open from the list above: Q3 (the Grooming date - spreadsheet says
+#  2018-11-07, the old YouTube titles said November 11, 2018) and Q5 (three
+#  series have no playlist: ADHD and Bipolar, God's Magnetism, The Pink
+#  Elephant).
+#
+#  Verification note: YouTube reads are eventually consistent. A single list
+#  call is not proof - three consecutive single-id reads of f8n-4xM6YxA returned
+#  stale, then correct, then correct. Re-read before concluding a call failed.

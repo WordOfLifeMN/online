@@ -1,0 +1,16 @@
+{
+    "id":  "tyPMSoun4hg",
+    "snippet":  {
+                    "title":  "CORE | Goat\u0027s Head | Mary Peltz | November 24, 2019",
+                    "description":  "Goat\u0027s Head",
+                    "categoryId":  "29",
+                    "defaultLanguage":  "en",
+                    "defaultAudioLanguage":  "en"
+                },
+    "status":  {
+                   "privacyStatus":  "public",
+                   "license":  "youtube",
+                   "embeddable":  true,
+                   "publicStatsViewable":  true
+               }
+}
