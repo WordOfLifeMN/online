@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/WordOfLifeMN/online/catalog"
+	"github.com/WordOfLifeMN/online/util/box"
 )
 
 // YouTubeChannel identifies which of the three channels a message belongs on
@@ -328,37 +329,43 @@ func collectResources(
 	return resources
 }
 
-// Print writes the packet so that each field can be selected and copied in one
-// gesture. The label sits outside the fence and the bare value inside it, so a
-// selection between the delimiters contains exactly the value and nothing else.
-func (p *UploadPacket) Print() {
-	const open = "╭───────────────────────────────────────────────────────────────────────────────────┄┄"
-	const close = "╰───────────────────────────────────────────────────────────────────────────────────┄┄"
-
-	fmt.Printf("\nUPLOAD PACKET\n")
-	fmt.Printf("Channel : %s\n", p.Channel)
-	fmt.Printf("Privacy : %s\n", p.Privacy)
+// Print writes the packet's sections into a box the caller has opened, so that each
+// field can be selected and copied in one gesture. Every value that gets pasted into
+// YouTube is a copy line: bare, unwrapped and unbordered, so a selection of the line
+// contains exactly the value and nothing else. Labels stay inside the border.
+func (p *UploadPacket) Print(b *box.Box) {
+	b.Section("UPLOAD PACKET")
+	b.Labeled("Channel : ", string(p.Channel))
+	b.Labeled("Privacy : ", string(p.Privacy))
 	if p.Playlist != "" {
-		fmt.Printf("Playlist: %s", p.Playlist)
+		playlist := p.Playlist
 		if p.Position > 0 {
-			fmt.Printf("  (position %d)", p.Position)
+			playlist += fmt.Sprintf(" (position %d)", p.Position)
 		}
-		fmt.Println()
+		b.Labeled("Playlist: ", playlist)
 	}
 	if p.Thumbnail != "" {
-		fmt.Printf("Thumb   : %s\n", p.Thumbnail)
+		// the path is pasted into the upload dialog, so it is a copy line too, and a
+		// long one would otherwise be wrapped in the middle of a folder name
+		b.Line("Thumb   :")
+		b.Copy(p.Thumbnail)
 	}
 
-	// the alternative shares the Title block's fence: it is the same field, offered
-	// twice, and a reader comparing them should not have to look between two boxes
-	if p.Alternative == "" {
-		fmt.Printf("\n%s\n│ Title\n%s\n%s\n", open, p.Title, close)
-	} else {
-		fmt.Printf("\n%s\n│ Title\n%s\n│ Alternative\n%s\n%s\n",
-			open, p.Title, p.Alternative, close)
+	// the alternative shares the Titles section: it is the same field, offered twice,
+	// and a reader comparing them should not have to look between two sections
+	b.Section("Titles")
+	b.Line("Title")
+	b.Copy(p.Title)
+	if p.Alternative != "" {
+		b.Line("Alternative Title")
+		b.Copy(p.Alternative)
 	}
-	fmt.Printf("%s\n│ Description\n%s\n%s\n", open, p.Description, close)
+
+	b.Section("Description")
+	b.Copy(p.Description)
+
 	if p.Playlist != "" {
-		fmt.Printf("%s\n│ Playlist\n%s\n%s\n", open, p.Playlist, close)
+		b.Section("Playlist")
+		b.Copy(p.Playlist)
 	}
 }

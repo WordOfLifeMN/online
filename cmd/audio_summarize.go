@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/WordOfLifeMN/online/util"
+	"github.com/WordOfLifeMN/online/util/box"
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
 	"github.com/spf13/cobra"
@@ -393,28 +394,32 @@ These notes are observations, not verdicts, and a human makes the final call:
 	return b.String()
 }
 
-// printRiskNotes outputs the advisory platform-risk notes, clearly separated from the
-// fields that get pasted into YouTube. These are never pasted anywhere.
-func printRiskNotes(info *MessageInfo) {
+// printRiskNotes writes the advisory platform-risk notes as a section of their own,
+// clearly separated from the fields that get pasted into YouTube. These are never
+// pasted anywhere, so unlike those fields they are bordered and wrapped.
+//
+// The title has no "⚠": its display width varies between terminals, and one that draws
+// it double width pushes the right border of that line out of line with the rest.
+func printRiskNotes(b *box.Box, info *MessageInfo) {
 	if !wantRiskNotes(info) {
 		return
 	}
 
-	fmt.Printf("\n⚠ Platform risk notes (advisory - not for upload)\n")
+	b.Section("Platform risk notes (advisory - not for upload)")
 	if len(info.RiskNotes) == 0 {
-		fmt.Printf("  Nothing flagged.\n")
+		b.Line("Nothing flagged.")
 		return
 	}
 
 	for _, note := range info.RiskNotes {
 		if note.PolicyArea == policyAreaUnreliable {
-			fmt.Printf("  • Transcript unreliable: %s\n", note.Reasoning)
+			b.Labeled("• ", "Transcript unreliable: "+note.Reasoning)
 		} else {
-			fmt.Printf("  • %s: %s\n", note.PolicyArea, note.Reasoning)
+			b.Labeled("• ", note.PolicyArea+": "+note.Reasoning)
 		}
-		fmt.Printf("    \"%s\"\n", note.Quote)
+		b.Labeled("  ", fmt.Sprintf("\"%s\"", note.Quote))
 	}
-	fmt.Printf("  These are observations, not verdicts. Check each quote in context.\n")
+	b.Line("These are observations, not verdicts. Check each quote in context.")
 }
 
 // The file name once named the speaker too, with an initial next to the date or at the

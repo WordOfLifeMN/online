@@ -10,9 +10,10 @@ This change puts each message in one closed box with titled sections. Values mea
 
 ### Box style
 - Boxes use Unicode box-drawing characters only. There is no ASCII mode. (Q1)
-- A box is 78 characters wide, borders included: header `╭…╮`, section dividers `├…┤`, footer `╰…╯`. Width is counted in runes (`unicode/utf8`), so no new dependency is needed.
+- A box is as wide as the terminal, borders included: header `╭…╮`, section dividers `├…┤`, footer `╰…╯`. Width is counted in runes (`unicode/utf8`).
+- The width is measured once, when the box is opened, so resizing the window affects the next box rather than one half drawn. It comes from, in order: the size the terminal reports (`golang.org/x/term`), then the `COLUMNS` environment variable, then a default of 132. A measured width is one less than the terminal's, because some consoles insert a line break after a line that fills the last column, and it is held between 40 and 256. Output that is not going to the console, such as a test's `bytes.Buffer`, uses the default without measuring. (Added at the Phase 2 checkpoint; the plan originally fixed every box at 78.)
 - A section title sits inside its divider: `├─ UPLOAD PACKET ──────…──┤`. (Q2) A header can carry a title the same way: `╭─ Message #1 ──────…──╮`. (Q3)
-- Bordered text lines are `│ <text> │`, padded to the right edge. Text wider than the inside of the box (74 characters) wraps at spaces. A single word too long for a line is broken at the edge.
+- Bordered text lines are `│ <text> │`, padded to the right edge. Text wider than the inside of the box (the width less 4) wraps at spaces. A single word too long for a line is broken at the edge.
 - A labeled line (`Channel : WOL`) wraps with continuation lines indented to line up under the value.
 - A *copy line* is printed bare: no border, no wrapping, no padding, and passed through exactly as given, including embedded newlines and blank lines. Copy lines are used for every value pasted into YouTube: titles, description, playlist name, and thumbnail path. (Q4, Q5)
 - A title too long for its header or divider is cut short with `…`.
@@ -58,8 +59,12 @@ Your note on Q8 asked for "something more than a comma-delimited list", with emo
 ```go
 package box
 
-// DefaultWidth is the full width of a box, borders included
-const DefaultWidth = 78
+// widths of a box, borders included
+const (
+	DefaultWidth = 132 // when the terminal's width cannot be measured
+	MinWidth     = 40  // a measured width is held between these two
+	MaxWidth     = 256
+)
 
 // Box draws one box to a writer, line by line. It holds no buffered state, so lines
 // appear as soon as they are written.
@@ -68,8 +73,9 @@ type Box struct {
 	width int
 }
 
-func New(w io.Writer) *Box                 // DefaultWidth
-func NewWidth(w io.Writer, width int) *Box // for tests and narrower boxes
+func New(w io.Writer) *Box                 // the terminal's width, measured by Width(w)
+func NewWidth(w io.Writer, width int) *Box // an explicit width, not held to Min/MaxWidth; for tests
+func Width(w io.Writer) int                // terminal size, then COLUMNS, then DefaultWidth; clamped
 
 func (b *Box) Header(title string)         // ╭─ title ───╮, or ╭────╮ when title is ""
 func (b *Box) Section(title string)        // ├─ title ───┤, or ├────┤ when title is ""
@@ -96,7 +102,9 @@ Writing to an `io.Writer` is what lets the tests capture output in a `bytes.Buff
   - `printAudioBanner()` becomes `printAudioBanner(w io.Writer)` and uses `util/box`.
 - `cmd/audio_summarize.go`: `printRiskNotes(info)` becomes `printRiskNotes(b *box.Box, info *MessageInfo)` and writes a section, keeping its current wording and its `wantRiskNotes` gate.
 
-### Sample (matched message, `--verbose`)
+`Width` measures only when `w` is an `*os.File`. Any other writer gets `DefaultWidth`, so tests that capture output in a buffer do not depend on the terminal they run in or on `COLUMNS`.
+
+### Sample (matched message, `--verbose`, drawn 78 wide to fit the page)
 
 ```
 ╭─ Message #1 ───────────────────────────────────────────────────────────────╮
@@ -131,39 +139,47 @@ Prayer
 ## Tasks
 
 ### Phase 1: `util/box` package
-- [ ] 1.1 Create `util/box/box.go` with `Box`, `New`, `NewWidth`, `Header`, `Section`, `Footer`, `Blank`, and the helpers `rule` and `pad`, including cutting long titles short with `…`.
-- [ ] 1.2 Add `wrap` and the text methods `Line`, `Linef`, `Labeled`, and `Copy` to `util/box/box.go`.
-- [ ] 1.3 Create `util/box/box_test.go` (a testify `suite`, like `util/os_test.go`) covering the cases under "Automated" below for `util/box`, and get `go test ./util/...` passing.
+- [x] 1.1 Create `util/box/box.go` with `Box`, `New`, `NewWidth`, `Header`, `Section`, `Footer`, `Blank`, and the helpers `rule` and `pad`, including cutting long titles short with `…`.
+- [x] 1.2 Add `wrap` and the text methods `Line`, `Linef`, `Labeled`, and `Copy` to `util/box/box.go`.
+- [x] 1.3 Create `util/box/box_test.go` (a testify `suite`, like `util/os_test.go`) covering the cases under "Automated" below for `util/box`, and get `go test ./util/...` passing.
 
 ### Phase 2: per-message box
-- [ ] 2.1 `cmd/publish.go`: change `(*UploadPacket).Print` to `Print(b *box.Box)` writing the UPLOAD PACKET, Titles, Description, and Playlist sections as specified; update its comment.
-- [ ] 2.2 `cmd/audio_summarize.go`: change `printRiskNotes` to `printRiskNotes(b *box.Box, info *MessageInfo)` writing the Risk notes section.
-- [ ] 2.3 `cmd/audio.go`: add `formatStepDuration` and `printTimeline`, and remove the `log.Printf` timeline.
-- [ ] 2.4 `cmd/audio.go`: rewrite `printMessageInfo` to take an `io.Writer` and draw the box, with the three cases checked in the specified order. Update the call in `audio()`.
-- [ ] 2.5 Add tests to `cmd/audio_test.go` and `cmd/publish_test.go` covering the cases under "Automated" below for `cmd`, and get `go test ./...` passing.
-- [ ] **Checkpoint (you):** run `online audio` on one or two videos, once without and once with `--verbose`. Check that each message is one closed box whose right border lines up, that the title, description, playlist, and thumbnail lines copy cleanly, and that the Timeline appears only with `--verbose`. Say whether the timeline table is enough or you want something more (Q8).
+- [x] 2.1 `cmd/publish.go`: change `(*UploadPacket).Print` to `Print(b *box.Box)` writing the UPLOAD PACKET, Titles, Description, and Playlist sections as specified; update its comment.
+- [x] 2.2 `cmd/audio_summarize.go`: change `printRiskNotes` to `printRiskNotes(b *box.Box, info *MessageInfo)` writing the Risk notes section.
+- [x] 2.3 `cmd/audio.go`: add `formatStepDuration` and `printTimeline`, and remove the `log.Printf` timeline.
+- [x] 2.4 `cmd/audio.go`: rewrite `printMessageInfo` to take an `io.Writer` and draw the box, with the three cases checked in the specified order. Update the call in `audio()`.
+- [x] 2.5 Add tests to `cmd/audio_test.go` and `cmd/publish_test.go` covering the cases under "Automated" below for `cmd`, and get `go test ./...` passing.
+- [x] 2.6 `util/box/box.go`: size boxes to the terminal. Add `MinWidth`, `MaxWidth`, and `Width`; set `DefaultWidth` to 132; make `New` use `Width(w)`. Add `golang.org/x/term` to `go.mod`. Test `Width` in `util/box/box_test.go`: a buffer gets the default, `COLUMNS` is used for a file that is not a terminal, out-of-range values are clamped, and an unreadable `COLUMNS` falls back to the default.
+- [x] **Checkpoint (you):** run `online audio` on one or two videos, once without and once with `--verbose`, and again in a narrow and a wide window. Check that each message is one closed box whose right border lines up, that the title, description, playlist, and thumbnail lines copy cleanly, and that the Timeline appears only with `--verbose`. Say whether the timeline table is enough or you want something more (Q8).
 
 ### Phase 3: startup banner
-- [ ] 3.1 `cmd/audio.go`: change `printAudioBanner` to `printAudioBanner(w io.Writer)` drawn with `util/box`, and update its call in `audio()`.
-- [ ] 3.2 Add a banner test to `cmd/audio_test.go`, and get `go test ./...` passing.
-- [ ] **Checkpoint (you):** run `online audio` with no arguments and check that the banner is a closed box with the same instructions.
+- [x] 3.1 `cmd/audio.go`: change `printAudioBanner` to `printAudioBanner(w io.Writer)` drawn with `util/box`, and update its call in `audio()`.
+- [x] 3.2 Add a banner test to `cmd/audio_test.go`, and get `go test ./...` passing.
+- [x] **Checkpoint (you):** run `online audio` with no arguments and check that the banner is a closed box with the same instructions.
 
 ## Test plan
 
 ### Automated (Claude)
-- [ ] `util/box`: every header, divider, footer, and bordered line is exactly 78 runes wide, including lines with multi-byte text such as curly quotes and `•`.
-- [ ] `util/box`: a header or section title appears inside the rule; an empty title gives a plain rule; a title too long for the width is cut short with `…`.
-- [ ] `util/box`: `Line` wraps at spaces, starts a new line at an embedded `\n`, and hard-breaks a word longer than the inner width.
-- [ ] `util/box`: `Labeled` lines up continuation lines under the value.
-- [ ] `util/box`: `Copy` writes its text exactly, with newlines and blank lines intact and no border.
-- [ ] `cmd`: a matched message's output contains the title, alternative, description, playlist name, and thumbnail path as exact bare lines, and the sections in the specified order.
-- [ ] `cmd`: a message without a playlist has no Playlist line and no Playlist section; one without an alternative has no Alternative Title.
-- [ ] `cmd`: an unmatched message shows a No upload packet section with the reason, plus the generated title and summary; a message that failed processing shows Not processed, including when it also has no spreadsheet row.
-- [ ] `cmd`: the Timeline section appears only when `verbose` is set (`viper.Set`), with `reused` and `-` shown in the right cases.
-- [ ] `cmd`: `formatStepDuration` gives `24s`, `2m08s`, and `1h02m03s` for matching durations.
-- [ ] `go vet ./...` and `go test ./...` pass.
+- [x] `util/box`: `Width` uses the default for a non-file writer, reads `COLUMNS` for a file that is not a terminal, clamps to 40–256, and ignores an unreadable `COLUMNS`.
+- [x] `util/box`: every header, divider, footer, and bordered line is exactly the box width in runes, including lines with multi-byte text such as curly quotes and `•`.
+- [x] `util/box`: a header or section title appears inside the rule; an empty title gives a plain rule; a title too long for the width is cut short with `…`.
+- [x] `util/box`: `Line` wraps at spaces, starts a new line at an embedded `\n`, and hard-breaks a word longer than the inner width.
+- [x] `util/box`: `Labeled` lines up continuation lines under the value.
+- [x] `util/box`: `Copy` writes its text exactly, with newlines and blank lines intact and no border.
+- [x] `cmd`: a matched message's output contains the title, alternative, description, playlist name, and thumbnail path as exact bare lines, and the sections in the specified order.
+- [x] `cmd`: a message without a playlist has no Playlist line and no Playlist section; one without an alternative has no Alternative Title.
+- [x] `cmd`: an unmatched message shows a No upload packet section with the reason, plus the generated title and summary; a message that failed processing shows Not processed, including when it also has no spreadsheet row.
+- [x] `cmd`: the Timeline section appears only when `verbose` is set (`viper.Set`), with `reused` and `-` shown in the right cases.
+- [x] `cmd`: `formatStepDuration` gives `24s`, `2m08s`, and `1h02m03s` for matching durations.
+- [x] `go vet ./...` and `go test ./...` pass.
 
 ### Manual (you)
-- [ ] Phase 2 checkpoint: per-message boxes look right and copy cleanly, with and without `--verbose`.
-- [ ] Phase 3 checkpoint: the startup banner is a closed box.
+- [x] Phase 2 checkpoint: per-message boxes look right and copy cleanly, with and without `--verbose`.
+- [x] Phase 3 checkpoint: the startup banner is a closed box.
 - [ ] Run a message that has no spreadsheet row (for example a renamed copy of a video) and check the No upload packet box.
+
+## Deviations
+
+- **Summary stopwatch stopped on failure** (`processOneAudio`, `cmd/audio.go`). *Approved at the Phase 2 checkpoint.* `SummaryTime` was started but never stopped when `generateMessageSummary` failed, so the new Timeline would have shown the time elapsed since the summary began, including the processing of every later video. It is now stopped before the error check, as Extract and Transcribe already were.
+- **`wrap` keeps a line that fits exactly as given** (`util/box`). The plan said lines wrap at spaces. Collapsing spaces on every line also flattened the spacing that lines things up: the right-aligned Timeline column, and `Thumb   :` under `Channel :`. Runs of spaces now collapse only on lines that actually wrap. The internal helper is also `wrap(text, width)`, without the plan's `indent` parameter, because `Labeled` does the indenting.
+- **Boxes sized to the terminal** (`util/box`, task 2.6). Requested at the Phase 2 checkpoint, replacing the fixed width of 78: the terminal's reported width, then `COLUMNS`, then a default of 132, held between 40 and 256. A measured width is one column narrower than the terminal, so a console that wraps a line filling the last column does not double-space the box. Approved at the Phase 2 checkpoint. Adds `golang.org/x/term` v0.33.0, the version already in the module graph, as a direct dependency.

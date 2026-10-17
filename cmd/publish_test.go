@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/WordOfLifeMN/online/catalog"
+	"github.com/WordOfLifeMN/online/util/box"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -511,4 +514,109 @@ func (t *PublishTestSuite) TestSanitize_CollapsesAndTrims() {
 func (t *PublishTestSuite) TestSanitize_MalformedEscapeIsLeftAsIs() {
 	// not a valid \uXXXX - must not be mangled further
 	t.Equal(`a \u20 b \uZZZZ c`, sanitizeModelText(`a \u20 b \uZZZZ c`))
+}
+
+// +---------------------------------------------------------------------------
+// | Printing
+// +---------------------------------------------------------------------------
+
+// printPacket renders a packet inside a box and returns its lines
+func printPacket(p *UploadPacket) []string {
+	var buf bytes.Buffer
+	b := box.New(&buf)
+	b.Header("")
+	p.Print(b)
+	b.Footer()
+	return strings.Split(strings.TrimSuffix(buf.String(), "\n"), "\n")
+}
+
+// Every value pasted into YouTube is a bare line of its own, exactly as it is in the
+// packet, so that selecting the line copies the value and nothing else
+func (t *PublishTestSuite) TestPrint_CopyLinesAreExact() {
+	packet := UploadPacket{
+		Channel:     ChannelWOL,
+		Title:       "Pay Attention | Mary Peltz | October 4, 2026",
+		Alternative: "Pay Attention to God's Breadcrumbs | Mary Peltz | October 4, 2026",
+		Description: "A summary.\n\nSermon notes\nhttps://example.org/notes.pdf",
+		Playlist:    "Prayer",
+		Position:    3,
+		Privacy:     PrivacyPublic,
+		Thumbnail:   `C:\Users\Someone\Documents\WOLMessages\2026-q4 Prayer\2026-10-04-pm Pay Attention.jpg`,
+	}
+
+	out := printPacket(&packet)
+
+	for _, value := range []string{
+		packet.Title,
+		packet.Alternative,
+		"A summary.",
+		"",
+		"Sermon notes",
+		"https://example.org/notes.pdf",
+		packet.Playlist,
+		packet.Thumbnail,
+	} {
+		t.Contains(out, value)
+	}
+}
+
+func (t *PublishTestSuite) TestPrint_SectionOrder() {
+	packet := UploadPacket{
+		Channel:     ChannelWOL,
+		Title:       "Title",
+		Alternative: "Alternative",
+		Description: "Description",
+		Playlist:    "Prayer",
+		Position:    3,
+		Privacy:     PrivacyPublic,
+		Thumbnail:   "thumb.jpg",
+	}
+
+	out := strings.Join(printPacket(&packet), "\n")
+
+	positions := []int{}
+	for _, marker := range []string{
+		"├─ UPLOAD PACKET ",
+		"│ Channel : WOL ",
+		"│ Privacy : public ",
+		"│ Playlist: Prayer (position 3) ",
+		"│ Thumb   : ",
+		"\nthumb.jpg\n",
+		"├─ Titles ",
+		"│ Title ",
+		"\nTitle\n",
+		"│ Alternative Title ",
+		"\nAlternative\n",
+		"├─ Description ",
+		"\nDescription\n",
+		"├─ Playlist ",
+		"\nPrayer\n",
+	} {
+		index := strings.Index(out, marker)
+		t.GreaterOrEqual(index, 0, "missing %q", marker)
+		positions = append(positions, index)
+	}
+	t.IsIncreasing(positions)
+}
+
+func (t *PublishTestSuite) TestPrint_PositionZeroIsOmitted() {
+	packet := UploadPacket{Playlist: "Prayer", Title: "T", Description: "D"}
+
+	t.Contains(strings.Join(printPacket(&packet), "\n"), "│ Playlist: Prayer ")
+	t.NotContains(strings.Join(printPacket(&packet), "\n"), "position")
+}
+
+func (t *PublishTestSuite) TestPrint_NoPlaylist() {
+	packet := UploadPacket{Title: "T", Description: "D"}
+
+	out := strings.Join(printPacket(&packet), "\n")
+	t.NotContains(out, "Playlist")
+}
+
+func (t *PublishTestSuite) TestPrint_NoAlternativeOrThumbnail() {
+	packet := UploadPacket{Title: "T", Description: "D"}
+
+	out := strings.Join(printPacket(&packet), "\n")
+	t.NotContains(out, "Alternative")
+	t.NotContains(out, "Thumb")
 }

@@ -1,13 +1,19 @@
 package cmd
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/WordOfLifeMN/online/catalog"
+	"github.com/WordOfLifeMN/online/util"
+	"github.com/WordOfLifeMN/online/util/box"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 )
@@ -510,4 +516,199 @@ func (t *AudioTestSuite) TestSweep_MissingDirectoryIsNotAnError() {
 	defer viper.Set("scratch-dir", "")
 
 	t.NotPanics(cleanUpScratchDir)
+}
+
+// +---------------------------------------------------------------------------
+// | Printing the results
+// +---------------------------------------------------------------------------
+
+// printInfo renders one message's box and returns it
+func printInfo(info *MessageInfo) string {
+	var buf bytes.Buffer
+	printMessageInfo(&buf, 0, info)
+	return buf.String()
+}
+
+// ranFor is a stopwatch that ran for the given time
+func ranFor(d time.Duration) util.StopWatch {
+	start := time.Date(2026, 10, 17, 9, 0, 0, 0, time.UTC)
+	return util.StopWatch{StartTime: start, StopTime: start.Add(d)}
+}
+
+// assertClosedBox checks the output is one box whose every bordered line is full width,
+// followed by the blank line that separates it from the next
+func (t *AudioTestSuite) assertClosedBox(out string) {
+	t.True(strings.HasSuffix(out, "╯\n\n"), "box is closed and followed by a blank line")
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "│") || strings.HasPrefix(line, "╭") ||
+			strings.HasPrefix(line, "├") || strings.HasPrefix(line, "╰") {
+			t.Equal(box.DefaultWidth, utf8.RuneCountInString(line), "line %q", line)
+		}
+	}
+}
+
+func (t *AudioTestSuite) TestPrintMessageInfo_Matched() {
+	info := &MessageInfo{
+		VideoPath:   "/videos/2026-10-04-pm Pay Attention.mp4",
+		SpeakerName: "Pastor Mary Peltz",
+		Title:       "Pay Attention to God's Breadcrumbs",
+		Summary:     "A summary.",
+		Packet: &UploadPacket{
+			Channel:     ChannelWOL,
+			Title:       "Pay Attention | Mary Peltz | October 4, 2026",
+			Description: "A summary.",
+			Privacy:     PrivacyPublic,
+		},
+	}
+
+	out := printInfo(info)
+
+	t.assertClosedBox(out)
+	t.True(strings.HasPrefix(out, "╭─ Message #1 "))
+	t.Contains(out, "│ Video file: 2026-10-04-pm Pay Attention.mp4 ")
+	t.Contains(out, "│ Speaker   : Pastor Mary Peltz ")
+	t.Contains(out, "├─ UPLOAD PACKET ")
+	t.Contains(out, "\nPay Attention | Mary Peltz | October 4, 2026\n")
+	t.NotContains(out, "No upload packet")
+	t.NotContains(out, "Timeline", "the timeline is for --verbose only")
+}
+
+// A message that was processed but has no spreadsheet row still shows what was
+// generated, so the work is not wasted
+func (t *AudioTestSuite) TestPrintMessageInfo_Unmatched() {
+	info := &MessageInfo{
+		VideoPath:   "/videos/2026-10-11 Renamed Copy.mp4",
+		SpeakerName: "Pastor Vern Peltz",
+		Title:       "Learning at Moriah",
+		Summary:     "A summary.\n\nSecond paragraph.",
+		PacketError: errors.New("no spreadsheet row is dated 2026-10-11"),
+	}
+
+	out := printInfo(info)
+
+	t.assertClosedBox(out)
+	t.Contains(out, "├─ No upload packet ")
+	t.Contains(out, "│ Reason: no spreadsheet row is dated 2026-10-11 ")
+	t.Contains(out, "\nLearning at Moriah\n")
+	t.Contains(out, "\nA summary.\n\nSecond paragraph.\n")
+	t.Less(strings.Index(out, "├─ Titles "), strings.Index(out, "├─ Description "))
+	t.NotContains(out, "Not processed")
+}
+
+func (t *AudioTestSuite) TestPrintMessageInfo_NotProcessed() {
+	info := &MessageInfo{
+		VideoPath:   "/videos/2026-10-11 Learning at Moriah.mp4",
+		SpeakerName: "Pastor Vern Peltz",
+	}
+
+	out := printInfo(info)
+
+	t.assertClosedBox(out)
+	t.Contains(out, "├─ Not processed ")
+	t.Contains(out, "│ Processing failed - see the error below. ")
+	t.NotContains(out, "Reason")
+}
+
+// No row is known before processing starts, so PacketError is already set when
+// processing fails. That message failed; it was not merely unmatched, and reporting it
+// as unmatched would show empty Titles and Description sections.
+func (t *AudioTestSuite) TestPrintMessageInfo_NotProcessedAndNoRow() {
+	info := &MessageInfo{
+		VideoPath:   "/videos/2026-10-11 Learning at Moriah.mp4",
+		SpeakerName: "Pastor Vern Peltz",
+		PacketError: errors.New("the spreadsheet was not available"),
+	}
+
+	out := printInfo(info)
+
+	t.assertClosedBox(out)
+	t.Contains(out, "├─ Not processed ")
+	t.Contains(out, "│ Reason: the spreadsheet was not available ")
+	t.NotContains(out, "No upload packet")
+	t.NotContains(out, "Titles")
+}
+
+func (t *AudioTestSuite) TestPrintMessageInfo_TimelineWhenVerbose() {
+	viper.Set("verbose", true)
+	defer viper.Set("verbose", false)
+
+	info := &MessageInfo{
+		VideoPath:      "/videos/2026-10-04-pm Pay Attention.mp4",
+		Title:          "Pay Attention",
+		Summary:        "A summary.",
+		PacketError:    errors.New("no row"),
+		ExtractTime:    ranFor(24 * time.Second),
+		TranscribeTime: ranFor(2*time.Minute + 8*time.Second),
+		SummaryTime:    ranFor(4 * time.Second),
+	}
+
+	out := printInfo(info)
+
+	t.assertClosedBox(out)
+	t.Contains(out, "├─ Timeline ")
+	t.Contains(out, "│ Extract   :    24s ")
+	t.Contains(out, "│ Transcribe:  2m08s ")
+	t.Contains(out, "│ Summarize :     4s ")
+	t.Contains(out, "│ Total     :  2m36s ")
+}
+
+// A step that did not run was either reused, when the message went on to be
+// summarized, or never reached; the total counts only what ran
+func (t *AudioTestSuite) TestPrintMessageInfo_TimelineReusedAndNotReached() {
+	viper.Set("verbose", true)
+	defer viper.Set("verbose", false)
+
+	reused := printInfo(&MessageInfo{
+		VideoPath:   "/videos/a.mp4",
+		Title:       "Pay Attention",
+		PacketError: errors.New("no row"),
+		SummaryTime: ranFor(4 * time.Second),
+	})
+	t.Contains(reused, "│ Extract   : reused ")
+	t.Contains(reused, "│ Transcribe: reused ")
+	t.Contains(reused, "│ Total     :     4s ")
+
+	stopped := printInfo(&MessageInfo{
+		VideoPath:   "/videos/a.mp4",
+		ExtractTime: ranFor(24 * time.Second),
+	})
+	t.Contains(stopped, "│ Extract   :    24s ")
+	t.Contains(stopped, "│ Transcribe:      - ")
+	t.Contains(stopped, "│ Summarize :      - ")
+	t.Contains(stopped, "│ Total     :    24s ")
+}
+
+func (t *AudioTestSuite) TestFormatStepDuration() {
+	t.Equal("24s", formatStepDuration(ranFor(24*time.Second), true))
+	t.Equal("2m08s", formatStepDuration(ranFor(2*time.Minute+8*time.Second), true))
+	t.Equal("1h02m03s", formatStepDuration(ranFor(time.Hour+2*time.Minute+3*time.Second), true))
+	t.Equal("2s", formatStepDuration(ranFor(1600*time.Millisecond), true), "rounded to the second")
+	t.Equal("reused", formatStepDuration(util.StopWatch{}, true))
+	t.Equal("-", formatStepDuration(util.StopWatch{}, false))
+}
+
+// The banner is a closed box holding the same instructions it always has, with a blank
+// line either side to set it off from the prompts
+func (t *AudioTestSuite) TestPrintAudioBanner() {
+	var buf bytes.Buffer
+	printAudioBanner(&buf)
+	out := buf.String()
+
+	t.True(strings.HasPrefix(out, "\n╭─ Prepare messages for YouTube "))
+	t.True(strings.HasSuffix(out, "╯\n\n"))
+	for _, line := range strings.Split(strings.Trim(out, "\n"), "\n") {
+		t.Equal(box.DefaultWidth, utf8.RuneCountInString(line), "line %q", line)
+	}
+
+	// the wording is unchanged, whatever width it wraps to
+	var text []string
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "│") {
+			text = append(text, strings.Trim(line, "│ "))
+		}
+	}
+	words := strings.Join(strings.Fields(strings.Join(text, " ")), " ")
+	t.Equal("Drag an edited video into this window and press Enter. You will be asked "+
+		"about that video before being asked for the next one. "+
+		"Press Enter on an empty line when there are no more videos.", words)
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
+	"github.com/WordOfLifeMN/online/util/box"
 	"github.com/agnivade/levenshtein"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -95,7 +97,7 @@ func audio(cmd *cobra.Command, args []string) error {
 	// about each video can be answered from it
 	cat := readCatalogForLookup(cmd.Context())
 
-	printAudioBanner()
+	printAudioBanner(os.Stdout)
 
 	// Gather the videos and ask about each one as it is entered. Everything that needs
 	// an answer is asked before the slow work starts, so the operator is not called
@@ -130,7 +132,7 @@ func audio(cmd *cobra.Command, args []string) error {
 
 	// output the results of all processing
 	for index, info := range infos {
-		printMessageInfo(index, info)
+		printMessageInfo(os.Stdout, index, info)
 	}
 
 	return err
@@ -160,18 +162,20 @@ func resetStdin() {
 	stdinReader = nil
 }
 
-// printAudioBanner explains the input loop before the first prompt
-func printAudioBanner() {
-	fmt.Printf("\n")
-	fmt.Printf("╭───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-	fmt.Printf("│ Prepare messages for YouTube\n")
-	fmt.Printf("│\n")
-	fmt.Printf("│ Drag an edited video into this window and press Enter. You will be asked\n")
-	fmt.Printf("│ about that video before being asked for the next one.\n")
-	fmt.Printf("│\n")
-	fmt.Printf("│ Press Enter on an empty line when there are no more videos.\n")
-	fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-	fmt.Printf("\n")
+// printAudioBanner explains the input loop before the first prompt. Each paragraph is
+// one line of text and the box wraps it, so the banner fits whatever width the box is.
+func printAudioBanner(w io.Writer) {
+	fmt.Fprintln(w)
+
+	b := box.New(w)
+	b.Header("Prepare messages for YouTube")
+	b.Line("Drag an edited video into this window and press Enter. You will be asked " +
+		"about that video before being asked for the next one.")
+	b.Blank()
+	b.Line("Press Enter on an empty line when there are no more videos.")
+	b.Footer()
+
+	fmt.Fprintln(w)
 }
 
 // newMessageInfo creates the record for one video: finds its spreadsheet row, then
@@ -358,10 +362,11 @@ func processOneAudio(info *MessageInfo) error {
 
 	// generate the message summary
 	info.SummaryTime = util.NewStopWatch()
-	if _, err = generateMessageSummary(info); err != nil {
+	_, err = generateMessageSummary(info)
+	info.SummaryTime.Stop()
+	if err != nil {
 		return err
 	}
-	info.SummaryTime.Stop()
 
 	// assemble the upload packet from the row found before processing started. a
 	// missing row is not a reason to throw away the summary we just generated, so the
@@ -671,34 +676,104 @@ func cleanUpScratchDir() {
 	}
 }
 
-func printMessageInfo(index int, info *MessageInfo) {
-	fmt.Printf("Message #%d\n", index+1)
-	fmt.Printf("Video file: %s\n", filepath.Base(info.VideoPath))
-	fmt.Printf("Speaker   : %s\n", info.SpeakerName)
+// printMessageInfo writes everything known about one message as a single closed box,
+// followed by a blank line
+func printMessageInfo(w io.Writer, index int, info *MessageInfo) {
+	b := box.New(w)
 
+	b.Header(fmt.Sprintf("Message #%d", index+1))
+	b.Labeled("Video file: ", filepath.Base(info.VideoPath))
+	b.Labeled("Speaker   : ", info.SpeakerName)
+
+	// the order matters. PacketError is set before processing whenever there is no
+	// spreadsheet row, so testing it ahead of the generated title would report a
+	// message that also failed processing as unmatched, with nothing under it.
 	switch {
 	case info.Packet != nil:
-		info.Packet.Print()
+		info.Packet.Print(b)
 
-	case info.PacketError != nil:
-		// the message was processed but could not be matched to a spreadsheet row
-		fmt.Printf("\nCould not assemble an upload packet:\n  %s\n", info.PacketError)
-		fmt.Printf("\nGenerated title and summary (not matched to a spreadsheet row):\n")
-		fmt.Printf("╭───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-		fmt.Printf("│ Title\n%s\n", info.Title)
-		fmt.Printf("│ Summary\n%s\n", info.Summary)
-		fmt.Printf("╰───────────────────────────────────────────────────────────────────────────────────┄┄\n")
-
-	default:
+	case info.Title == "" && info.Summary == "":
 		// processing failed before there was anything to assemble. the error itself
 		// is reported by the caller, so do not invent a second, emptier one here.
-		fmt.Printf("\nNot processed - see the error below.\n")
+		b.Section("Not processed")
+		b.Line("Processing failed - see the error below.")
+		if info.PacketError != nil {
+			b.Labeled("Reason: ", info.PacketError.Error())
+		}
+
+	default:
+		// the message was processed but could not be matched to a spreadsheet row
+		b.Section("No upload packet")
+		if info.PacketError != nil {
+			b.Labeled("Reason: ", info.PacketError.Error())
+		}
+		b.Section("Titles")
+		b.Line("Title")
+		b.Copy(info.Title)
+		b.Section("Description")
+		b.Copy(info.Summary)
 	}
 
-	printRiskNotes(info)
-	log.Printf("Timeline: Extract = %s, Transcribe = %s, Summarize = %s\n",
-		info.ExtractTime.Elapsed(), info.TranscribeTime.Elapsed(), info.SummaryTime.Elapsed())
-	fmt.Println()
+	printRiskNotes(b, info)
+	printTimeline(b, info)
+	b.Footer()
+	fmt.Fprintln(w)
+}
+
+// printTimeline writes how long each step took, with --verbose only. Durations are
+// right aligned so the column reads down, and rounded to the second because nobody
+// waiting on a transcription cares about the milliseconds.
+func printTimeline(b *box.Box, info *MessageInfo) {
+	if !viper.GetBool("verbose") {
+		return
+	}
+
+	summarized := info.Title != "" || info.Summary != ""
+
+	b.Section("Timeline")
+	var total time.Duration
+	for _, step := range []struct {
+		name  string
+		watch util.StopWatch
+	}{
+		{"Extract   : ", info.ExtractTime},
+		{"Transcribe: ", info.TranscribeTime},
+		{"Summarize : ", info.SummaryTime},
+	} {
+		b.Labeled(step.name, fmt.Sprintf("%6s", formatStepDuration(step.watch, summarized)))
+		if !step.watch.StartTime.IsZero() {
+			total += step.watch.Elapsed()
+		}
+	}
+	b.Labeled("Total     : ", fmt.Sprintf("%6s", formatDuration(total)))
+}
+
+// formatStepDuration renders how long one step took. A step that never started either
+// had its earlier output reused, when the message went on to be summarized, or was
+// never reached because processing stopped before it.
+func formatStepDuration(w util.StopWatch, summarized bool) string {
+	if w.StartTime.IsZero() {
+		if summarized {
+			return "reused"
+		}
+		return "-"
+	}
+	return formatDuration(w.Elapsed())
+}
+
+// formatDuration renders a duration to the second: "24s", "2m08s", "1h02m03s"
+func formatDuration(d time.Duration) string {
+	seconds := int(d.Round(time.Second) / time.Second)
+	hours, minutes := seconds/3600, seconds/60%60
+	seconds %= 60
+
+	switch {
+	case hours > 0:
+		return fmt.Sprintf("%dh%02dm%02ds", hours, minutes, seconds)
+	case minutes > 0:
+		return fmt.Sprintf("%dm%02ds", minutes, seconds)
+	}
+	return fmt.Sprintf("%ds", seconds)
 }
 
 // getScratchDir returns the directory for intermediate files
