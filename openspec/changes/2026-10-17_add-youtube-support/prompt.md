@@ -13,7 +13,7 @@ Add YouTube SDK support to the project to enable some YouTube automation.
   - the ytPackage should be a union of what YT tracks through it's API as well as what this tool might generate. It includes, but is not limited to: Name, Description, Visibility, Thumbnail, Playlist, etc)
 
 ## Phase 2
-- sub-command `online.exet youtube sync`: 
+- sub-command `online.exe youtube sync`: 
   - takes a youtube video
   - retrieves a ytPackage from YT
   - creates a ytPackage from the spreadsheet
@@ -25,13 +25,9 @@ Add YouTube SDK support to the project to enable some YouTube automation.
 - update the `audio` workflow so that, at the end of the process, present the proposed ytPackage for the video and, if approved, upload and create the video and update or create the playlist for the series
 
 # Implemenatation notes
-_These are my ideas, feel free to ignor or propose better alternatives_
+_These are my ideas, feel free to ignore or propose better alternatives_
 
 Since this may involve updating many YT videos in a session, spreadsheet may be cached in the scratch directory in the JSON 'dump' format for reuse. Only refreshing when missing or every hour (or two or once per day?)
 
 Thumbnail may be upload only? there is already an algorithm for identifying the thumbnail for a video on the local disk, which may involve correlating the YT video with a local directory?
 
-# Deliverables
-
-I would like a detailed implementation plan created in the same directory as this prompt file. Write the plan only, do not chage any code in this step.
-This implementation plan should describe the proposed architecture, and implementation tasks for each of the above Phases

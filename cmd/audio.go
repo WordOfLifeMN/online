@@ -17,6 +17,7 @@ import (
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
 	"github.com/WordOfLifeMN/online/util/box"
+	"github.com/WordOfLifeMN/online/ytpkg"
 	"github.com/agnivade/levenshtein"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -43,9 +44,9 @@ type MessageInfo struct {
 	Message *catalog.CatalogMessage
 	Seri    *catalog.CatalogSeri
 
-	// the assembled packet, and why it could not be assembled if it could not. a
-	// missing packet is not fatal: the generated title and summary are still useful.
-	Packet      *UploadPacket
+	// the assembled package, and why it could not be assembled if it could not. a
+	// missing package is not fatal: the generated title and summary are still useful.
+	Packet      *ytpkg.Message
 	PacketError error
 
 	// times
@@ -128,14 +129,19 @@ func audio(cmd *cobra.Command, args []string) error {
 	}
 
 	// process all the video files
-	err := processAllVideos(infos)
+	err := processAllVideos(infos, cat)
 
 	// output the results of all processing
 	for index, info := range infos {
 		printMessageInfo(os.Stdout, index, info)
 	}
 
-	return err
+	// then offer to publish each message that has a package. a message that is already
+	// on YouTube is synced instead. this comes last, so that everything above is on
+	// screen whatever happens here.
+	publishErr := publishAll(cmd.Context(), cat, infos)
+
+	return errors.Join(err, publishErr)
 }
 
 // stdinReader is the one buffered reader over standard input.
@@ -302,10 +308,17 @@ func resolveSpeaker(msg *catalog.CatalogMessage) string {
 // printed as early as possible while the slow transcription ran afterwards. With no
 // uploads there is no early output to hurry, so a single straightforward pass is both
 // simpler and equivalent.
-func processAllVideos(infos []*MessageInfo) error {
+func processAllVideos(infos []*MessageInfo, cat *catalog.Catalog) error {
+	// a nil *Catalog inside the interface would not compare equal to nil, so only a
+	// catalog that was actually read is handed on
+	var finder ytpkg.SeriesFinder
+	if cat != nil {
+		finder = cat
+	}
+
 	var errs []error
 	for _, info := range infos {
-		if err := processOneAudio(info); err != nil {
+		if err := processOneAudio(info, finder); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -318,11 +331,12 @@ func processAllVideos(infos []*MessageInfo) error {
 // If the audio doesn't exist, will extract the audio from the video.
 // If the transcript doesn't exist, will transcribe the audio.
 // Will send the transcript to Claude for a title and summary.
-// All information will be recorded in the passed in info record.
+// All information will be recorded in the passed in info record. cat finds the series
+// the message's playlists and booklets come from, and may be nil.
 //
 // On success the intermediate audio and transcript are deleted. On failure they are
 // left in place so the failed step can be retried without redoing the work before it.
-func processOneAudio(info *MessageInfo) error {
+func processOneAudio(info *MessageInfo, cat ytpkg.SeriesFinder) error {
 	var err error
 
 	if info.VideoPath == "" {
@@ -375,8 +389,8 @@ func processOneAudio(info *MessageInfo) error {
 		// the row's type, not the one inferred from the file name, for the same reason
 		// the speaker comes from the row: it is the record of what this actually is
 		thumbnail := getThumbnailPath(info.VideoPath, info.Message.Type)
-		info.Packet, info.PacketError = NewUploadPacket(
-			info.Message, info.Seri, info.Title, info.Summary, thumbnail)
+		info.Packet, info.PacketError = ytpkg.NewMessageFromCatalog(
+			info.Message, cat, info.Title, info.Summary, thumbnail)
 	}
 
 	return nil
@@ -399,9 +413,20 @@ func rankCandidatesByFileName(
 	videoPath string,
 	candidates []catalog.CatalogMessage,
 ) ([]catalog.CatalogMessage, bool) {
-	target := normalizeForMatch(getTitleFromFileName(videoPath))
+	return rankCandidatesByTitle(getTitleFromFileName(videoPath), candidates)
+}
+
+// rankCandidatesByTitle orders candidates by how closely each spreadsheet name
+// resembles a title, closest first, and reports whether the winner is a clear one. An
+// empty title offers no opinion: the candidates keep their order and there is no
+// winner.
+func rankCandidatesByTitle(
+	title string,
+	candidates []catalog.CatalogMessage,
+) ([]catalog.CatalogMessage, bool) {
+	target := util.NormalizeForMatch(title)
 	if target == "" {
-		// nothing but markers in the file name, so there is no opinion to offer
+		// nothing to compare against, so there is no opinion to offer
 		return slices.Clone(candidates), false
 	}
 
@@ -416,7 +441,7 @@ func rankCandidatesByFileName(
 	for index := range candidates {
 		ranked[index] = scored{
 			msg:      candidates[index],
-			distance: levenshtein.ComputeDistance(target, normalizeForMatch(candidates[index].Name)),
+			distance: levenshtein.ComputeDistance(target, util.NormalizeForMatch(candidates[index].Name)),
 		}
 	}
 
@@ -439,12 +464,26 @@ func promptUserForMessageChoice(
 	ambiguous *catalog.AmbiguousLookupError,
 	videoPath string,
 ) *catalog.CatalogMessage {
-	reader := getStdin()
-	candidates, hasDefault := rankCandidatesByFileName(videoPath, ambiguous.Candidates)
+	return promptUserForChoice(
+		ambiguous.Candidates,
+		getTitleFromFileName(videoPath),
+		fmt.Sprintf("%d spreadsheet rows are dated %s:",
+			len(ambiguous.Candidates), ambiguous.Lookup.Date.String()))
+}
 
-	fmt.Printf("\n%d spreadsheet rows are dated %s:\n",
-		len(candidates),
-		ambiguous.Lookup.Date.String())
+// promptUserForChoice asks which of several spreadsheet rows describes a video, under
+// a heading that says why there are several. The rows are ranked against title, and
+// the best match is marked and offered as the default when it is a clear one. Returns
+// nil if the operator declines to choose.
+func promptUserForChoice(
+	candidates []catalog.CatalogMessage,
+	title string,
+	heading string,
+) *catalog.CatalogMessage {
+	reader := getStdin()
+	candidates, hasDefault := rankCandidatesByTitle(title, candidates)
+
+	fmt.Printf("\n%s\n", heading)
 	for index := range candidates {
 		fmt.Printf("  %d. %s", index+1, candidates[index].DescribeForChoice())
 		if index == 0 && hasDefault {
@@ -805,6 +844,28 @@ func getInputAudio(audioPath string) string {
 	return PromtUserForInputFile(audioPath, ".mp3")
 }
 
+// cleanDroppedPath turns whatever a terminal inserts for a dragged file back into the
+// path:
+//
+//	"C:\Videos\Pay Attention.mp4"      cmd.exe, or a quoted path typed by hand
+//	'C:\Videos\Pay Attention.mp4'      a single-quoted path
+//	& 'C:\Videos\God''s Word.mp4'      PowerShell, VSCode's terminal included
+//
+// PowerShell offers the file as a command to run, hence the "& ", and doubles any
+// apostrophe inside its single quotes, which is undone here.
+func cleanDroppedPath(s string) string {
+	s = strings.TrimSpace(s)
+
+	if rest, ok := strings.CutPrefix(s, "&"); ok {
+		s = strings.TrimSpace(rest)
+	}
+
+	if len(s) >= 2 && strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
+		return strings.ReplaceAll(s[1:len(s)-1], "''", "'")
+	}
+	return strings.Trim(s, "\"' ")
+}
+
 // PromtUserForInputFile finds an appropriate file for processing.
 // The input path should be the command line argument, and will be used as the default.
 // If it is empty, then the user will be prompted to enter a path.
@@ -823,11 +884,11 @@ func PromtUserForInputFile(path string, allowedExts ...string) string {
 	reader := getStdin()
 
 	// get the input video file
-	for filePath := strings.Trim(path, "\"' \r\n"); ; filePath = "" {
+	for filePath := cleanDroppedPath(path); ; filePath = "" {
 		if filePath == "" {
 			fmt.Println("Enter path or drag the file to use:")
 			filePath, err = reader.ReadString('\n')
-			filePath = strings.Trim(filePath, "\"' \r\n")
+			filePath = cleanDroppedPath(filePath)
 			if err != nil {
 				// report error and try again
 				fmt.Println(err.Error())

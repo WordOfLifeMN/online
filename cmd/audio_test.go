@@ -14,6 +14,7 @@ import (
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
 	"github.com/WordOfLifeMN/online/util/box"
+	"github.com/WordOfLifeMN/online/ytpkg"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
 )
@@ -553,11 +554,11 @@ func (t *AudioTestSuite) TestPrintMessageInfo_Matched() {
 		SpeakerName: "Pastor Mary Peltz",
 		Title:       "Pay Attention to God's Breadcrumbs",
 		Summary:     "A summary.",
-		Packet: &UploadPacket{
-			Channel:     ChannelWOL,
+		Packet: &ytpkg.Message{
+			Channel:     ytpkg.ChannelWOL,
 			Title:       "Pay Attention | Mary Peltz | October 4, 2026",
 			Description: "A summary.",
-			Privacy:     PrivacyPublic,
+			Privacy:     ytpkg.PrivacyPublic,
 		},
 	}
 
@@ -711,4 +712,46 @@ func (t *AudioTestSuite) TestPrintAudioBanner() {
 	t.Equal("Drag an edited video into this window and press Enter. You will be asked "+
 		"about that video before being asked for the next one. "+
 		"Press Enter on an empty line when there are no more videos.", words)
+}
+
+// +---------------------------------------------------------------------------
+// | Dragged file paths
+// +---------------------------------------------------------------------------
+
+func (t *AudioTestSuite) TestCleanDroppedPath() {
+	cases := map[string]string{
+		`C:\Videos\Pay Attention.mp4`:   `C:\Videos\Pay Attention.mp4`,
+		`"C:\Videos\Pay Attention.mp4"`: `C:\Videos\Pay Attention.mp4`,
+		`'C:\Videos\Pay Attention.mp4'`: `C:\Videos\Pay Attention.mp4`,
+
+		// PowerShell, as VSCode's terminal inserts a dragged file
+		`& 'C:\Videos\Pay Attention.mp4'`:       `C:\Videos\Pay Attention.mp4`,
+		"& 'C:\\Videos\\Pay Attention.mp4'\r\n": `C:\Videos\Pay Attention.mp4`,
+		`&'C:\Videos\Pay Attention.mp4'`:        `C:\Videos\Pay Attention.mp4`,
+
+		// PowerShell doubles an apostrophe inside single quotes
+		`& 'C:\Videos\God''s Word.mp4'`: `C:\Videos\God's Word.mp4`,
+
+		// an ampersand inside the path is left alone
+		`C:\Videos\Q&A.mp4`:     `C:\Videos\Q&A.mp4`,
+		`& 'C:\Videos\Q&A.mp4'`: `C:\Videos\Q&A.mp4`,
+		"  \r\n":                "",
+		"":                      "",
+	}
+
+	for in, expected := range cases {
+		t.Equal(expected, cleanDroppedPath(in), "input %q", in)
+	}
+}
+
+// the prompt accepts a dragged PowerShell path
+func (t *AudioTestSuite) TestPromptAcceptsPowerShellDrop() {
+	dir := t.T().TempDir()
+	video := filepath.Join(dir, "God's Word.mp4")
+	t.Require().NoError(os.WriteFile(video, []byte("v"), 0o644))
+
+	dropped := "& '" + strings.ReplaceAll(video, "'", "''") + "'\n"
+	t.withStdin(dropped, func() {
+		t.Equal(video, getInputVideo(""))
+	})
 }

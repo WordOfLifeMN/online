@@ -3,6 +3,8 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 )
 
 // JSONString returns a JSON string representation of the given data. This is intended for use
@@ -31,4 +33,18 @@ func ToJSON(data any) string {
 		return fmt.Sprintf("%q", fmt.Sprintf(`%#v`, data))
 	}
 	return string(b)
+}
+
+// matchNoise is everything punctuation-ish, flattened to a space before comparing. The
+// two sides punctuate differently for reasons that have nothing to do with meaning:
+// a colon is illegal in a Windows file name, and "Q&A" is written "QA" or "Q and A"
+// depending on who typed it.
+var matchNoise = regexp.MustCompile(`[^a-z0-9]+`)
+
+// NormalizeForMatch reduces a title to the part worth comparing: lower case, no
+// punctuation, single spaces. Applied to both sides so neither is penalised for a
+// house style the other does not share.
+func NormalizeForMatch(title string) string {
+	title = matchNoise.ReplaceAllString(strings.ToLower(title), " ")
+	return strings.TrimSpace(strings.Join(strings.Fields(title), " "))
 }
