@@ -339,7 +339,8 @@ func (r *syncRun) chooseRow(id string, live *ytpkg.Message) *catalog.CatalogMess
 }
 
 // nameFromTitle extracts the message name from a video title in the house format,
-// "[CORE | ]Name | Speaker | Date", for ranking it against the sheet's names
+// "[CORE | ]Name | Date", or "[CORE | ]Name | Speaker | Date" as titles were before
+// 2026-10-17, for ranking it against the sheet's names
 func nameFromTitle(title string) string {
 	parts := strings.Split(title, " | ")
 	if len(parts) > 1 && parts[0] == "CORE" {

@@ -46,7 +46,7 @@ func (t *CatalogTestSuite) TestMessage_Public() {
 	t.NoError(err)
 
 	t.Equal(ChannelWOL, pkg.Channel)
-	t.Equal("Walking in Faith | Vern Peltz | March 8, 2021", pkg.Title)
+	t.Equal("Walking in Faith | March 8, 2021", pkg.Title)
 	t.Empty(pkg.Alternative, "the generated title agrees with the sheet")
 	t.Equal("A summary.", pkg.Description)
 	t.Equal([]PlaylistRef{{Title: "Walking in Faith", Position: 3}}, pkg.Playlists)
@@ -73,8 +73,8 @@ func (t *CatalogTestSuite) TestMessage_AlternativeTitle() {
 	t.NoError(err)
 
 	// the sheet still supplies the title; the alternative is offered in the same shape
-	t.Equal("Walking in Faith | Vern Peltz | March 8, 2021", pkg.Title)
-	t.Equal("Trusting the Unseen | Vern Peltz | March 8, 2021", pkg.Alternative)
+	t.Equal("Walking in Faith | March 8, 2021", pkg.Title)
+	t.Equal("Trusting the Unseen | March 8, 2021", pkg.Alternative)
 }
 
 func (t *CatalogTestSuite) TestMessage_Core() {
@@ -91,7 +91,7 @@ func (t *CatalogTestSuite) TestMessage_Core() {
 	t.NoError(err)
 
 	t.Equal(ChannelWOL, pkg.Channel)
-	t.Equal("CORE | Boundaries | Mary Peltz | October 4, 2026", pkg.Title)
+	t.Equal("CORE | Boundaries | October 4, 2026", pkg.Title)
 	t.Equal([]PlaylistRef{{Title: "CORE | Healthy Limits", Position: 2}}, pkg.Playlists)
 	t.Equal(PrivacyUnlisted, pkg.Privacy)
 }

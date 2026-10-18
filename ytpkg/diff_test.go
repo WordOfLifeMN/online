@@ -24,7 +24,7 @@ func liveVideo() *Message {
 	return &Message{
 		ID:                   "01LiNfRzMo8",
 		ChannelID:            "UCZF_jDrfP6OltpviYmj-mkA",
-		Title:                "CORE | Boundaries | Mary Peltz | October 4, 2026",
+		Title:                "CORE | Boundaries | October 4, 2026",
 		Description:          "About boundaries.\n\nNotes\nhttps://x/notes.pdf",
 		Privacy:              PrivacyPublic,
 		CategoryID:           "29",

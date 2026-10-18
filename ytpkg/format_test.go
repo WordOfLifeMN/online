@@ -49,14 +49,20 @@ func (t *FormatTestSuite) TestPlaylist_AskThePastor() {
 // | Title
 // +---------------------------------------------------------------------------
 
+// the speaker is not in the title, however many there are
 func (t *FormatTestSuite) TestTitle_Format() {
 	msg := catalog.CatalogMessage{
 		Name:     "Walking in Faith",
 		Speakers: []string{"Pastor Vern Peltz"},
 		Date:     catalog.MustParseDateOnly("2021-03-08"),
 	}
+	t.Equal("Walking in Faith | March 8, 2021", FormatTitle(&msg, msg.Name))
 
-	t.Equal("Walking in Faith | Vern Peltz | March 8, 2021", FormatTitle(&msg, msg.Name))
+	msg.Speakers = []string{"Pastor Vern Peltz", "Pastor Mary Peltz"}
+	t.Equal("Walking in Faith | March 8, 2021", FormatTitle(&msg, msg.Name))
+
+	msg.Speakers = nil
+	t.Equal("Walking in Faith | March 8, 2021", FormatTitle(&msg, msg.Name))
 }
 
 func (t *FormatTestSuite) TestTitle_CoreFamilyIsMarked() {
@@ -68,7 +74,7 @@ func (t *FormatTestSuite) TestTitle_CoreFamilyIsMarked() {
 			Ministry: ministry,
 		}
 
-		t.Equal("CORE | Boundaries | Mary Peltz | October 4, 2026", FormatTitle(&msg, msg.Name),
+		t.Equal("CORE | Boundaries | October 4, 2026", FormatTitle(&msg, msg.Name),
 			"ministry %s", string(ministry))
 	}
 }
@@ -82,16 +88,6 @@ func (t *FormatTestSuite) TestTitle_NonCoreIsUnmarked() {
 	}
 }
 
-func (t *FormatTestSuite) TestTitle_MultipleSpeakers() {
-	msg := catalog.CatalogMessage{
-		Name:     "Together",
-		Speakers: []string{"Pastor Vern Peltz", "Pastor Mary Peltz"},
-		Date:     catalog.MustParseDateOnly("2021-03-08"),
-	}
-
-	t.Equal("Together | Vern Peltz, Mary Peltz | March 8, 2021", FormatTitle(&msg, msg.Name))
-}
-
 // A message recorded ahead of its service date must still be titled with the plain
 // date. CatalogMessage.DateString would prefix "Scheduled for " here.
 func (t *FormatTestSuite) TestTitle_FutureDateHasNoPrefix() {
@@ -102,49 +98,8 @@ func (t *FormatTestSuite) TestTitle_FutureDateHasNoPrefix() {
 	}
 
 	title := FormatTitle(&msg, msg.Name)
-	t.Equal("Christmas Eve Service | Vern Peltz | December 24, 2099", title)
+	t.Equal("Christmas Eve Service | December 24, 2099", title)
 	t.NotContains(title, "Scheduled")
-}
-
-func (t *FormatTestSuite) TestStripSpeakerTitle() {
-	t.Equal("Vern Peltz", stripSpeakerTitle("Pastor Vern Peltz"))
-
-	// a name carrying no honorific is untouched
-	t.Equal("Terry Francis", stripSpeakerTitle("Terry Francis"))
-
-	// only a leading honorific goes, and only once - a surname that happens to contain
-	// the word must survive
-	t.Equal("Vern Pastor", stripSpeakerTitle("Vern Pastor"))
-	t.Equal("Pastor Vern Peltz", stripSpeakerTitle("Pastor Pastor Vern Peltz"))
-
-	// a speaker recorded as the bare word is left alone rather than emptied
-	t.Equal("Pastor", stripSpeakerTitle("Pastor"))
-
-	// tolerant of casing and stray whitespace in the sheet
-	t.Equal("Vern Peltz", stripSpeakerTitle("pastor Vern Peltz"))
-	t.Equal("Vern Peltz", stripSpeakerTitle("  Pastor   Vern Peltz  "))
-}
-
-// Stripping is confined to the title. SpeakerString keeps the honorific, which is what
-// the summary prompt and the spreadsheet confirmation line use, so it still reaches the
-// description through the generated summary.
-func (t *FormatTestSuite) TestTitle_StrippingDoesNotAffectSpeakerString() {
-	msg := catalog.CatalogMessage{
-		Name:     "The Importance of Voting",
-		Speakers: []string{"Pastor Vern Peltz"},
-	}
-
-	t.Equal("Pastor Vern Peltz", msg.SpeakerString())
-	t.Equal("Vern Peltz", getTitleSpeakers(&msg))
-}
-
-func (t *FormatTestSuite) TestTitle_NoSpeaker() {
-	msg := catalog.CatalogMessage{
-		Name: "Walking in Faith",
-		Date: catalog.MustParseDateOnly("2021-03-08"),
-	}
-
-	t.Equal("Walking in Faith | March 8, 2021", FormatTitle(&msg, msg.Name))
 }
 
 // +---------------------------------------------------------------------------
@@ -158,7 +113,7 @@ func (t *FormatTestSuite) TestAlternative_ShownWhenItDiffers() {
 		Date:     catalog.MustParseDateOnly("2021-03-08"),
 	}
 
-	t.Equal("Trusting the Unseen | Vern Peltz | March 8, 2021",
+	t.Equal("Trusting the Unseen | March 8, 2021",
 		AlternativeTitle(&msg, "Trusting the Unseen"))
 }
 

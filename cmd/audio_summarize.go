@@ -230,8 +230,50 @@ func generateMessageSummary(info *MessageInfo) (*MessageInfo, error) {
 	}
 
 	riskNotes := wantRiskNotes(info)
+	speakers := summarySpeakers(info.SpeakerName)
 
 	client := anthropic.NewClient(anthropicClientOptions()...)
+	conversation := []anthropic.MessageParam{
+		anthropic.NewUserMessage(
+			anthropic.NewTextBlock(buildSummaryPrompt(info.SpeakerName, xscript, riskNotes)),
+		),
+	}
+
+	summary, reply, err := requestSummary(&client, conversation, riskNotes)
+	if err != nil {
+		return info, err
+	}
+
+	// a summary that breaks the rules for new descriptions is sent back once, with what
+	// is wrong, to be corrected
+	problems := summaryProblems(sanitizeModelText(summary.Summary), speakers)
+	if len(problems) > 0 {
+		conversation = append(conversation,
+			anthropic.NewAssistantMessage(anthropic.NewTextBlock(reply)),
+			anthropic.NewUserMessage(anthropic.NewTextBlock(correctionPrompt(problems))),
+		)
+		corrected, _, err := requestSummary(&client, conversation, riskNotes)
+		if err == nil {
+			summary = corrected
+			problems = summaryProblems(sanitizeModelText(summary.Summary), speakers)
+		}
+	}
+
+	info.Title = sanitizeModelText(summary.Title)
+	info.Summary = sanitizeModelText(summary.Summary)
+	info.RiskNotes = summary.RiskNotes
+	info.SummaryProblems = problems
+
+	return info, nil
+}
+
+// requestSummary sends a conversation to the model and parses its structured reply,
+// returning the reply's text as well, so that it can be sent back in a follow-up
+func requestSummary(
+	client *anthropic.Client,
+	conversation []anthropic.MessageParam,
+	riskNotes bool,
+) (messageSummary, string, error) {
 	resp, err := client.Messages.New(context.Background(), anthropic.MessageNewParams{
 		Model:     anthropic.Model(getAnthropicModel()),
 		MaxTokens: 16000,
@@ -240,14 +282,10 @@ func generateMessageSummary(info *MessageInfo) (*MessageInfo, error) {
 				Schema: summarySchema(riskNotes),
 			},
 		},
-		Messages: []anthropic.MessageParam{
-			anthropic.NewUserMessage(
-				anthropic.NewTextBlock(buildSummaryPrompt(info.SpeakerName, xscript, riskNotes)),
-			),
-		},
+		Messages: conversation,
 	})
 	if err != nil {
-		return info, fmt.Errorf("could not generate summary: %w", err)
+		return messageSummary{}, "", fmt.Errorf("could not generate summary: %w", err)
 	}
 
 	// structured outputs guarantee the response validates against the schema, so the
@@ -256,17 +294,66 @@ func generateMessageSummary(info *MessageInfo) (*MessageInfo, error) {
 	for _, block := range resp.Content {
 		if text, ok := block.AsAny().(anthropic.TextBlock); ok {
 			if err := json.Unmarshal([]byte(text.Text), &summary); err != nil {
-				return info, fmt.Errorf("could not parse the model response: %w", err)
+				return messageSummary{}, "", fmt.Errorf("could not parse the model response: %w", err)
 			}
-			break
+			return summary, text.Text, nil
+		}
+	}
+	return messageSummary{}, "", fmt.Errorf("the model returned no summary")
+}
+
+// maxSummaryWords is the most words a generated summary may have. The new website
+// shows descriptions in a larger font, and one should fill about half a phone screen.
+//
+// The limit is for summaries generated from now on. Existing descriptions, in the
+// sheet or on YouTube, are left as they are.
+const maxSummaryWords = 65
+
+// summarySpeakers lists the speakers a summary must name, each exactly as the sheet
+// gives it, honorific included: "Pastor Vern Peltz". SpeakerString joins several with
+// a comma.
+func summarySpeakers(speakerName string) []string {
+	var speakers []string
+	for name := range strings.SplitSeq(speakerName, ",") {
+		if name = strings.TrimSpace(name); name != "" {
+			speakers = append(speakers, name)
+		}
+	}
+	return speakers
+}
+
+// summaryProblems lists the ways a generated summary breaks the rules for new
+// descriptions: more than maxSummaryWords words, or a speaker not named in full,
+// honorific included, at least once.
+//
+// That the full name is the first mention, as the prompt asks, is not checked: telling
+// which later words refer to which speaker is not worth the guesswork.
+func summaryProblems(summary string, speakers []string) []string {
+	var problems []string
+
+	if n := len(strings.Fields(summary)); n > maxSummaryWords {
+		problems = append(problems, fmt.Sprintf("it is %d words long; the limit is %d", n, maxSummaryWords))
+	}
+
+	lower := strings.ToLower(summary)
+	for _, speaker := range speakers {
+		if !strings.Contains(lower, strings.ToLower(speaker)) {
+			problems = append(problems, fmt.Sprintf("it does not name %q in full", speaker))
 		}
 	}
 
-	info.Title = sanitizeModelText(summary.Title)
-	info.Summary = sanitizeModelText(summary.Summary)
-	info.RiskNotes = summary.RiskNotes
+	return problems
+}
 
-	return info, nil
+// correctionPrompt asks the model to fix a summary that broke the rules
+func correctionPrompt(problems []string) string {
+	var b strings.Builder
+	b.WriteString("That summary breaks these rules:\n")
+	for _, problem := range problems {
+		fmt.Fprintf(&b, "- %s\n", problem)
+	}
+	b.WriteString("\nReply again with the same title and a corrected summary.\n")
+	return b.String()
 }
 
 // literalUnicodeEscape matches a \uXXXX sequence that survived as literal text rather
@@ -310,8 +397,9 @@ func summarySchema(riskNotes bool) map[string]any {
 			"description": "A title for the message, no longer than 6 words",
 		},
 		"summary": map[string]any{
-			"type":        "string",
-			"description": "A 3 sentence summary in a casual voice suitable for social media",
+			"type": "string",
+			"description": fmt.Sprintf("A summary of at most %d words in a casual voice suitable "+
+				"for social media, naming each speaker in full on first mention", maxSummaryWords),
 		},
 	}
 	required := []string{"title", "summary"}
@@ -357,14 +445,28 @@ func summarySchema(riskNotes bool) map[string]any {
 func buildSummaryPrompt(speakerName string, xscript string, riskNotes bool) string {
 	var b strings.Builder
 
-	fmt.Fprintf(&b, `I'm going to give you a transcript of a Christian church sermon that is delimited by triple quotes.
-The speaker's name is %s.
+	speakers := summarySpeakers(speakerName)
 
+	b.WriteString("I'm going to give you a transcript of a Christian church sermon that is delimited by triple quotes.\n")
+	if len(speakers) > 0 {
+		fmt.Fprintf(&b, "The speaker's name is %s.\n", speakerName)
+	}
+
+	fmt.Fprintf(&b, `
 You will suggest a single title and a single summary.
 
 The title will be no longer than 6 words.
-The summary should be 3 sentences in length and use a casual voice suitable for social media.
-`, speakerName)
+The summary will be no longer than %d words, in a casual voice suitable for social media. Use as many sentences as suit it.
+`, maxSummaryWords)
+
+	if len(speakers) > 0 {
+		quoted := make([]string, len(speakers))
+		for index, speaker := range speakers {
+			quoted[index] = fmt.Sprintf("%q", speaker)
+		}
+		fmt.Fprintf(&b, `The summary must name the speaker. The first time it mentions each speaker, it must use their full name exactly as written here, including any title such as "Pastor": %s. After that it may refer to them more briefly.
+`, strings.Join(quoted, " and "))
+	}
 
 	if riskNotes {
 		b.WriteString(`
@@ -392,6 +494,22 @@ These notes are observations, not verdicts, and a human makes the final call:
 	fmt.Fprintf(&b, "\n\"\"\" %s \"\"\"\n", xscript)
 
 	return b.String()
+}
+
+// printSummaryProblems writes how the generated summary breaks the rules for new
+// descriptions, when it still does after a correction. It is kept rather than thrown
+// away, so the operator can edit it before pasting.
+func printSummaryProblems(b *box.Box, info *MessageInfo) {
+	if len(info.SummaryProblems) == 0 {
+		return
+	}
+
+	b.Section("Summary check")
+	b.Line("The generated summary breaks the rules for new descriptions:")
+	for _, problem := range info.SummaryProblems {
+		b.Labeled("• ", problem)
+	}
+	b.Line("Edit it before pasting it anywhere, or run the message again for another.")
 }
 
 // printRiskNotes writes the advisory platform-risk notes as a section of their own,

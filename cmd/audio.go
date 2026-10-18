@@ -38,6 +38,10 @@ type MessageInfo struct {
 	Summary        string
 	RiskNotes      []RiskNote
 
+	// how the generated summary still breaks the rules for new descriptions after being
+	// sent back once to be corrected; shown so it can be edited before it is pasted
+	SummaryProblems []string
+
 	// the spreadsheet row describing this message, and the series it belongs to.
 	// resolved up front, before the slow work, so that everything needing an answer
 	// from the operator is asked while they are still at the keyboard.
@@ -279,9 +283,9 @@ func findMessageForVideo(
 // question whose default is right every time teaches the operator to hit Enter without
 // reading it.
 //
-// Taking the row also keeps the summary and the title consistent. The title is built
-// from the row's speakers, so resolving a different name here would have the summary
-// introduce one person and the title credit another.
+// Taking the row also gets the name right where it is published. The summary must name
+// the speaker in full, honorific included, and the row's name is the one the sheet and
+// the website use.
 //
 // The file name is not consulted. Its speaker initial used to sit between the row and
 // the prompt, which only mattered when the row was silent, and which could contradict
@@ -753,6 +757,7 @@ func printMessageInfo(w io.Writer, index int, info *MessageInfo) {
 		b.Copy(info.Summary)
 	}
 
+	printSummaryProblems(b, info)
 	printRiskNotes(b, info)
 	printTimeline(b, info)
 	b.Footer()

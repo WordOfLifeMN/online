@@ -11,8 +11,8 @@ import (
 
 // This file is the single place that decides how anything reaching YouTube is worded:
 // titles, descriptions, playlist names and the house defaults. Nothing else in the
-// codebase builds these strings, so a per-ministry format, or new description metadata
-// such as speakers, is a change to this file only.
+// codebase builds these strings, so a per-ministry format, or new description metadata,
+// is a change to this file only.
 
 // +---------------------------------------------------------------------------
 // | House defaults
@@ -52,7 +52,12 @@ const titleDateFormat = "January 2, 2006"
 
 // FormatTitle assembles a video title around a name:
 //
-//	[CORE | ]Name | Speaker | Date
+//	[CORE | ]Name | Date
+//
+// The speaker is not in the title. The generated description names them in full, and
+// a title without them leaves more of YouTube's truncated title for the message's
+// name. Titles uploaded before 2026-10-17 do carry the speaker, so sync proposes a new
+// title for those.
 //
 // The date is formatted here rather than through CatalogMessage.DateString, which
 // prefixes "Scheduled for " on a future date. That reads sensibly on a web page
@@ -64,9 +69,6 @@ func FormatTitle(msg *catalog.CatalogMessage, name string) string {
 		parts = append(parts, coreMarker)
 	}
 	parts = append(parts, name)
-	if speakers := getTitleSpeakers(msg); speakers != "" {
-		parts = append(parts, speakers)
-	}
 	if !msg.Date.IsZero() {
 		parts = append(parts, msg.Date.Time.Format(titleDateFormat))
 	}
@@ -82,7 +84,7 @@ func FormatTitle(msg *catalog.CatalogMessage, name string) string {
 // noise. The comparison ignores case and punctuation for that reason, which is the same
 // thing util.NormalizeForMatch does when ranking a file name against the sheet.
 //
-// Only the name is compared. Speaker and date come from the row either way, so they are
+// Only the name is compared. The date comes from the row either way, so it is
 // identical on both lines by construction and would dilute the comparison.
 func AlternativeTitle(msg *catalog.CatalogMessage, generated string) string {
 	generated = strings.TrimSpace(generated)
@@ -108,46 +110,6 @@ func PlaylistTitle(ministry catalog.Ministry, seriesName string) string {
 // AskThePastorPlaylistTitle is the one playlist every Ask the Pastor message goes in
 func AskThePastorPlaylistTitle() string {
 	return askThePastorPlaylist
-}
-
-// speakerTitles are honorifics stripped from the speaker name in the YouTube title.
-//
-// This is about title length. YouTube truncates titles in search results, in the
-// sidebar and on mobile, and "Pastor " costs seven characters of a budget the message
-// name and the date have the stronger claim on. The description is not length
-// constrained, so it keeps the honorific.
-//
-// A list of one today. Extend it rather than reaching for a general honorific matcher:
-// over-matching silently renames a real person in a published video title.
-var speakerTitles = []string{"Pastor"}
-
-// stripSpeakerTitle removes a leading honorific from one speaker's name
-func stripSpeakerTitle(speaker string) string {
-	speaker = strings.TrimSpace(speaker)
-
-	for _, title := range speakerTitles {
-		prefix := title + " "
-		// the length test leaves a speaker recorded as bare "Pastor" alone rather than
-		// reducing them to an empty name
-		if len(speaker) > len(prefix) && strings.EqualFold(speaker[:len(prefix)], prefix) {
-			return strings.TrimSpace(speaker[len(prefix):])
-		}
-	}
-
-	return speaker
-}
-
-// getTitleSpeakers renders the speakers for the YouTube title, without honorifics.
-// Deliberately not CatalogMessage.SpeakerString, which keeps them for the description.
-func getTitleSpeakers(msg *catalog.CatalogMessage) string {
-	names := make([]string, 0, len(msg.Speakers))
-	for _, speaker := range msg.Speakers {
-		if name := stripSpeakerTitle(speaker); name != "" {
-			names = append(names, name)
-		}
-	}
-
-	return strings.Join(names, ", ")
 }
 
 // +---------------------------------------------------------------------------
