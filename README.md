@@ -16,7 +16,7 @@ longer generates a website. The last version that did is tagged `v1-static-site`
   edited .mp4
       │
       ├─ ffmpeg ──────────► .mp3        (temporary)
-      ├─ faster-whisper ──► transcript  (temporary)
+      ├─ faster-whisper ──► .txt        (kept beside the .mp4)
       ├─ Claude ──────────► title + description
       ├─ Google Sheet ────► series, track, ministry, visibility, resources
       └─ assemble ────────► UPLOAD PACKET, printed for copy-paste
@@ -24,12 +24,22 @@ longer generates a website. The last version that did is tagged `v1-static-site`
 
 Upload itself is manual: paste the packet into YouTube Studio.
 
-The audio and transcript are intermediates and are never published, but they are
-kept in the scratch directory for 24 hours. Re-running a message within that
-window reuses them instead of extracting and transcribing again, which saves
-several minutes on a full service and matters when a run fails late. Each run
-sweeps whatever is already older than that; `--keep-intermediates` disables the
-sweep entirely.
+The transcript is kept beside the video, with the same name and a `.txt`
+extension. It is never published, but transcribing is slow and the file is tiny,
+so it is kept for later use: regenerating descriptions when the rules change,
+keywords, searching. Its first line records how it was made:
+
+```
+# wolm-transcript app=faster-whisper model=small transcribed=2026-10-18
+```
+
+A video with a transcript beside it skips extraction and transcription entirely.
+To transcribe it again, delete the `.txt`.
+
+The `.mp3` is an intermediate. It is kept in the scratch directory for 24 hours,
+so a message transcribed again within that window does not need its audio
+extracted again. Each run sweeps whatever is already older than that;
+`--keep-intermediates` disables the sweep entirely.
 
 ```
 online audio "2026-03-08-v Walking in Faith.mp4"
@@ -102,7 +112,7 @@ override the configuration file.
 | `anthropic-model` | Model used for titles and descriptions | `claude-haiku-4-5` |
 | `whisper-model` | Transcription model | `small` |
 | `whisper-exe` | Path to the faster-whisper executable | (see `audio_transcribe.go`) |
-| `scratch-dir` | Where intermediate audio and transcripts are written | `~/.wolm/scratch` |
+| `scratch-dir` | Where intermediate audio, and transcripts before they are copied beside the video, are written | `~/.wolm/scratch` |
 | `thumb-dir` | Where the generic fallback thumbnails live | (none) |
 
 **Never set `whisper-model` to `tiny.en`.** Measured over a real 80 minute

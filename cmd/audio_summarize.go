@@ -60,9 +60,10 @@ var audioSummarizeCmd = &cobra.Command{
 	Short: "Summarize the transcription of an audio file",
 	Long: `Takes a transcription of an audio file and produces a suggested title and description.
 
-The input file may be a transcript .text file or an .mp3 or .mp4 file. If you
-provide an audio or video file, we will look for the transcript in the scratch
-directory where the 'audio transcribe' command would have written it.
+The input file may be a transcript (.txt or .text), or an .mp3 or .mp4 file. Given a
+video, the transcript kept beside it is used, falling back to the scratch directory.
+Given an audio file, the transcript is looked for in the scratch directory, where
+'audio transcribe' writes it.
 
 The entire transcript is sent for analysis.
 
@@ -90,15 +91,25 @@ func xscriptSummarize(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		xscriptPath = args[0]
 	}
-	xscriptPath = PromtUserForInputFile(xscriptPath, ".mp4", ".mp3", ".text")
+	xscriptPath = PromtUserForInputFile(xscriptPath, ".mp4", ".mp3", ".text", ".txt")
 	if xscriptPath == "" {
 		fmt.Printf("Aborting")
 		return nil
 	}
 
-	// resolve a video or audio file to the transcript it would have produced
+	// resolve a video or audio file to its transcript. for a video that is the one kept
+	// beside it, else whatever is still in scratch. reading the scratch copy here is
+	// harmless where reusing it in 'audio' is not: this never transcribes, so it cannot
+	// stand in the way of a transcript being regenerated.
 	if strings.EqualFold(filepath.Ext(xscriptPath), ".mp4") {
-		xscriptPath = getAudioPathFromVideoPath(xscriptPath)
+		videoPath := xscriptPath
+		xscriptPath = findExistingTranscript(videoPath)
+		if xscriptPath == "" {
+			xscriptPath = getScratchTranscriptPathFromVideoPath(videoPath)
+		}
+		if !util.IsFile(xscriptPath) {
+			return fmt.Errorf("no transcript found for %s", filepath.Base(videoPath))
+		}
 	}
 	if strings.EqualFold(filepath.Ext(xscriptPath), ".mp3") {
 		xscriptPath = getTranscribePathFromAudioPath(xscriptPath)
@@ -220,7 +231,8 @@ func generateMessageSummary(info *MessageInfo) (*MessageInfo, error) {
 	if err != nil {
 		return info, fmt.Errorf("cannot read transcript %s: %w", info.TranscriptPath, err)
 	}
-	xscript := strings.TrimSpace(string(xscriptBytes))
+	// the header records how the transcript was made, which is no business of the model
+	xscript := strings.TrimSpace(stripTranscriptHeader(string(xscriptBytes)))
 	if xscript == "" {
 		return info, fmt.Errorf("transcript %s is empty", info.TranscriptPath)
 	}

@@ -123,3 +123,40 @@ func (t *OSTestSuite) TestIsNonEmptyFile() {
 	t.False(IsNonEmptyFile(missing))
 	t.False(IsNonEmptyFile(dir), "a directory is not a usable file")
 }
+
+func (t *OSTestSuite) TestCopyFile_CopiesWithNothingLeftOver() {
+	dir := t.T().TempDir()
+	src := filepath.Join(dir, "src.text")
+	dst := filepath.Join(dir, "dst.txt")
+	t.Require().NoError(os.WriteFile(src, []byte("transcribed words"), 0666))
+
+	t.Require().NoError(CopyFile(src, dst))
+
+	content, err := os.ReadFile(dst)
+	t.Require().NoError(err)
+	t.Equal("transcribed words", string(content))
+	t.False(DoesPathExist(dst+".partial"), "the partial file is renamed, not left behind")
+	t.True(IsFile(src), "the source is copied, not moved")
+}
+
+// a copy that cannot be made must leave nothing behind at either name, because the
+// presence of dst is what callers take to mean the work is done
+func (t *OSTestSuite) TestCopyFile_MissingDestinationFolder() {
+	dir := t.T().TempDir()
+	src := filepath.Join(dir, "src.text")
+	t.Require().NoError(os.WriteFile(src, []byte("transcribed words"), 0666))
+	dst := filepath.Join(dir, "never-created", "dst.txt")
+
+	t.Error(CopyFile(src, dst))
+	t.False(DoesPathExist(dst))
+	t.False(DoesPathExist(dst + ".partial"))
+}
+
+func (t *OSTestSuite) TestCopyFile_MissingSource() {
+	dir := t.T().TempDir()
+	dst := filepath.Join(dir, "dst.txt")
+
+	t.Error(CopyFile(filepath.Join(dir, "missing.text"), dst))
+	t.False(DoesPathExist(dst))
+	t.False(DoesPathExist(dst + ".partial"))
+}

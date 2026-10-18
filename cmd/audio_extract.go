@@ -18,7 +18,8 @@ var audioExtractCmd = &cobra.Command{
 	Long: `Extracts the audio as an mp3 file from the mp4 video file.
 
 The input file must be .mp4. The audio is written to the scratch directory as an
-.mp3 file. It is an intermediate on the way to a transcript and is not preserved.
+.mp3 file. It is an intermediate on the way to a transcript, and is swept after 24
+hours.
 
 Requires 'ffmpeg' be installed and accessible on the path.`,
 	RunE: audioExtract,

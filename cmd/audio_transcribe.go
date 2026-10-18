@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/WordOfLifeMN/online/util"
 	"github.com/spf13/cobra"
@@ -53,9 +54,10 @@ var audioTranscribeCmd = &cobra.Command{
 	Short: "Transcribe the audio track to text",
 	Long: `Takes an already extracted audio track and transcribes it to English text.
 
-The input file must be .mp3 and the transcript is written to the scratch directory.
-The transcript is an intermediate used to generate a title and description; it is
-not published or preserved.
+The input file must be .mp3 and the transcript is written to the scratch directory,
+where it is swept after 24 hours. An .mp3 does not know where its video is, so this
+command does not keep the transcript beside the video - run 'audio' on the video for
+that.
 
 The model can be set with the 'whisper-model' configuration key (default "` + defaultWhisperModel + `").
 
@@ -110,8 +112,12 @@ func getWhisperExe() string {
 }
 
 // transcribeAudio uses faster-whisper to transcribe the audio and returns the path to
-// the resulting text file. Only text output is produced - the .vtt, .srt, .tsv and
-// .json formats existed to publish transcripts online, which we no longer do.
+// the resulting text file in the scratch directory, with a header line recording the
+// model at the top. Only text output is produced - the .vtt, .srt, .tsv and .json
+// formats existed to publish transcripts online, which we no longer do.
+//
+// Keeping the transcript beside its video is the caller's job (see preserveTranscript):
+// this works from an .mp3, which does not know where its video is.
 func transcribeAudio(audioPath string) (string, error) {
 	xscriptPath := getTranscribePathFromAudioPath(audioPath)
 
@@ -168,5 +174,122 @@ func transcribeAudio(audioPath string) (string, error) {
 			filepath.Base(audioPath), getWhisperModel())
 	}
 
+	// record how the transcript was made while that is still known for certain, so
+	// the header travels with the file wherever it is copied
+	if err := addTranscriptHeader(xscriptPath, transcriptHeader(getWhisperModel(), time.Now())); err != nil {
+		return "", fmt.Errorf("cannot add the header to transcript %s: %w", xscriptPath, err)
+	}
+
 	return xscriptPath, nil
+}
+
+// transcriptHeaderMarker begins the header line written at the top of every transcript.
+// It starts like a script comment so the line reads as a note to anyone opening the
+// file, and the marker word after it is what tells the header apart from a first line
+// someone actually spoke.
+const transcriptHeaderMarker = "# wolm-transcript"
+
+// transcriberApp names the transcription software in the header, so a transcript can
+// still be told apart if the software is ever changed
+const transcriberApp = "faster-whisper"
+
+// transcriptHeader renders the line recording how a transcript was made:
+//
+//	# wolm-transcript app=faster-whisper model=small transcribed=2026-10-18
+//
+// Transcripts are kept to be reprocessed later, and by then the model that made one
+// may matter - small and large-v3 differ in accuracy, if not in their summaries.
+func transcriptHeader(model string, when time.Time) string {
+	return fmt.Sprintf("%s app=%s model=%s transcribed=%s",
+		transcriptHeaderMarker, transcriberApp, model, when.Format("2006-01-02"))
+}
+
+// addTranscriptHeader rewrites a transcript with the header line and a blank line at
+// the top. The rewrite goes through a temporary file and a rename, so an interrupted
+// run cannot leave the transcript cut short.
+func addTranscriptHeader(path, header string) error {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	partial := path + ".partial"
+	if err := os.WriteFile(partial, []byte(header+"\n\n"+string(content)), 0666); err != nil {
+		os.Remove(partial)
+		return err
+	}
+	if err := os.Rename(partial, path); err != nil {
+		os.Remove(partial)
+		return err
+	}
+
+	return nil
+}
+
+// stripTranscriptHeader drops a leading header line, and the blank lines after it,
+// before the transcript is sent anywhere. Text without the header - a transcript made
+// before headers existed, or one written by hand - is returned unchanged.
+func stripTranscriptHeader(text string) string {
+	first, rest, _ := strings.Cut(text, "\n")
+	first = strings.TrimRight(first, "\r")
+
+	if first != transcriptHeaderMarker && !strings.HasPrefix(first, transcriptHeaderMarker+" ") {
+		return text
+	}
+
+	return strings.TrimLeft(rest, "\r\n")
+}
+
+// getPreservedTranscriptPath returns where a video's transcript is kept: beside the
+// video, sharing its name, as .txt so that it opens in Notepad when double-clicked
+func getPreservedTranscriptPath(videoPath string) string {
+	return strings.TrimSuffix(videoPath, filepath.Ext(videoPath)) + ".txt"
+}
+
+// getScratchTranscriptPathFromVideoPath returns the scratch .text that transcribing
+// this video's audio produces
+func getScratchTranscriptPathFromVideoPath(videoPath string) string {
+	return getTranscribePathFromAudioPath(getAudioPathFromVideoPath(videoPath))
+}
+
+// findExistingTranscript returns the preserved transcript for a video if there is one
+// with something in it, or "" if the video needs transcribing.
+//
+// A transcript in the scratch directory is deliberately not considered, however
+// recent. Deleting the .txt beside the video is how a transcript is regenerated, and
+// that must work without also knowing to clear out the scratch directory.
+func findExistingTranscript(videoPath string) string {
+	path := getPreservedTranscriptPath(videoPath)
+	if util.IsNonEmptyFile(path) {
+		return path
+	}
+	return ""
+}
+
+// preserveTranscript copies a freshly made scratch transcript beside its video and
+// returns the path to use from then on.
+//
+// A copy that fails - a read-only share, a OneDrive folder mid-sync - is not a reason
+// to lose the title and description this run is about to generate, so it warns and
+// returns the scratch path to carry on with. The transcript just is not kept this time.
+//
+// A transcript already beside the video is never overwritten: deleting it by hand is
+// the only way to regenerate one. An empty one is not a transcript, and is replaced.
+func preserveTranscript(scratchPath, videoPath string) string {
+	preserved := getPreservedTranscriptPath(videoPath)
+
+	if util.IsNonEmptyFile(preserved) {
+		log.Printf("Not overwriting existing transcript %s", preserved)
+		return scratchPath
+	}
+
+	if err := util.CopyFile(scratchPath, preserved); err != nil {
+		fmt.Printf("WARNING: could not save the transcript beside the video: %s\n", err)
+		fmt.Printf("         using the copy in the scratch directory, which is swept after %s\n",
+			scratchRetention)
+		return scratchPath
+	}
+
+	fmt.Printf("Saved transcript: %s\n", filepath.Base(preserved))
+	return preserved
 }

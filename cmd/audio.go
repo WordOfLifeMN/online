@@ -67,13 +67,16 @@ var audioCmd = &cobra.Command{
 
 Given one or more video files, will do the following for each file:
 1. Extract the audio to a temporary .mp3
-2. Transcribe the audio to a temporary transcript
+2. Transcribe the audio, keeping the transcript beside the video as a .txt
 3. Send the transcript to Claude for a suggested title and description
 
-The audio and transcript are intermediates - they are never published. They are
-kept in the scratch directory for 24 hours so that re-running a message reuses
-them instead of extracting and transcribing it again, then swept on the next run.
-Pass --keep-intermediates to disable the sweep.`,
+A video that already has a .txt transcript beside it skips steps 1 and 2. To
+transcribe it again, delete the .txt.
+
+Transcripts are kept but never published. The .mp3 is an intermediate: it is kept
+in the scratch directory for 24 hours so that re-transcribing a message reuses it
+instead of extracting it again, then swept on the next run. Pass
+--keep-intermediates to disable the sweep.`,
 	RunE: audio,
 }
 
@@ -332,14 +335,15 @@ func processAllVideos(infos []*MessageInfo, cat *catalog.Catalog) error {
 }
 
 // processOneAudio handles the processing of one message.
-// If the audio doesn't exist, will extract the audio from the video.
-// If the transcript doesn't exist, will transcribe the audio.
+// If a transcript is kept beside the video, it is used and nothing is extracted or
+// transcribed. Otherwise the audio is extracted (unless a scratch copy remains), then
+// transcribed, and the transcript is kept beside the video.
 // Will send the transcript to Claude for a title and summary.
 // All information will be recorded in the passed in info record. cat finds the series
 // the message's playlists and booklets come from, and may be nil.
 //
-// On success the intermediate audio and transcript are deleted. On failure they are
-// left in place so the failed step can be retried without redoing the work before it.
+// The extracted audio stays in the scratch directory until it is swept, so a failed
+// step can be retried without extracting it again.
 func processOneAudio(info *MessageInfo, cat ytpkg.SeriesFinder) error {
 	var err error
 
@@ -347,35 +351,15 @@ func processOneAudio(info *MessageInfo, cat ytpkg.SeriesFinder) error {
 		return fmt.Errorf("no video file was provided to extract audio from. aborting")
 	}
 
-	// extract the audio from the video if needed.
-	//
-	// NOTE: these reuse checks require a non-empty file. A failed run leaves its
-	// intermediates behind on purpose so the failed step can be retried, but a tool
-	// that reports success while writing nothing leaves a zero-length file, and
-	// treating that as "already done" skips the step on every future run.
-	info.AudioPath = getAudioPathFromVideoPath(info.VideoPath)
-	if !util.IsNonEmptyFile(info.AudioPath) {
-		info.ExtractTime = util.NewStopWatch()
-		info.AudioPath, err = extractAudioFromVideo(info.VideoPath)
-		info.ExtractTime.Stop()
-		if err != nil {
+	if path := findExistingTranscript(info.VideoPath); path != "" {
+		// announced rather than logged: deleting this file is how a transcript is
+		// regenerated, so the operator needs to see that it was used
+		info.TranscriptPath = path
+		fmt.Printf("Using existing transcript: %s\n", filepath.Base(path))
+	} else {
+		if err := extractAndTranscribe(info); err != nil {
 			return err
 		}
-	} else {
-		log.Printf("Reusing existing audio %s", info.AudioPath)
-	}
-
-	// transcribe the audio file if needed
-	info.TranscriptPath = getTranscribePathFromAudioPath(info.AudioPath)
-	if !util.IsNonEmptyFile(info.TranscriptPath) {
-		info.TranscribeTime = util.NewStopWatch()
-		info.TranscriptPath, err = transcribeAudio(info.AudioPath)
-		info.TranscribeTime.Stop()
-		if err != nil {
-			return err
-		}
-	} else {
-		log.Printf("Reusing existing transcript %s", info.TranscriptPath)
 	}
 
 	// generate the message summary
@@ -397,6 +381,48 @@ func processOneAudio(info *MessageInfo, cat ytpkg.SeriesFinder) error {
 			info.Message, cat, info.Title, info.Summary, thumbnail)
 	}
 
+	return nil
+}
+
+// extractAndTranscribe makes a new transcript for a message and keeps it beside the
+// video, recording the paths and times in info.
+func extractAndTranscribe(info *MessageInfo) error {
+	var err error
+
+	// extract the audio from the video if needed.
+	//
+	// NOTE: this reuse check requires a non-empty file. A failed run leaves its
+	// intermediates behind on purpose so the failed step can be retried, but a tool
+	// that reports success while writing nothing leaves a zero-length file, and
+	// treating that as "already done" skips the step on every future run.
+	info.AudioPath = getAudioPathFromVideoPath(info.VideoPath)
+	if !util.IsNonEmptyFile(info.AudioPath) {
+		info.ExtractTime = util.NewStopWatch()
+		info.AudioPath, err = extractAudioFromVideo(info.VideoPath)
+		info.ExtractTime.Stop()
+		if err != nil {
+			return err
+		}
+	} else {
+		log.Printf("Reusing existing audio %s", info.AudioPath)
+	}
+
+	// a transcript left in scratch is never reused - only the one beside the video is,
+	// so that deleting it regenerates it. Delete the stale copy without asking:
+	// otherwise transcribeAudio would ask whether to overwrite it, in the middle of the
+	// slow work after the operator has walked away, and "no" would reuse it after all.
+	if err := deleteExistingFile(getTranscribePathFromAudioPath(info.AudioPath), false); err != nil {
+		return err
+	}
+
+	info.TranscribeTime = util.NewStopWatch()
+	info.TranscriptPath, err = transcribeAudio(info.AudioPath)
+	info.TranscribeTime.Stop()
+	if err != nil {
+		return err
+	}
+
+	info.TranscriptPath = preserveTranscript(info.TranscriptPath, info.VideoPath)
 	return nil
 }
 
