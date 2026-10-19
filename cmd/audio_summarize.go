@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -256,19 +257,24 @@ func generateMessageSummary(info *MessageInfo) (*MessageInfo, error) {
 		return info, err
 	}
 
-	// a summary that breaks the rules for new descriptions is sent back once, with what
-	// is wrong, to be corrected
+	// a summary that breaks the rules for new descriptions is sent back, with what is
+	// wrong, to be corrected - up to maxSummaryCorrections times. A failed correction
+	// request keeps the last summary rather than losing it.
 	problems := summaryProblems(sanitizeModelText(summary.Summary), speakers)
-	if len(problems) > 0 {
+	for attempt := 0; attempt < maxSummaryCorrections && len(problems) > 0; attempt++ {
+		log.Printf("Summary breaks the rules (%s); asking for a correction", strings.Join(problems, "; "))
 		conversation = append(conversation,
 			anthropic.NewAssistantMessage(anthropic.NewTextBlock(reply)),
-			anthropic.NewUserMessage(anthropic.NewTextBlock(correctionPrompt(problems))),
+			anthropic.NewUserMessage(anthropic.NewTextBlock(
+				correctionPrompt(sanitizeModelText(summary.Summary), speakers))),
 		)
-		corrected, _, err := requestSummary(&client, conversation, riskNotes)
-		if err == nil {
-			summary = corrected
-			problems = summaryProblems(sanitizeModelText(summary.Summary), speakers)
+		corrected, correctedReply, err := requestSummary(&client, conversation, riskNotes)
+		if err != nil {
+			log.Printf("Summary correction failed: %s", err)
+			break
 		}
+		summary, reply = corrected, correctedReply
+		problems = summaryProblems(sanitizeModelText(summary.Summary), speakers)
 	}
 
 	info.Title = sanitizeModelText(summary.Title)
@@ -321,6 +327,24 @@ func requestSummary(
 // sheet or on YouTube, are left as they are.
 const maxSummaryWords = 65
 
+// targetSummaryWords is the length the prompt asks for. It sits below the limit on
+// purpose: a model treats a stated maximum as a rough size rather than a ceiling, so
+// asking for 65 got 80 to 100. Aiming lower leaves the limit as a backstop.
+const targetSummaryWords = 55
+
+// maxSummaryCorrections is how many times a summary that breaks the rules is sent back
+// to be corrected before it is kept as it is, with the problems shown
+const maxSummaryCorrections = 2
+
+// exampleSummary shows the model the length and voice wanted: 62 words in three short
+// sentences, naming the speaker in full first and more briefly after. An example
+// anchors length far better than a number does.
+const exampleSummary = "Pastor Mary Peltz challenges us to pay attention to God's voice and let Him " +
+	"question everything we think we know. Using Abraham's journey to Moriah, she shows how " +
+	"growth that stretches us leads to a clear, God-given destiny we then surrender to Him. In " +
+	"finances, relationships, and purpose, she calls us to partner with God, planting faith and " +
+	"calling forth the harvest."
+
 // summarySpeakers lists the speakers a summary must name, each exactly as the sheet
 // gives it, honorific included: "Pastor Vern Peltz". SpeakerString joins several with
 // a comma.
@@ -357,14 +381,28 @@ func summaryProblems(summary string, speakers []string) []string {
 	return problems
 }
 
-// correctionPrompt asks the model to fix a summary that broke the rules
-func correctionPrompt(problems []string) string {
+// correctionPrompt asks the model to fix a summary that broke the rules. It says
+// exactly what to do - how many words to cut, which name to write out - because "the
+// limit is 65" alone was met with a summary trimmed by a word or two.
+func correctionPrompt(summary string, speakers []string) string {
 	var b strings.Builder
-	b.WriteString("That summary breaks these rules:\n")
-	for _, problem := range problems {
-		fmt.Fprintf(&b, "- %s\n", problem)
+	b.WriteString("That summary breaks the rules:\n")
+
+	if n := len(strings.Fields(summary)); n > maxSummaryWords {
+		fmt.Fprintf(&b, "- It is %d words, and must be at most %d. Cut at least %d words, "+
+			"aiming for about %d. Drop whole points rather than squeezing every point into fewer words.\n",
+			n, maxSummaryWords, n-maxSummaryWords, targetSummaryWords)
 	}
-	b.WriteString("\nReply again with the same title and a corrected summary.\n")
+
+	lower := strings.ToLower(summary)
+	for _, speaker := range speakers {
+		if !strings.Contains(lower, strings.ToLower(speaker)) {
+			fmt.Fprintf(&b, "- It does not name %q in full. Write the name exactly as given, "+
+				"including the title, the first time you mention them.\n", speaker)
+		}
+	}
+
+	b.WriteString("\nReply again with the same title and a corrected summary of two or three short sentences.\n")
 	return b.String()
 }
 
@@ -410,8 +448,9 @@ func summarySchema(riskNotes bool) map[string]any {
 		},
 		"summary": map[string]any{
 			"type": "string",
-			"description": fmt.Sprintf("A summary of at most %d words in a casual voice suitable "+
-				"for social media, naming each speaker in full on first mention", maxSummaryWords),
+			"description": fmt.Sprintf("A summary of two or three short sentences, about %d words "+
+				"and never more than %d, in a casual voice suitable for social media, naming each "+
+				"speaker in full on first mention", targetSummaryWords, maxSummaryWords),
 		},
 	}
 	required := []string{"title", "summary"}
@@ -453,31 +492,84 @@ func summarySchema(riskNotes bool) map[string]any {
 	}
 }
 
-// buildSummaryPrompt assembles the prompt sent to the model
+// shortSpeakerForms lists the shorter ways a summary may refer to a speaker after
+// naming them in full: for "Pastor Mary Peltz", "Pastor", "Pastor Mary" or simply
+// "Mary". Spelled out because, left to choose, the model reached for the surname
+// alone - "Peltz emphasizes..." - which is not how the church speaks of its pastors.
+//
+// The first word is taken as a title only when there are three or more, so a name
+// without one - "Mary Peltz" - offers just the first name.
+func shortSpeakerForms(speaker string) []string {
+	words := strings.Fields(speaker)
+	switch {
+	case len(words) >= 3:
+		title, first := words[0], words[1]
+		return []string{title, title + " " + first, first}
+	case len(words) == 2:
+		return []string{words[0]}
+	}
+	return nil
+}
+
+// joinQuoted quotes each item and joins them as a list: "a", "b" or "c"
+func joinQuoted(items []string, conjunction string) string {
+	quoted := make([]string, len(items))
+	for index, item := range items {
+		quoted[index] = fmt.Sprintf("%q", item)
+	}
+	if len(quoted) == 1 {
+		return quoted[0]
+	}
+	return strings.Join(quoted[:len(quoted)-1], ", ") + " " + conjunction + " " + quoted[len(quoted)-1]
+}
+
+// buildSummaryPrompt assembles the prompt sent to the model.
+//
+// The transcript comes first and the instructions after it. A sermon transcript runs to
+// ten thousand words or more, and instructions placed ahead of it are a long way back
+// by the time the model starts writing - the summaries kept overrunning the word limit
+// stated there. Only a line saying what is coming precedes the transcript.
 func buildSummaryPrompt(speakerName string, xscript string, riskNotes bool) string {
 	var b strings.Builder
 
 	speakers := summarySpeakers(speakerName)
 
-	b.WriteString("I'm going to give you a transcript of a Christian church sermon that is delimited by triple quotes.\n")
+	b.WriteString("I'm going to give you a transcript of a Christian church sermon, delimited by " +
+		"triple quotes. After it come instructions for what to write about it.\n")
+
+	fmt.Fprintf(&b, "\n\"\"\" %s \"\"\"\n", xscript)
+
 	if len(speakers) > 0 {
-		fmt.Fprintf(&b, "The speaker's name is %s.\n", speakerName)
+		fmt.Fprintf(&b, "\nThe speaker's name is %s.\n", speakerName)
 	}
 
 	fmt.Fprintf(&b, `
-You will suggest a single title and a single summary.
+Suggest a single title and a single summary of this sermon.
 
 The title will be no longer than 6 words.
-The summary will be no longer than %d words, in a casual voice suitable for social media. Use as many sentences as suit it.
-`, maxSummaryWords)
+
+The summary is for social media, in a casual voice. Write two or three short sentences, about %d words in total. It must never be more than %d words: that is a hard limit, and a longer summary is rejected. Leave detail out rather than cramming it in.
+
+Here is an example summary of a different message. Match its length and voice, not its content or its speaker:
+<example>
+%s
+</example>
+`, targetSummaryWords, maxSummaryWords, exampleSummary)
 
 	if len(speakers) > 0 {
 		quoted := make([]string, len(speakers))
 		for index, speaker := range speakers {
 			quoted[index] = fmt.Sprintf("%q", speaker)
 		}
-		fmt.Fprintf(&b, `The summary must name the speaker. The first time it mentions each speaker, it must use their full name exactly as written here, including any title such as "Pastor": %s. After that it may refer to them more briefly.
+		fmt.Fprintf(&b, `
+The summary must name the speaker. The first time it mentions each speaker, it must use their full name exactly as written here, including any title such as "Pastor": %s. After that it may refer to them more briefly.
 `, strings.Join(quoted, " and "))
+
+		for _, speaker := range speakers {
+			if forms := shortSpeakerForms(speaker); len(forms) > 0 {
+				fmt.Fprintf(&b, "Acceptable shorter forms for %q include %s.\n", speaker, joinQuoted(forms, "or"))
+			}
+		}
 	}
 
 	if riskNotes {
@@ -502,8 +594,6 @@ These notes are observations, not verdicts, and a human makes the final call:
   the list with marginal observations to appear thorough.
 `)
 	}
-
-	fmt.Fprintf(&b, "\n\"\"\" %s \"\"\"\n", xscript)
 
 	return b.String()
 }

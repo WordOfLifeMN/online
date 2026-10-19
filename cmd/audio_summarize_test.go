@@ -9,12 +9,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// the 62-word example from the TODO list, which follows every rule
-const goodSummary = "Pastor Mary Peltz challenges us to pay attention to God's voice and let Him " +
-	"question everything we think we know. Using Abraham's journey to Moriah, she shows how " +
-	"growth that stretches us leads to a clear, God-given destiny we then surrender to Him. In " +
-	"finances, relationships, and purpose, she calls us to partner with God, planting faith and " +
-	"calling forth the harvest."
+// the 62-word example the prompt shows, which follows every rule
+const goodSummary = exampleSummary
+
+// the example must itself pass the rules it is held up as following
+func TestExampleSummaryFollowsTheRules(t *testing.T) {
+	assert.Empty(t, summaryProblems(exampleSummary, []string{"Pastor Mary Peltz"}))
+	assert.Equal(t, 62, len(strings.Fields(exampleSummary)))
+}
 
 func TestSummarySpeakers(t *testing.T) {
 	assert.Equal(t, []string{"Pastor Mary Peltz"}, summarySpeakers("Pastor Mary Peltz"))
@@ -61,13 +63,44 @@ func TestSummaryProblems_SpeakerNotNamedInFull(t *testing.T) {
 func TestBuildSummaryPrompt(t *testing.T) {
 	prompt := buildSummaryPrompt("Pastor Vern Peltz, Pastor Mary Peltz", "the transcript", false)
 
-	assert.Contains(t, prompt, "no longer than 65 words")
-	assert.NotContains(t, prompt, "3 sentences", "the sentence count is gone")
+	assert.Contains(t, prompt, "two or three short sentences, about 55 words")
+	assert.Contains(t, prompt, "never be more than 65 words")
+	assert.Contains(t, prompt, "<example>\n"+exampleSummary+"\n</example>")
+	assert.Contains(t, prompt, "not its content or its speaker")
 	assert.Contains(t, prompt, `"Pastor Vern Peltz" and "Pastor Mary Peltz"`)
 	assert.Contains(t, prompt, "The first time it mentions each speaker")
 	assert.Contains(t, prompt, "including any title such as \"Pastor\"")
 	assert.Contains(t, prompt, "may refer to them more briefly")
+	assert.Contains(t, prompt,
+		`Acceptable shorter forms for "Pastor Vern Peltz" include "Pastor", "Pastor Vern" or "Vern".`)
+	assert.Contains(t, prompt,
+		`Acceptable shorter forms for "Pastor Mary Peltz" include "Pastor", "Pastor Mary" or "Mary".`)
 	assert.Contains(t, prompt, `""" the transcript """`)
+}
+
+// the instructions follow the transcript, so they are fresh when the model writes:
+// ahead of ten thousand words of sermon, the word limit was being ignored
+func TestBuildSummaryPrompt_InstructionsFollowTheTranscript(t *testing.T) {
+	prompt := buildSummaryPrompt("Pastor Mary Peltz", "the transcript", true)
+
+	transcript := strings.Index(prompt, `""" the transcript """`)
+	for _, instruction := range []string{
+		"The speaker's name is",
+		"The title will be",
+		"never be more than 65 words",
+		"<example>",
+		"must name the speaker",
+		"note any passages",
+	} {
+		at := strings.Index(prompt, instruction)
+		assert.Greater(t, at, transcript, "%q comes after the transcript", instruction)
+	}
+}
+
+func TestShortSpeakerForms(t *testing.T) {
+	assert.Equal(t, []string{"Pastor", "Pastor Mary", "Mary"}, shortSpeakerForms("Pastor Mary Peltz"))
+	assert.Equal(t, []string{"Mary"}, shortSpeakerForms("Mary Peltz"), "no title, so first name only")
+	assert.Empty(t, shortSpeakerForms("Mary"), "a single name has nothing shorter")
 }
 
 // with nobody to name, the prompt asks for no name
@@ -75,21 +108,33 @@ func TestBuildSummaryPrompt_NoSpeaker(t *testing.T) {
 	prompt := buildSummaryPrompt("", "the transcript", false)
 	assert.NotContains(t, prompt, "The speaker's name is")
 	assert.NotContains(t, prompt, "must name the speaker")
-	assert.Contains(t, prompt, "no longer than 65 words")
+	assert.Contains(t, prompt, "never be more than 65 words")
 }
 
 func TestSummarySchema_DescribesTheLimit(t *testing.T) {
 	properties := summarySchema(false)["properties"].(map[string]any)
 	description := properties["summary"].(map[string]any)["description"].(string)
-	assert.Contains(t, description, "at most 65 words")
+	assert.Contains(t, description, "two or three short sentences, about 55 words")
+	assert.Contains(t, description, "never more than 65")
 	assert.Contains(t, description, "naming each speaker in full")
-	assert.NotContains(t, description, "3 sentence")
 }
 
-func TestCorrectionPrompt(t *testing.T) {
-	prompt := correctionPrompt([]string{"it is 80 words long; the limit is 65"})
-	assert.Contains(t, prompt, "- it is 80 words long; the limit is 65\n")
-	assert.Contains(t, prompt, "same title and a corrected summary")
+// a correction says how much to cut, not just what the limit is
+func TestCorrectionPrompt_TooLong(t *testing.T) {
+	long := goodSummary + " " + strings.Repeat("word ", 38) // 100 words
+	prompt := correctionPrompt(long, []string{"Pastor Mary Peltz"})
+
+	assert.Contains(t, prompt, "It is 100 words, and must be at most 65. Cut at least 35 words, aiming for about 55.")
+	assert.NotContains(t, prompt, "does not name", "the name is there")
+	assert.Contains(t, prompt, "same title and a corrected summary of two or three short sentences")
+}
+
+func TestCorrectionPrompt_NameMissing(t *testing.T) {
+	short := strings.Replace(goodSummary, "Pastor Mary Peltz", "Pastor Mary", 1)
+	prompt := correctionPrompt(short, []string{"Pastor Mary Peltz"})
+
+	assert.Contains(t, prompt, `It does not name "Pastor Mary Peltz" in full.`)
+	assert.NotContains(t, prompt, "Cut at least", "it is short enough")
 }
 
 func TestPrintSummaryProblems(t *testing.T) {
