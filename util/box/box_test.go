@@ -297,11 +297,10 @@ func (t *BoxTestSuite) TestCopyIsExact() {
 // | Colour
 // +---------------------------------------------------------------------------
 
+// red and green are the package's own colours
 const (
-	red   = "\x1b[31m"
-	green = "\x1b[32m"
-	bold  = "\x1b[1;31m"
-	off   = "\x1b[0m"
+	bold = "\x1b[1;31m"
+	off  = "\x1b[0m"
 )
 
 // colour sequences take up no room on screen, so a coloured line must still put the

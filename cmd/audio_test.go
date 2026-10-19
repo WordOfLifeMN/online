@@ -755,3 +755,87 @@ func (t *AudioTestSuite) TestPromptAcceptsPowerShellDrop() {
 		t.Equal(video, getInputVideo(""))
 	})
 }
+
+// +---------------------------------------------------------------------------
+// | Match confidence
+// +---------------------------------------------------------------------------
+
+func (t *AudioTestSuite) TestConfidence_SameTitleIsCertain() {
+	t.Equal(1.0, matchConfidence("Pay Attention", "Pay Attention"))
+
+	// case, punctuation and articles are house style, not a difference
+	t.Equal(1.0, matchConfidence("Importance of Voting", "The Importance of Voting"))
+	t.Equal(1.0, matchConfidence("power of prayer q&a", "Power of Prayer: Q&A"))
+}
+
+func (t *AudioTestSuite) TestConfidence_Scale() {
+	// one character in nineteen: "power of prayer qa" against "power of prayer q a"
+	t.InDelta(18.0/19.0, matchConfidence("Power of Prayer QA", "Power of Prayer: Q&A"), 0.001)
+
+	// unrelated titles fall to the bottom of the scale
+	t.Less(matchConfidence("Pay Attention", "The Importance of Voting"), confidenceMedium)
+
+	// nothing in common at all
+	t.Equal(0.0, matchConfidence("zzzz", "aaaa"))
+	t.Equal(0.0, matchConfidence("", ""))
+	t.Equal(0.0, matchConfidence("The", "A"), "titles of nothing but articles have nothing to compare")
+}
+
+// the colour is chosen by the first threshold reached; to a test's buffer, which is
+// not a terminal, the number comes out plain
+func (t *AudioTestSuite) TestConfidence_Format() {
+	t.Equal("1.00", formatConfidence(1))
+	t.Equal("0.80", formatConfidence(0.8))
+	t.Equal("0.41", formatConfidence(0.41))
+	t.Equal("0.00", formatConfidence(0))
+}
+
+// every row is shown with its confidence, best first, and the old marker is gone
+func (t *AudioTestSuite) TestChoice_ShowsConfidence() {
+	ambiguous := t.newAmbiguity()
+	out := captureStdout(t.T(), func() {
+		t.withStdin("\n", func() {
+			promptUserForMessageChoice(ambiguous, "2026-05-17 Power of Prayer QA.mp4")
+		})
+	})
+
+	t.Contains(out, "  1. 0.95  Power of Prayer: Q&A")
+	t.Contains(out, "  2. 0.83  Power of Prayer")
+	t.NotContains(out, "best match")
+}
+
+// with no title in the file name there is nothing to be confident about
+func (t *AudioTestSuite) TestChoice_NoConfidenceWithoutATitle() {
+	ambiguous := t.newAmbiguity()
+	out := captureStdout(t.T(), func() {
+		t.withStdin("\n", func() {
+			promptUserForMessageChoice(ambiguous, untitledVideo)
+		})
+	})
+
+	t.Contains(out, "  1. Power of Prayer")
+	t.NotRegexp(`\d\.\d\d  `, out)
+}
+
+// captureStdout runs fn with os.Stdout replaced by a pipe, and returns what it wrote.
+// A pipe is not a terminal, so anything coloured comes out plain.
+func captureStdout(t *testing.T, fn func()) string {
+	original := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	os.Stdout = writer
+	done := make(chan string)
+	go func() {
+		var buf bytes.Buffer
+		buf.ReadFrom(reader)
+		done <- buf.String()
+	}()
+
+	defer func() { os.Stdout = original }()
+	fn()
+	writer.Close()
+	return <-done
+}

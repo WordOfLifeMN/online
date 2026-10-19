@@ -42,9 +42,25 @@ func ToJSON(data any) string {
 var matchNoise = regexp.MustCompile(`[^a-z0-9]+`)
 
 // NormalizeForMatch reduces a title to the part worth comparing: lower case, no
-// punctuation, single spaces. Applied to both sides so neither is penalised for a
-// house style the other does not share.
+// articles, no punctuation, single spaces. Applied to both sides so neither is
+// penalised for a house style the other does not share.
+//
+// Articles go because they come and go between the sheet and a file name - "The
+// Importance of Voting" is saved as "Importance of Voting" - without changing which
+// message is meant. They are dropped as whole words before punctuation is flattened,
+// so the "A" in "Q&A" is not mistaken for one.
 func NormalizeForMatch(title string) string {
-	title = matchNoise.ReplaceAllString(strings.ToLower(title), " ")
+	words := strings.Fields(strings.ToLower(title))
+	kept := words[:0]
+	for _, word := range words {
+		if !matchArticles[matchNoise.ReplaceAllString(word, "")] {
+			kept = append(kept, word)
+		}
+	}
+
+	title = matchNoise.ReplaceAllString(strings.Join(kept, " "), " ")
 	return strings.TrimSpace(strings.Join(strings.Fields(title), " "))
 }
+
+// matchArticles are the words NormalizeForMatch leaves out
+var matchArticles = map[string]bool{"the": true, "a": true, "an": true}

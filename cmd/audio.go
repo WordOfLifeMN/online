@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
@@ -433,12 +435,12 @@ func extractAndTranscribe(info *MessageInfo) error {
 // The title in the file name is the one thing that distinguishes two videos recorded
 // on the same date, and until now it was the one thing the lookup ignored. It is still
 // not trusted to decide alone: the two sides disagree about leading articles,
-// abbreviations and punctuation, so edit distance orders the list and preselects a
-// default while the operator still sees every candidate.
+// abbreviations and punctuation, so matchConfidence orders the list and preselects a
+// default while the operator still sees every candidate, with its confidence.
 //
-// "Clear" means strictly better than the runner up. On a tie there is no default and
-// nothing is marked, because a best-match arrow that is only a coin toss is worse than
-// no arrow - it invites a confirming keystroke it has not earned.
+// "Clear" means strictly better than the runner up. On a tie there is no default,
+// because a default that is only a coin toss invites a confirming keystroke it has not
+// earned.
 func rankCandidatesByFileName(
 	videoPath string,
 	candidates []catalog.CatalogMessage,
@@ -447,15 +449,14 @@ func rankCandidatesByFileName(
 }
 
 // rankCandidatesByTitle orders candidates by how closely each spreadsheet name
-// resembles a title, closest first, and reports whether the winner is a clear one. An
-// empty title offers no opinion: the candidates keep their order and there is no
-// winner.
+// resembles a title - by matchConfidence, highest first - and reports whether the
+// winner is a clear one. An empty title offers no opinion: the candidates keep their
+// order and there is no winner.
 func rankCandidatesByTitle(
 	title string,
 	candidates []catalog.CatalogMessage,
 ) ([]catalog.CatalogMessage, bool) {
-	target := util.NormalizeForMatch(title)
-	if target == "" {
+	if util.NormalizeForMatch(title) == "" {
 		// nothing to compare against, so there is no opinion to offer
 		return slices.Clone(candidates), false
 	}
@@ -463,21 +464,21 @@ func rankCandidatesByTitle(
 	// scored rather than a map keyed by name, because two rows on one date can share a
 	// name - a message and its second service, say
 	type scored struct {
-		msg      catalog.CatalogMessage
-		distance int
+		msg        catalog.CatalogMessage
+		confidence float64
 	}
 
 	ranked := make([]scored, len(candidates))
 	for index := range candidates {
 		ranked[index] = scored{
-			msg:      candidates[index],
-			distance: levenshtein.ComputeDistance(target, util.NormalizeForMatch(candidates[index].Name)),
+			msg:        candidates[index],
+			confidence: matchConfidence(title, candidates[index].Name),
 		}
 	}
 
-	// stable, so equally distant candidates keep their spreadsheet order
+	// stable, so equally confident candidates keep their spreadsheet order
 	slices.SortStableFunc(ranked, func(a, b scored) int {
-		return a.distance - b.distance
+		return cmp.Compare(b.confidence, a.confidence)
 	})
 
 	out := make([]catalog.CatalogMessage, len(ranked))
@@ -485,7 +486,46 @@ func rankCandidatesByTitle(
 		out[index] = ranked[index].msg
 	}
 
-	return out, len(ranked) > 1 && ranked[0].distance < ranked[1].distance
+	return out, len(ranked) > 1 && ranked[0].confidence > ranked[1].confidence
+}
+
+// matchConfidence measures how closely a spreadsheet name matches a title, from 1.0
+// for the same title once case, punctuation and articles are set aside, down to 0.0
+// for nothing in common: one minus the edit distance between the two, as a share of
+// the longer one.
+//
+// As a share rather than a count, so that two characters adrift in a long title count
+// for less than the same two in a short one. It is shown beside each row while it is
+// judged whether a clear winner could be picked without asking.
+func matchConfidence(title, name string) float64 {
+	a, b := util.NormalizeForMatch(title), util.NormalizeForMatch(name)
+
+	longest := max(utf8.RuneCountInString(a), utf8.RuneCountInString(b))
+	if longest == 0 {
+		return 0
+	}
+
+	return 1 - float64(levenshtein.ComputeDistance(a, b))/float64(longest)
+}
+
+// the confidence colours. The first threshold a confidence reaches wins.
+const (
+	confidenceHigh   = 0.8 // green
+	confidenceMedium = 0.4 // yellow; below this, red
+)
+
+// formatConfidence renders a confidence to two places, coloured by how much it can be
+// trusted
+func formatConfidence(confidence float64) string {
+	text := fmt.Sprintf("%.2f", confidence)
+	switch {
+	case confidence >= confidenceHigh:
+		return box.Green(os.Stdout, text)
+	case confidence >= confidenceMedium:
+		return box.Yellow(os.Stdout, text)
+	default:
+		return box.Red(os.Stdout, text)
+	}
 }
 
 // promptUserForMessageChoice asks which of several equally-matching spreadsheet rows
@@ -502,9 +542,10 @@ func promptUserForMessageChoice(
 }
 
 // promptUserForChoice asks which of several spreadsheet rows describes a video, under
-// a heading that says why there are several. The rows are ranked against title, and
-// the best match is marked and offered as the default when it is a clear one. Returns
-// nil if the operator declines to choose.
+// a heading that says why there are several. The rows are ranked against title, each
+// shown with its match confidence, and the best is offered as the default when it is a
+// clear one. With no title there is nothing to be confident about, and no confidence
+// is shown. Returns nil if the operator declines to choose.
 func promptUserForChoice(
 	candidates []catalog.CatalogMessage,
 	title string,
@@ -512,14 +553,17 @@ func promptUserForChoice(
 ) *catalog.CatalogMessage {
 	reader := getStdin()
 	candidates, hasDefault := rankCandidatesByTitle(title, candidates)
+	scored := util.NormalizeForMatch(title) != ""
 
 	fmt.Printf("\n%s\n", heading)
 	for index := range candidates {
-		fmt.Printf("  %d. %s", index+1, candidates[index].DescribeForChoice())
-		if index == 0 && hasDefault {
-			fmt.Printf("   <- best match")
+		if scored {
+			fmt.Printf("  %d. %s  %s\n", index+1,
+				formatConfidence(matchConfidence(title, candidates[index].Name)),
+				candidates[index].DescribeForChoice())
+		} else {
+			fmt.Printf("  %d. %s\n", index+1, candidates[index].DescribeForChoice())
 		}
-		fmt.Println()
 	}
 
 	// the skip key moves off blank when blank has been given a meaning, so that

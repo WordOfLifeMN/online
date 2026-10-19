@@ -7,10 +7,15 @@ import (
 	"golang.org/x/term"
 )
 
-// yellow is the colour for warnings. It is the plain ANSI yellow rather than a bright
-// or 256-colour one, so it reads on both light and dark terminal themes - the
-// terminal's own palette decides exactly which yellow it is.
-const yellow = "\x1b[33m"
+// The colours are the plain ANSI ones rather than bright or 256-colour ones, so they
+// read on both light and dark terminal themes - the terminal's own palette decides
+// exactly which yellow it is.
+const (
+	// yellow is the colour for warnings
+	yellow = "\x1b[33m"
+	green  = "\x1b[32m"
+	red    = "\x1b[31m"
+)
 
 // ColorEnabled reports whether colour sequences written to w will be drawn as colour.
 // Colour is only for a person at a terminal: output that is piped, redirected to a
@@ -39,8 +44,23 @@ func ColorEnabled(w io.Writer) bool {
 //
 //	fmt.Println(box.Yellow(os.Stdout, "WARNING: ..."))
 func Yellow(w io.Writer, s string) string {
+	return paintFor(w, yellow, s)
+}
+
+// Green returns s in green when w draws colour, and s unchanged when it does not
+func Green(w io.Writer, s string) string {
+	return paintFor(w, green, s)
+}
+
+// Red returns s in red when w draws colour, and s unchanged when it does not
+func Red(w io.Writer, s string) string {
+	return paintFor(w, red, s)
+}
+
+// paintFor wraps s in color when w draws colour. An empty s has nothing to colour.
+func paintFor(w io.Writer, color, s string) string {
 	if s == "" || !ColorEnabled(w) {
 		return s
 	}
-	return yellow + s + reset
+	return color + s + reset
 }
