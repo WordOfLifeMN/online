@@ -15,12 +15,19 @@
 // ordinary punctuation such as curly quotes and bullets, but not for characters a
 // terminal draws double width - emoji, CJK - which push the right border out of line.
 // Keep those out of bordered text.
+//
+// Colour and style sequences (ESC [ ... m) take up no room on screen, so they are not
+// counted, and bordered text may carry them. A bordered line holding one is reset
+// before the padding, so the colour never bleeds into the border - which also means a
+// colour does not carry on to the next line when text wraps. Colour a word or a short
+// phrase, not a run of text that may wrap.
 package box
 
 import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -39,6 +46,15 @@ const (
 	MinWidth = 40
 	MaxWidth = 256
 )
+
+// sgr matches a terminal colour or style sequence - ESC [ params m - such as
+// "\x1b[31m" for red, "\x1b[1;31m" for bold red, "\x1b[38;5;196m" for one of 256
+// colours, or "\x1b[0m" and "\x1b[m" for a reset. Their lengths vary, so they are
+// matched rather than counted.
+var sgr = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+// reset turns colour and style back off
+const reset = "\x1b[0m"
 
 // minWidth leaves room for the borders, their padding, and one character of text. It
 // bounds an explicit width, which is not held to MinWidth.
@@ -142,7 +158,7 @@ func (b *Box) Linef(format string, a ...any) {
 // own separator: Labeled("Channel : ", "WOL"). When the value wraps, continuation lines
 // are indented to line up under the start of the value.
 func (b *Box) Labeled(label, value string) {
-	indent := utf8.RuneCountInString(label)
+	indent := visibleWidth(label)
 	if indent >= b.inner() {
 		// no room left beside the label for the value, so give up on aligning it
 		b.Line(label + value)
@@ -169,8 +185,13 @@ func (b *Box) inner() int {
 	return b.width - 4
 }
 
-// bordered writes one line of text that is known to fit, padded to the right border
+// bordered writes one line of text that is known to fit, padded to the right border.
+// Text holding a colour is reset before the padding, so that neither the padding nor
+// the border is drawn in it.
 func (b *Box) bordered(text string) {
+	if sgr.MatchString(text) {
+		text += reset
+	}
 	b.writeln("│ " + pad(text, b.inner()) + " │")
 }
 
@@ -189,24 +210,58 @@ func (b *Box) rule(left, title, right string) string {
 
 	// "─ " before the title, " ─" after it at the least
 	room := span - 4
-	if utf8.RuneCountInString(title) > room {
-		title = string([]rune(title)[:max(room-1, 0)]) + "…"
+	if visibleWidth(title) > room {
+		// cut without its colours, which a cut could leave switched on along the rule
+		title = string([]rune(sgr.ReplaceAllString(title, ""))[:max(room-1, 0)]) + "…"
+	} else if sgr.MatchString(title) {
+		title += reset
 	}
 
-	tail := span - 3 - utf8.RuneCountInString(title)
+	tail := span - 3 - visibleWidth(title)
 	return left + "─ " + title + " " + strings.Repeat("─", tail) + right
 }
 
-// pad fills s with spaces out to width runes
+// visibleWidth is the number of runes a terminal draws for s: its colour sequences
+// take up no room, so they are not counted
+func visibleWidth(s string) int {
+	if !strings.Contains(s, "\x1b") {
+		return utf8.RuneCountInString(s)
+	}
+	return utf8.RuneCountInString(sgr.ReplaceAllString(s, ""))
+}
+
+// splitVisible cuts s after n visible runes. A colour sequence is never cut in two:
+// those up to and immediately after the cut stay with the head, so a reset that ends
+// the head's colour stays with it.
+func splitVisible(s string, n int) (string, string) {
+	count, i := 0, 0
+	for i < len(s) {
+		if s[i] == '\x1b' {
+			if loc := sgr.FindStringIndex(s[i:]); loc != nil && loc[0] == 0 {
+				i += loc[1]
+				continue
+			}
+		}
+		if count == n {
+			break
+		}
+		_, size := utf8.DecodeRuneInString(s[i:])
+		i += size
+		count++
+	}
+	return s[:i], s[i:]
+}
+
+// pad fills s with spaces out to width visible runes
 func pad(s string, width int) string {
-	if n := utf8.RuneCountInString(s); n < width {
+	if n := visibleWidth(s); n < width {
 		return s + strings.Repeat(" ", width-n)
 	}
 	return s
 }
 
-// wrap breaks text into lines no wider than width runes. Each "\n" starts a new line,
-// so an empty paragraph becomes an empty line.
+// wrap breaks text into lines no wider than width visible runes. Each "\n" starts a
+// new line, so an empty paragraph becomes an empty line.
 //
 // A paragraph that fits is left exactly as it is, so spacing used for alignment - a
 // right-aligned column, "Thumb   :" lined up under "Channel :" - survives. One that
@@ -217,39 +272,49 @@ func wrap(text string, width int) []string {
 	var lines []string
 
 	for _, paragraph := range strings.Split(text, "\n") {
-		if utf8.RuneCountInString(paragraph) <= width {
+		if visibleWidth(paragraph) <= width {
 			lines = append(lines, paragraph)
 			continue
 		}
 
-		var line []rune
+		// line is the text so far, and lineWidth how much of it is visible. They
+		// differ by the colour sequences, which take up no room.
+		var line string
+		var lineWidth int
 
 		for _, word := range strings.Fields(paragraph) {
-			runes := []rune(word)
+			wordWidth := visibleWidth(word)
 
 			// start a new line when this word will not fit after a space
-			if len(line) > 0 && len(line)+1+len(runes) > width {
-				lines = append(lines, string(line))
-				line = nil
+			if lineWidth > 0 && lineWidth+1+wordWidth > width {
+				lines = append(lines, line)
+				line, lineWidth = "", 0
 			}
 
 			// a word wider than a whole line is broken wherever it hits the edge
-			for len(runes) > width {
-				if len(line) > 0 {
-					lines = append(lines, string(line))
-					line = nil
+			for wordWidth > width {
+				if lineWidth > 0 {
+					lines = append(lines, line)
+				} else {
+					// nothing visible yet, but keep any colour it switched on
+					word = line + word
 				}
-				lines = append(lines, string(runes[:width]))
-				runes = runes[width:]
+				line, lineWidth = "", 0
+
+				head, tail := splitVisible(word, width)
+				lines = append(lines, head)
+				word, wordWidth = tail, wordWidth-width
 			}
 
-			if len(line) > 0 {
-				line = append(line, ' ')
+			if lineWidth > 0 {
+				line += " "
+				lineWidth++
 			}
-			line = append(line, runes...)
+			line += word
+			lineWidth += wordWidth
 		}
 
-		lines = append(lines, string(line))
+		lines = append(lines, line)
 	}
 
 	return lines

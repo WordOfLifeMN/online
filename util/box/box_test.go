@@ -292,3 +292,109 @@ func (t *BoxTestSuite) TestCopyIsExact() {
 
 	t.Equal("╭──────────────────╮\n"+description+"\n╰──────────────────╯\n", buf.String())
 }
+
+// +---------------------------------------------------------------------------
+// | Colour
+// +---------------------------------------------------------------------------
+
+const (
+	red   = "\x1b[31m"
+	green = "\x1b[32m"
+	bold  = "\x1b[1;31m"
+	off   = "\x1b[0m"
+)
+
+// colour sequences take up no room on screen, so a coloured line must still put the
+// right border in the same column as every other line
+func (t *BoxTestSuite) TestColourDoesNotMoveTheRightBorder() {
+	var buf bytes.Buffer
+	b := New(&buf)
+
+	b.Header(green + "Changes" + off)
+	b.Line("now: " + red + "Old Title" + off)
+	b.Line("new: " + green + "New Title" + off + " and " + bold + "more" + "\x1b[m")
+	b.Labeled(red+"Title"+off+" : ", green+strings.Repeat("word ", 40)+off)
+	b.Line(strings.Repeat(red+"red"+off+" "+green+"green"+off+" ", 30))
+	b.Section(red + strings.Repeat("long coloured title ", 10) + off)
+	b.Footer()
+
+	for _, line := range lines(&buf) {
+		t.Equal(DefaultWidth, visibleWidth(line), "line %q", line)
+	}
+}
+
+// the padding and the border are never drawn in the text's colour, even when the text
+// leaves its colour switched on
+func (t *BoxTestSuite) TestColourIsResetBeforeTheBorder() {
+	var buf bytes.Buffer
+	b := NewWidth(&buf, 20)
+
+	b.Line(red + "still red")
+	b.Line("plain")
+
+	out := lines(&buf)
+	t.Equal("│ "+red+"still red"+off+strings.Repeat(" ", 7)+" │", out[0])
+	t.Equal("│ plain"+strings.Repeat(" ", 11)+" │", out[1], "uncoloured text gets no reset")
+}
+
+func (t *BoxTestSuite) TestColouredTitleIsResetBeforeTheRule() {
+	var buf bytes.Buffer
+	b := NewWidth(&buf, 20)
+
+	b.Header(red + "Title")
+
+	t.Equal("╭─ "+red+"Title"+off+" "+strings.Repeat("─", 10)+"╮", lines(&buf)[0])
+}
+
+// a title cut short loses its colour rather than risk cutting it in two
+func (t *BoxTestSuite) TestLongColouredTitleIsCutWithoutColour() {
+	var buf bytes.Buffer
+	b := NewWidth(&buf, 20)
+
+	b.Header(red + strings.Repeat("x", 30) + off)
+
+	line := lines(&buf)[0]
+	t.NotContains(line, "\x1b")
+	t.Equal(20, utf8.RuneCountInString(line))
+}
+
+// wrapping counts only what is visible, so coloured words wrap where plain ones would
+func (t *BoxTestSuite) TestColouredTextWrapsLikePlainText() {
+	plain := strings.Repeat("alpha beta gamma ", 10)
+	coloured := strings.Repeat(red+"alpha"+off+" beta "+green+"gamma"+off+" ", 10)
+
+	got := wrap(coloured, 30)
+	want := wrap(plain, 30)
+
+	t.Require().Len(got, len(want))
+	for index := range got {
+		t.Equal(want[index], sgr.ReplaceAllString(got[index], ""))
+	}
+}
+
+// a word broken at the edge is broken by what is visible, and never through the
+// middle of a colour sequence
+func (t *BoxTestSuite) TestOverlongColouredWordBreaksBetweenSequences() {
+	word := red + strings.Repeat("ab", 8) + off + green + strings.Repeat("cd", 8) + off
+
+	got := wrap(word, 10)
+
+	t.Require().Len(got, 4)
+	for _, line := range got[:3] {
+		t.Equal(10, visibleWidth(line), "line %q", line)
+	}
+	t.Equal(2, visibleWidth(got[3]))
+	t.Equal(word, strings.Join(got, ""), "every sequence survives, whole")
+	for _, line := range got {
+		t.NotRegexp(`\x1b(\[[0-9;]*)?$`, line, "no sequence cut off at the end of %q", line)
+	}
+}
+
+func (t *BoxTestSuite) TestVisibleWidth() {
+	t.Equal(0, visibleWidth(""))
+	t.Equal(3, visibleWidth("“a”"))
+	t.Equal(3, visibleWidth(red+"red"+off))
+	t.Equal(4, visibleWidth(bold+"bold"+"\x1b[m"))
+	t.Equal(3, visibleWidth("\x1b[38;5;196mred\x1b[0m"))
+	t.Equal(3, visibleWidth("\x1b[38;2;255;0;0mred\x1b[0m"))
+}
