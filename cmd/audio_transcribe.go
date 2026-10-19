@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/WordOfLifeMN/online/util"
+	"github.com/WordOfLifeMN/online/util/box"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -284,9 +285,9 @@ func preserveTranscript(scratchPath, videoPath string) string {
 	}
 
 	if err := util.CopyFile(scratchPath, preserved); err != nil {
-		fmt.Printf("WARNING: could not save the transcript beside the video: %s\n", err)
-		fmt.Printf("         using the copy in the scratch directory, which is swept after %s\n",
-			scratchRetention)
+		fmt.Println(box.Yellow(os.Stdout, "WARNING: could not save the transcript beside the video: "+err.Error()))
+		fmt.Println(box.Yellow(os.Stdout, fmt.Sprintf(
+			"         using the copy in the scratch directory, which is swept after %s", scratchRetention)))
 		return scratchPath
 	}
 

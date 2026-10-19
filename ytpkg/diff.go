@@ -234,8 +234,10 @@ func PrintChanges(b *box.Box, changes []Change) {
 	b.Copy(DescriptionDiff(description.Now, description.New))
 
 	if description.Destructive {
-		b.Section("WARNING")
-		b.Line("This removes YouTube description text that is not in the sheet:")
+		// the lost lines below stay plain: they are copy lines, meant to be selected
+		// and pasted back into the sheet
+		b.WarningSection("WARNING")
+		b.WarningLine("This removes YouTube description text that is not in the sheet:")
 		b.Copy(strings.Join(LostDescriptionLines(description.Now, description.New), "\n"))
 	}
 }

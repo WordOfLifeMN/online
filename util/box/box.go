@@ -68,6 +68,9 @@ const minWidth = 5
 type Box struct {
 	w     io.Writer
 	width int
+
+	// whether the warning styles are drawn in colour - see ColorEnabled
+	color bool
 }
 
 // New returns a box as wide as the terminal it writes to - see Width. The width is
@@ -80,7 +83,7 @@ func New(w io.Writer) *Box {
 // NewWidth returns a box of the given full width, borders included. The width is not
 // held to MinWidth and MaxWidth, which bound only a measured width.
 func NewWidth(w io.Writer, width int) *Box {
-	return &Box{w: w, width: max(width, minWidth)}
+	return &Box{w: w, width: max(width, minWidth), color: ColorEnabled(w)}
 }
 
 // Width is the box width for output to w, from the first of these that answers:
@@ -158,20 +161,56 @@ func (b *Box) Linef(format string, a ...any) {
 // own separator: Labeled("Channel : ", "WOL"). When the value wraps, continuation lines
 // are indented to line up under the start of the value.
 func (b *Box) Labeled(label, value string) {
+	b.labeled(label, value, "")
+}
+
+// WarningSection writes a divider like Section, with the title in the warning colour
+func (b *Box) WarningSection(title string) {
+	b.Section(b.paint(yellow, title))
+}
+
+// WarningLine writes text like Line, in the warning colour. Each wrapped line is
+// coloured separately, since a colour does not carry from one bordered line to the
+// next.
+func (b *Box) WarningLine(text string) {
+	for _, line := range wrap(text, b.inner()) {
+		b.bordered(b.paint(yellow, line))
+	}
+}
+
+// WarningLabeled writes a label and value like Labeled, in the warning colour
+func (b *Box) WarningLabeled(label, value string) {
+	b.labeled(label, value, yellow)
+}
+
+// labeled is Labeled with each line drawn in color, or plain when color is ""
+func (b *Box) labeled(label, value, color string) {
 	indent := visibleWidth(label)
 	if indent >= b.inner() {
 		// no room left beside the label for the value, so give up on aligning it
-		b.Line(label + value)
+		for _, line := range wrap(label+value, b.inner()) {
+			b.bordered(b.paint(color, line))
+		}
 		return
 	}
 
 	for index, line := range wrap(value, b.inner()-indent) {
 		if index == 0 {
-			b.bordered(label + line)
+			b.bordered(b.paint(color, label+line))
 		} else {
-			b.bordered(strings.Repeat(" ", indent) + line)
+			b.bordered(strings.Repeat(" ", indent) + b.paint(color, line))
 		}
 	}
+}
+
+// paint wraps s in color when this box draws colour. It is left plain when the box
+// does not, when color is "" (no colour asked for), and when s is empty, which has
+// nothing to colour.
+func (b *Box) paint(color, s string) string {
+	if !b.color || color == "" || s == "" {
+		return s
+	}
+	return color + s + reset
 }
 
 // Copy writes text bare - no border, no wrapping, no padding - exactly as given,
@@ -189,7 +228,7 @@ func (b *Box) inner() int {
 // Text holding a colour is reset before the padding, so that neither the padding nor
 // the border is drawn in it.
 func (b *Box) bordered(text string) {
-	if sgr.MatchString(text) {
+	if sgr.MatchString(text) && !strings.HasSuffix(text, reset) {
 		text += reset
 	}
 	b.writeln("│ " + pad(text, b.inner()) + " │")
@@ -213,7 +252,7 @@ func (b *Box) rule(left, title, right string) string {
 	if visibleWidth(title) > room {
 		// cut without its colours, which a cut could leave switched on along the rule
 		title = string([]rune(sgr.ReplaceAllString(title, ""))[:max(room-1, 0)]) + "…"
-	} else if sgr.MatchString(title) {
+	} else if sgr.MatchString(title) && !strings.HasSuffix(title, reset) {
 		title += reset
 	}
 

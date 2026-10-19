@@ -399,7 +399,7 @@ func runPublishSteps(
 	}
 	// recorded before anything else can fail, so a re-run cannot upload it again
 	if err := record.add(recordPath, info.VideoPath, id, pkg.Title); err != nil {
-		fmt.Fprintf(p, "  WARNING: could not record the upload: %s\n", err)
+		fmt.Fprintf(p, "  %s\n", box.Yellow(p.w, "WARNING: could not record the upload: "+err.Error()))
 	}
 	run.recordTracks(id, pkg)
 	p.finish("done  " + formatDuration(time.Since(started)))

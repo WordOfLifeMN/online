@@ -516,12 +516,12 @@ func printSummaryProblems(b *box.Box, info *MessageInfo) {
 		return
 	}
 
-	b.Section("Summary check")
-	b.Line("The generated summary breaks the rules for new descriptions:")
+	b.WarningSection("Summary check")
+	b.WarningLine("The generated summary breaks the rules for new descriptions:")
 	for _, problem := range info.SummaryProblems {
-		b.Labeled("• ", problem)
+		b.WarningLabeled("• ", problem)
 	}
-	b.Line("Edit it before pasting it anywhere, or run the message again for another.")
+	b.WarningLine("Edit it before pasting it anywhere, or run the message again for another.")
 }
 
 // printRiskNotes writes the advisory platform-risk notes as a section of their own,
@@ -535,7 +535,9 @@ func printRiskNotes(b *box.Box, info *MessageInfo) {
 		return
 	}
 
-	b.Section("Platform risk notes (advisory - not for upload)")
+	// only the title is coloured: the notes are advisory, and a whole section of
+	// yellow would claim more alarm than they carry
+	b.WarningSection("Platform risk notes (advisory - not for upload)")
 	if len(info.RiskNotes) == 0 {
 		b.Line("Nothing flagged.")
 		return

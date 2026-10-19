@@ -398,3 +398,57 @@ func (t *BoxTestSuite) TestVisibleWidth() {
 	t.Equal(3, visibleWidth("\x1b[38;5;196mred\x1b[0m"))
 	t.Equal(3, visibleWidth("\x1b[38;2;255;0;0mred\x1b[0m"))
 }
+
+// +---------------------------------------------------------------------------
+// | Warnings
+// +---------------------------------------------------------------------------
+
+// drawWarnings writes one of each warning style to a box with colour forced on or off
+func drawWarnings(color bool) []string {
+	var buf bytes.Buffer
+	b := NewWidth(&buf, 40)
+	b.color = color
+
+	b.WarningSection("WARNING")
+	b.WarningLine("This removes YouTube description text that is not in the sheet")
+	b.WarningLabeled("• ", "it is 80 words long; the limit is 65, so it should be shortened")
+	b.Footer()
+
+	return lines(&buf)
+}
+
+// output that is not a terminal - a test's buffer, a pipe, a file - gets no escape codes
+func (t *BoxTestSuite) TestWarnings_PlainWhenNotATerminal() {
+	var buf bytes.Buffer
+	t.False(NewWidth(&buf, 40).color)
+	t.Equal("plain", Yellow(&buf, "plain"))
+
+	for _, line := range drawWarnings(false) {
+		t.NotContains(line, "\x1b", "line %q", line)
+	}
+}
+
+func (t *BoxTestSuite) TestWarnings_NoColorTurnsColourOff() {
+	t.T().Setenv("NO_COLOR", "1")
+	t.False(ColorEnabled(os.Stdout))
+	t.Equal("plain", Yellow(os.Stdout, "plain"))
+}
+
+// every warning line is yellow, wrapped lines included, and still full width
+func (t *BoxTestSuite) TestWarnings_YellowAndFullWidth() {
+	out := drawWarnings(true)
+
+	t.Equal("├─ "+yellow+"WARNING"+reset+" "+strings.Repeat("─", 28)+"┤", out[0])
+	for _, line := range out[1 : len(out)-1] {
+		// coloured, and reset once, before the padding and the border
+		t.Contains(line, yellow, "line %q", line)
+		t.Equal(1, strings.Count(line, reset), "line %q", line)
+		t.Regexp(`\x1b\[0m *│$`, line)
+	}
+	for _, line := range out {
+		t.Equal(40, visibleWidth(line), "line %q", line)
+	}
+
+	// the labelled value's continuation is indented outside the colour, under the value
+	t.True(strings.HasPrefix(out[len(out)-2], "│   "+yellow), "line %q", out[len(out)-2])
+}

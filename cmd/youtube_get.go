@@ -221,8 +221,8 @@ func printLiveVideo(w io.Writer, video *ytpkg.Message, channelID string, playlis
 	b.Header("Video " + video.ID)
 	video.PrintLive(b)
 	if playlistErr != nil {
-		b.Section("WARNING")
-		b.Labeled("Could not look up playlists: ", playlistErr.Error())
+		b.WarningSection("WARNING")
+		b.WarningLabeled("Could not look up playlists: ", playlistErr.Error())
 	}
 	printOtherChannel(b, video.ChannelID, channelID)
 	b.Footer()

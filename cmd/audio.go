@@ -226,12 +226,12 @@ func readCatalogForLookup(ctx context.Context) *catalog.Catalog {
 
 	cat, err := readOnlineContentFromInput(ctx)
 	if err != nil {
-		fmt.Printf("WARNING: could not read the spreadsheet: %s\n", err)
-		fmt.Printf("         continuing without it - no upload packet will be assembled\n")
+		fmt.Println(box.Yellow(os.Stdout, "WARNING: could not read the spreadsheet: "+err.Error()))
+		fmt.Println(box.Yellow(os.Stdout, "         continuing without it - no upload packet will be assembled"))
 		return nil
 	}
 	if err := cat.Initialize(); err != nil {
-		fmt.Printf("WARNING: could not initialize the catalog: %s\n", err)
+		fmt.Println(box.Yellow(os.Stdout, "WARNING: could not initialize the catalog: "+err.Error()))
 		return nil
 	}
 	return cat
