@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -66,7 +67,12 @@ video, the transcript kept beside it is used, falling back to the scratch direct
 Given an audio file, the transcript is looked for in the scratch directory, where
 'audio transcribe' writes it.
 
-The entire transcript is sent for analysis.
+The speaker is found as 'audio' finds it: --speaker if given, else the spreadsheet
+row for the date in the file name, choosing between rows when several share that
+date, else by asking.
+
+The entire transcript is sent for analysis. The result is printed as a box, beside
+the description the sheet has now; --json prints everything as JSON instead.
 
 Requires Anthropic credentials: either ANTHROPIC_API_KEY in the environment or an
 'ant auth login' profile.`,
@@ -77,6 +83,7 @@ func init() {
 	audioCmd.AddCommand(audioSummarizeCmd)
 
 	audioSummarizeCmd.Args = cobra.MaximumNArgs(1)
+	audioSummarizeCmd.Flags().Bool("json", false, "Print the result as JSON instead of a box")
 
 	audioCmd.PersistentFlags().Bool("risk-notes", false,
 		"Include advisory platform-risk notes (on by default for Faith & Freedom)")
@@ -98,11 +105,16 @@ func xscriptSummarize(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// the file as given. every form shares the video's name, and so its date and title,
+	// which is all the spreadsheet lookup needs
+	inputPath := xscriptPath
+	isVideo := strings.EqualFold(filepath.Ext(inputPath), ".mp4")
+
 	// resolve a video or audio file to its transcript. for a video that is the one kept
 	// beside it, else whatever is still in scratch. reading the scratch copy here is
 	// harmless where reusing it in 'audio' is not: this never transcribes, so it cannot
 	// stand in the way of a transcript being regenerated.
-	if strings.EqualFold(filepath.Ext(xscriptPath), ".mp4") {
+	if isVideo {
 		videoPath := xscriptPath
 		xscriptPath = findExistingTranscript(videoPath)
 		if xscriptPath == "" {
@@ -122,25 +134,74 @@ func xscriptSummarize(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("must be a file, not a directory: %s", xscriptPath)
 	}
 
-	// this subcommand works from a transcript alone, with no spreadsheet lookup, so
-	// there is nobody to ask but the operator
-	speaker := viper.GetString("speaker")
-	if speaker == "" {
-		speaker = PromptUserForSpeaker()
+	// the speaker is found as 'audio' finds it: --speaker, else the spreadsheet row for
+	// the file's date - choosing between rows when several share it - else ask. With
+	// --speaker given the sheet has nothing to add, so it is not read.
+	var info *MessageInfo
+	if viper.GetString("speaker") != "" {
+		info = &MessageInfo{SpeakerName: viper.GetString("speaker")}
+	} else {
+		info = newMessageInfo(inputPath, readCatalogForLookup(cmd.Context()))
 	}
 
-	info := &MessageInfo{
-		TranscriptPath: xscriptPath,
-		SpeakerName:    speaker,
+	// newMessageInfo records the file it looked up as the video. Keep that only when it
+	// is one, so the output does not name a transcript as the video.
+	info.VideoPath = ""
+	if isVideo {
+		info.VideoPath = inputPath
 	}
+	info.TranscriptPath = xscriptPath
+
 	var err error
 	if info, err = generateMessageSummary(info); err != nil {
 		return err
 	}
 
-	fmt.Printf("\n\n%s\n", util.ToJSON(info))
+	if asJSON, _ := cmd.Flags().GetBool("json"); asJSON {
+		data, err := json.MarshalIndent(info, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Printf("\n%s\n", data)
+		return nil
+	}
 
+	fmt.Println()
+	printSummaryInfo(os.Stdout, info)
 	return nil
+}
+
+// printSummaryInfo writes the result of 'audio summarize' as one closed box: where the
+// summary came from, the title and description to paste, and the sheet's current
+// description to compare them with. The title and description are copy lines, bare
+// for selecting, as in the 'audio' box; the sheet's description is bordered, because
+// it is there to be read rather than pasted.
+func printSummaryInfo(w io.Writer, info *MessageInfo) {
+	b := box.New(w)
+
+	b.Header("Summary")
+	b.Labeled("Transcript : ", filepath.Base(info.TranscriptPath))
+	if info.VideoPath != "" {
+		b.Labeled("Video file : ", filepath.Base(info.VideoPath))
+	}
+	b.Labeled("Speaker    : ", info.SpeakerName)
+	if info.Message != nil {
+		b.Labeled("Spreadsheet: ", info.Message.DescribeForChoice())
+	}
+
+	b.Section("Title")
+	b.Copy(info.Title)
+	b.Section("Description")
+	b.Copy(info.Summary)
+
+	if info.Message != nil && info.Message.Description != "" {
+		b.Section("Description in the sheet now")
+		b.Line(info.Message.Description)
+	}
+
+	printSummaryProblems(b, info)
+	printRiskNotes(b, info)
+	b.Footer()
 }
 
 // anthropicClientOptions supplies the API key to the SDK client.

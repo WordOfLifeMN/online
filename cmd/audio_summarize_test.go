@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util/box"
 	"github.com/stretchr/testify/assert"
 )
@@ -149,4 +150,48 @@ func TestPrintSummaryProblems(t *testing.T) {
 	assert.Contains(t, out, "├─ Summary check ")
 	assert.Contains(t, out, `│ • it does not name "Pastor Mary Peltz" in full `)
 	assert.Contains(t, out, "Edit it before pasting")
+}
+
+func TestPrintSummaryInfo(t *testing.T) {
+	var buf bytes.Buffer
+	printSummaryInfo(&buf, &MessageInfo{
+		TranscriptPath: "C:/Videos/2026-10-04-pm Pay Attention.txt",
+		VideoPath:      "C:/Videos/2026-10-04-pm Pay Attention.mp4",
+		SpeakerName:    "Pastor Mary Peltz",
+		Title:          "Pay Attention to God's Breadcrumbs",
+		Summary:        goodSummary,
+		Message:        &catalog.CatalogMessage{Name: "Pay Attention", Description: "The old, long description."},
+	})
+	out := buf.String()
+
+	assert.Contains(t, out, "╭─ Summary ")
+	assert.Contains(t, out, "│ Transcript : 2026-10-04-pm Pay Attention.txt ")
+	assert.Contains(t, out, "│ Video file : 2026-10-04-pm Pay Attention.mp4 ")
+	assert.Contains(t, out, "│ Speaker    : Pastor Mary Peltz ")
+	assert.Contains(t, out, "│ Spreadsheet: Pay Attention")
+
+	// the title and description are bare copy lines, as in the 'audio' box
+	assert.Contains(t, out, "\nPay Attention to God's Breadcrumbs\n")
+	assert.Contains(t, out, "\n"+goodSummary+"\n")
+
+	assert.Contains(t, out, "├─ Description in the sheet now ")
+	assert.Contains(t, out, "│ The old, long description. ")
+	assert.NotContains(t, out, "Summary check", "a summary with no problems has no check")
+	assert.True(t, strings.HasSuffix(out, "╯\n"), "the box is closed")
+}
+
+// a transcript given directly has no video and may have no row: those lines are left out
+func TestPrintSummaryInfo_TranscriptOnly(t *testing.T) {
+	var buf bytes.Buffer
+	printSummaryInfo(&buf, &MessageInfo{
+		TranscriptPath: "message.text",
+		SpeakerName:    "Pastor Vern Peltz",
+		Title:          "A Title",
+		Summary:        "A summary.",
+	})
+	out := buf.String()
+
+	assert.NotContains(t, out, "Video file")
+	assert.NotContains(t, out, "Spreadsheet")
+	assert.NotContains(t, out, "in the sheet now")
 }
