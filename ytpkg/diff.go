@@ -110,10 +110,14 @@ func IsDestructiveDescription(now, new string) bool {
 }
 
 // editedLineOverlap is the share of a line's words that must survive in a line of the
-// new description for the line to count as edited rather than removed. Deleting a
-// sentence from a three-sentence paragraph keeps about two thirds of it; replacing the
-// paragraph with a different summary keeps far less.
-const editedLineOverlap = 0.6
+// new description for the line to count as edited rather than removed.
+//
+// It was 0.6, which also caught a description regenerated from the same sermon: a new
+// 55-word summary shares well under 60% of the old one's words, so every regenerated
+// description stopped sync with a WARNING. At 0.2 a rewrite about the same message -
+// the same speaker, the same themes - counts as an edit, while a line with nothing in
+// common with the new text, such as "Watch live Sundays at 10", is still a loss.
+const editedLineOverlap = 0.2
 
 // LostDescriptionLines returns the non-blank lines of the current description that are
 // gone from the new one, in order.

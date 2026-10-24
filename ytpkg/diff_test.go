@@ -219,9 +219,36 @@ func (t *DiffTestSuite) TestDestructive_RemovalsStillWarn() {
 		"Join us for a powerful word on hearing God in the everyday.",
 		"Pastor Mary talks about paying attention."))
 
-	// most of a paragraph deleted keeps too little of it to count as an edit
+	// almost all of a paragraph deleted keeps too little of it to count as an edit
 	t.True(IsDestructiveDescription(
-		"One two three four five six seven eight nine ten.", "One two three."))
+		"One two three four five six seven eight nine ten.", "One."))
+}
+
+// a description regenerated from the same sermon is a rewrite, not a loss: it shares
+// the speaker and the themes, if few of the exact words
+func (t *DiffTestSuite) TestDestructive_RegeneratedSummaryIsAnEdit() {
+	old := "Pastor Mary Peltz shares that God interrupted her planned sermon to emphasize " +
+		"paying attention to spiritual cues this week. She illustrates this through street " +
+		"witnessing experiences where noticing people's stories and following divine prompts " +
+		"led to life-changing encounters. Mary encourages believers to see themselves as " +
+		"positioned harvesters ready to respond to God's leading in daily interactions. She " +
+		"explains that paying attention costs time and effort but unlocks the kingdom's " +
+		"advancement. Revival is available now for those who engage with faith."
+	regenerated := "Pastor Mary Peltz teaches that paying attention is a spiritual skill that " +
+		"costs us time and focus. By following spiritual breadcrumbs and expecting God's " +
+		"manifestation, we can participate in revival right now—in our workplaces, " +
+		"neighborhoods, and daily moments. She emphasizes that faith requires action and that " +
+		"we're all called to be harvesters."
+
+	t.False(IsDestructiveDescription(old, regenerated))
+	t.False(IsDestructiveDescription(old+"\n\nNotes\nhttps://x/notes.pdf", regenerated+"\n\nNotes\nhttps://x/notes.pdf"))
+}
+
+// sitting at the threshold counts as an edit; just below it, a loss
+func (t *DiffTestSuite) TestDestructive_Threshold() {
+	ten := "One two three four five six seven eight nine ten."
+	t.False(IsDestructiveDescription(ten, "One two."), "two words in ten is 20%")
+	t.True(IsDestructiveDescription(ten, "One."), "one word in ten is 10%")
 }
 
 func (t *DiffTestSuite) TestDestructiveIsMarkedOnTheChange() {
