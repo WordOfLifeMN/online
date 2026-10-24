@@ -33,7 +33,8 @@ var youtubeCmd = &cobra.Command{
 
 The first use of a channel opens the browser to sign in to YouTube. Choose the
 channel being worked on. The sign-in is kept in ~/.wolm/youtube-token-<channel>.json
-and is not asked for again.
+and is not asked for again until it expires. Run 'online youtube login' to sign in
+again then.
 
 Requires youtube-client-id and youtube-client-secret in the configuration file.`,
 }
