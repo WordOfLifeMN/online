@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
 	"github.com/WordOfLifeMN/online/util/box"
 	"github.com/anthropics/anthropic-sdk-go"
@@ -62,8 +64,10 @@ var audioSummarizeCmd = &cobra.Command{
 	Short: "Summarize the transcription of an audio file",
 	Long: `Takes a transcription of an audio file and produces a suggested title and description.
 
-The input file may be a transcript (.txt or .text), or an .mp3 or .mp4 file. Given a
-video, the transcript kept beside it is used, falling back to the scratch directory.
+The input file may be a transcript (.txt or .text), or an .mp3 or .mp4 file, or a
+folder standing for every .mp4 directly inside it (sub-folders are not searched).
+Given a video, the transcript kept beside it is used, falling back to the scratch
+directory. A video with no transcript is reported and the rest carry on.
 Given an audio file, the transcript is looked for in the scratch directory, where
 'audio transcribe' writes it.
 
@@ -72,7 +76,8 @@ row for the date in the file name, choosing between rows when several share that
 date, else by asking.
 
 The entire transcript is sent for analysis. The result is printed as a box, beside
-the description the sheet has now; --json prints everything as JSON instead.
+the description the sheet has now; --json prints everything as JSON instead - one
+object for a file, a list for a folder.
 
 Requires Anthropic credentials: either ANTHROPIC_API_KEY in the environment or an
 'ant auth login' profile.`,
@@ -93,21 +98,71 @@ func init() {
 func xscriptSummarize(cmd *cobra.Command, args []string) error {
 	initLogging()
 
-	var xscriptPath string
-
-	// get the input file
+	// get the input: one file, or a folder standing for every video directly inside it
+	var arg string
 	if len(args) == 1 {
-		xscriptPath = args[0]
+		arg = args[0]
 	}
-	xscriptPath = PromtUserForInputFile(xscriptPath, ".mp4", ".mp3", ".text", ".txt")
-	if xscriptPath == "" {
+	inputs := getInputFilesOrFolder(arg, ".mp4", ".mp3", ".text", ".txt")
+	if len(inputs) == 0 {
 		fmt.Printf("Aborting")
 		return nil
 	}
 
+	// the spreadsheet is read once for every input, and not at all when --speaker
+	// leaves it nothing to add
+	var cat *catalog.Catalog
+	if viper.GetString("speaker") == "" {
+		cat = readCatalogForLookup(cmd.Context())
+	}
+	asJSON, _ := cmd.Flags().GetBool("json")
+
+	// each message is asked about, summarized and shown before the next, so the
+	// questions about one stay beside its result. A message that fails is reported and
+	// the rest carry on.
+	var infos []*MessageInfo
+	var errs []error
+	for _, input := range inputs {
+		info, err := summarizeOne(input, cat)
+		if err != nil {
+			fmt.Println(box.Yellow(os.Stdout, fmt.Sprintf("ERROR: %s: %s", filepath.Base(input), err)))
+			errs = append(errs, fmt.Errorf("%s: %w", filepath.Base(input), err))
+			continue
+		}
+
+		if asJSON {
+			infos = append(infos, info)
+		} else {
+			fmt.Println()
+			printSummaryInfo(os.Stdout, info)
+		}
+	}
+
+	// one input prints one object, as it always has; a folder prints a list
+	if asJSON && len(infos) > 0 {
+		var data []byte
+		var err error
+		if len(inputs) == 1 {
+			data, err = json.MarshalIndent(infos[0], "", "  ")
+		} else {
+			data, err = json.MarshalIndent(infos, "", "  ")
+		}
+		if err != nil {
+			return err
+		}
+		fmt.Printf("\n%s\n", data)
+	}
+
+	return errors.Join(errs...)
+}
+
+// summarizeOne summarizes one input to 'audio summarize': a video, its audio, or its
+// transcript. cat is the spreadsheet to find the speaker in, or nil when --speaker
+// gives it or the sheet could not be read.
+func summarizeOne(inputPath string, cat *catalog.Catalog) (*MessageInfo, error) {
 	// the file as given. every form shares the video's name, and so its date and title,
 	// which is all the spreadsheet lookup needs
-	inputPath := xscriptPath
+	xscriptPath := inputPath
 	isVideo := strings.EqualFold(filepath.Ext(inputPath), ".mp4")
 
 	// resolve a video or audio file to its transcript. for a video that is the one kept
@@ -121,27 +176,27 @@ func xscriptSummarize(cmd *cobra.Command, args []string) error {
 			xscriptPath = getScratchTranscriptPathFromVideoPath(videoPath)
 		}
 		if !util.IsFile(xscriptPath) {
-			return fmt.Errorf("no transcript found for %s", filepath.Base(videoPath))
+			return nil, fmt.Errorf("no transcript found")
 		}
 	}
 	if strings.EqualFold(filepath.Ext(xscriptPath), ".mp3") {
 		xscriptPath = getTranscribePathFromAudioPath(xscriptPath)
 	}
 	if !util.DoesPathExist(xscriptPath) {
-		return fmt.Errorf("file not found: %s", xscriptPath)
+		return nil, fmt.Errorf("file not found: %s", xscriptPath)
 	}
 	if util.IsDirectory(xscriptPath) {
-		return fmt.Errorf("must be a file, not a directory: %s", xscriptPath)
+		return nil, fmt.Errorf("must be a file, not a directory: %s", xscriptPath)
 	}
 
 	// the speaker is found as 'audio' finds it: --speaker, else the spreadsheet row for
 	// the file's date - choosing between rows when several share it - else ask. With
-	// --speaker given the sheet has nothing to add, so it is not read.
+	// --speaker given the sheet has nothing to add, so it is not consulted.
 	var info *MessageInfo
 	if viper.GetString("speaker") != "" {
 		info = &MessageInfo{SpeakerName: viper.GetString("speaker")}
 	} else {
-		info = newMessageInfo(inputPath, readCatalogForLookup(cmd.Context()))
+		info = newMessageInfo(inputPath, cat)
 	}
 
 	// newMessageInfo records the file it looked up as the video. Keep that only when it
@@ -152,23 +207,7 @@ func xscriptSummarize(cmd *cobra.Command, args []string) error {
 	}
 	info.TranscriptPath = xscriptPath
 
-	var err error
-	if info, err = generateMessageSummary(info); err != nil {
-		return err
-	}
-
-	if asJSON, _ := cmd.Flags().GetBool("json"); asJSON {
-		data, err := json.MarshalIndent(info, "", "  ")
-		if err != nil {
-			return err
-		}
-		fmt.Printf("\n%s\n", data)
-		return nil
-	}
-
-	fmt.Println()
-	printSummaryInfo(os.Stdout, info)
-	return nil
+	return generateMessageSummary(info)
 }
 
 // printSummaryInfo writes the result of 'audio summarize' as one closed box: where the

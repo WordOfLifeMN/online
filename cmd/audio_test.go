@@ -711,6 +711,7 @@ func (t *AudioTestSuite) TestPrintAudioBanner() {
 	words := strings.Join(strings.Fields(strings.Join(text, " ")), " ")
 	t.Equal("Drag an edited video into this window and press Enter. You will be asked "+
 		"about that video before being asked for the next one. "+
+		"Drag a folder to process every video directly inside it. "+
 		"Press Enter on an empty line when there are no more videos.", words)
 }
 
@@ -753,6 +754,101 @@ func (t *AudioTestSuite) TestPromptAcceptsPowerShellDrop() {
 	dropped := "& '" + strings.ReplaceAll(video, "'", "''") + "'\n"
 	t.withStdin(dropped, func() {
 		t.Equal(video, getInputVideo(""))
+	})
+	t.withStdin(dropped, func() {
+		t.Equal([]string{video}, getInputVideos(""))
+	})
+}
+
+// +---------------------------------------------------------------------------
+// | Folders of videos
+// +---------------------------------------------------------------------------
+
+// withSeriesFolder makes a folder like a series folder: videos, the files that sit
+// beside them, and a sub-folder holding a video of its own. Returns the folder.
+func (t *AudioTestSuite) withSeriesFolder() string {
+	dir := t.T().TempDir()
+	for _, name := range []string{
+		"2026-08-02-pm Holy Spirit Guide.mp4",
+		"2026-07-26-pm Generous Heart.MP4",
+		"2026-07-26-pm Generous Heart.mp3",
+		"2026-07-26-pm Generous Heart.txt",
+		"thumb-watchmen.jpeg",
+		filepath.Join("older", "2025-01-26 Walking the Heart of Jesus.mp4"),
+	} {
+		path := filepath.Join(dir, name)
+		t.Require().NoError(os.MkdirAll(filepath.Dir(path), 0o755))
+		t.Require().NoError(os.WriteFile(path, []byte("v"), 0o644))
+	}
+	return dir
+}
+
+// only the .mp4 files directly inside, any case, in name order - and so date order
+func (t *AudioTestSuite) TestVideosInFolder() {
+	dir := t.withSeriesFolder()
+
+	videos, err := videosInFolder(dir)
+
+	t.Require().NoError(err)
+	t.Equal([]string{
+		filepath.Join(dir, "2026-07-26-pm Generous Heart.MP4"),
+		filepath.Join(dir, "2026-08-02-pm Holy Spirit Guide.mp4"),
+	}, videos)
+}
+
+func (t *AudioTestSuite) TestInputVideos_FolderArgument() {
+	dir := t.withSeriesFolder()
+	videos := getInputVideos(dir)
+	t.Len(videos, 2, "sub-folders are not searched")
+}
+
+func (t *AudioTestSuite) TestInputVideos_FolderDraggedIn() {
+	dir := t.withSeriesFolder()
+	t.withStdin("& '"+dir+"'\n", func() {
+		t.Len(getInputVideos(""), 2)
+	})
+}
+
+// a folder with nothing to process is explained and asked for again, as is anything
+// that is neither a video nor a folder
+func (t *AudioTestSuite) TestInputVideos_AsksAgain() {
+	empty := t.T().TempDir()
+	dir := t.withSeriesFolder()
+	notAVideo := filepath.Join(dir, "thumb-watchmen.jpeg")
+	video := filepath.Join(dir, "2026-08-02-pm Holy Spirit Guide.mp4")
+
+	t.withStdin(empty+"\n"+notAVideo+"\n"+video+"\n", func() {
+		t.Equal([]string{video}, getInputVideos(""))
+	})
+}
+
+// 'audio summarize' also takes transcripts and audio, but a folder still means its
+// videos: everything else is named after them
+func (t *AudioTestSuite) TestInputFilesOrFolder_ForSummarize() {
+	dir := t.withSeriesFolder()
+	transcript := filepath.Join(dir, "2026-07-26-pm Generous Heart.txt")
+	exts := []string{".mp4", ".mp3", ".text", ".txt"}
+
+	t.Equal([]string{transcript}, getInputFilesOrFolder(transcript, exts...))
+	t.Equal([]string{
+		filepath.Join(dir, "2026-07-26-pm Generous Heart.MP4"),
+		filepath.Join(dir, "2026-08-02-pm Holy Spirit Guide.mp4"),
+	}, getInputFilesOrFolder(dir, exts...))
+
+	// a type that is not allowed is asked for again
+	thumb := filepath.Join(dir, "thumb-watchmen.jpeg")
+	t.withStdin(transcript+"\n", func() {
+		t.Equal([]string{transcript}, getInputFilesOrFolder(thumb, exts...))
+	})
+}
+
+// an empty line, or stdin closing, means the operator is done
+func (t *AudioTestSuite) TestInputVideos_EmptyLineEnds() {
+	t.withStdin("\n", func() {
+		t.Nil(getInputVideos(""))
+	})
+	t.withStdin("", func() {
+		t.Nil(getInputVideos(""))
 	})
 }
 

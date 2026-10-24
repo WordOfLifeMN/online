@@ -48,6 +48,9 @@ online audio "2026-03-08-v Walking in Faith.mp4"
 Or run `bin/wolm-audio.bat`, which launches the same thing and prompts for the
 video file so it can be dragged into the window.
 
+A folder can be given or dragged in wherever a video can. It stands for every
+`.mp4` directly inside it, in name order; sub-folders are not searched.
+
 The message is matched to a spreadsheet row by **date**, and by nothing else.
 
 Where a date carries several rows - a service usually produces at least a prayer

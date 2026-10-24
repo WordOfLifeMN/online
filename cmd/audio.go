@@ -67,7 +67,8 @@ var audioCmd = &cobra.Command{
 	Short: "Prepare a message for publication",
 	Long: `Process a service message into everything needed to publish it.
 
-Given one or more video files, will do the following for each file:
+Given one or more video files, or folders standing for every .mp4 directly inside
+them (sub-folders are not searched), will do the following for each video:
 1. Extract the audio to a temporary .mp3
 2. Transcribe the audio, keeping the transcript beside the video as a .txt
 3. Send the transcript to Claude for a suggested title and description
@@ -116,10 +117,11 @@ func audio(cmd *cobra.Command, args []string) error {
 	// which answer belongs to which file.
 	var infos []*MessageInfo
 
+	// a folder stands for every video directly inside it, each asked about in turn
 	if len(args) == 0 {
 		for {
-			videoPath := getInputVideo("")
-			if videoPath == "" {
+			videoPaths := getInputVideos("")
+			if len(videoPaths) == 0 {
 				if len(infos) == 0 {
 					// no videos at all
 					fmt.Println("No input files, exiting")
@@ -128,12 +130,20 @@ func audio(cmd *cobra.Command, args []string) error {
 				// user is done entering videos
 				break
 			}
-			infos = append(infos, newMessageInfo(videoPath, cat))
+			for _, videoPath := range videoPaths {
+				infos = append(infos, newMessageInfo(videoPath, cat))
+			}
 		}
 	} else {
-		// validate the video file arguments
+		// validate the video file and folder arguments
 		for _, arg := range args {
-			infos = append(infos, newMessageInfo(getInputVideo(arg), cat))
+			for _, videoPath := range getInputVideos(arg) {
+				infos = append(infos, newMessageInfo(videoPath, cat))
+			}
+		}
+		if len(infos) == 0 {
+			fmt.Println("No input files, exiting")
+			return nil
 		}
 	}
 
@@ -186,6 +196,8 @@ func printAudioBanner(w io.Writer) {
 	b.Header("Prepare messages for YouTube")
 	b.Line("Drag an edited video into this window and press Enter. You will be asked " +
 		"about that video before being asked for the next one.")
+	b.Blank()
+	b.Line("Drag a folder to process every video directly inside it.")
 	b.Blank()
 	b.Line("Press Enter on an empty line when there are no more videos.")
 	b.Footer()
@@ -907,6 +919,96 @@ func getScratchDir() string {
 // If the return string is empty then the user cancelled the operation.
 func getInputVideo(videoPath string) string {
 	return PromtUserForInputFile(videoPath, ".mp4")
+}
+
+// getInputVideos finds the videos to process for 'audio' from one argument or answer:
+// a single .mp4, or a folder, which stands for every .mp4 directly inside it - not in
+// its sub-folders, which usually hold other series, or the old xscript folders. The
+// videos of a folder come in name order, which for dated file names is date order.
+//
+// With videoPath empty, the operator is asked, and may drag in a file or a folder.
+// Anything unusable is explained and asked for again. Returns nil when the operator
+// enters nothing, which means they are done.
+//
+// This is getInputVideo with folders allowed. It is kept apart from
+// PromtUserForInputFile, which the single-file subcommands share, because a folder
+// means nothing to them.
+func getInputVideos(videoPath string) []string {
+	return getInputFilesOrFolder(videoPath, ".mp4")
+}
+
+// getInputFilesOrFolder finds the files to process from one argument or answer: a
+// file with one of the allowed extensions, or a folder, which stands for every .mp4
+// directly inside it. A folder always means its videos, whatever else is allowed: the
+// videos are what each other file - audio, transcript - is named after.
+//
+// With path empty, the operator is asked, and may drag in a file or a folder. Anything
+// unusable is explained and asked for again. Returns nil when the operator enters
+// nothing.
+func getInputFilesOrFolder(path string, allowedExts ...string) []string {
+	reader := getStdin()
+
+	for path := cleanDroppedPath(path); ; path = "" {
+		if path == "" {
+			fmt.Println("Enter path or drag the file or folder to use:")
+			line, err := reader.ReadString('\n')
+			path = cleanDroppedPath(line)
+			if path == "" {
+				// an empty line is the operator saying they are done, and a closed or
+				// unreadable stdin can say nothing more, so either ends the input
+				if err != nil {
+					fmt.Println()
+				}
+				return nil
+			}
+		}
+
+		if util.IsDirectory(path) {
+			videos, err := videosInFolder(path)
+			switch {
+			case err != nil:
+				fmt.Printf("Unable to read the folder %s: %s\nPlease try again\n", path, err)
+			case len(videos) == 0:
+				fmt.Printf("There are no .mp4 files directly in %s\nPlease try again\n", path)
+			default:
+				fmt.Printf("Found %d video(s) in %s\n", len(videos), filepath.Base(path))
+				return videos
+			}
+			continue
+		}
+
+		if !slices.ContainsFunc(allowedExts, func(ext string) bool {
+			return strings.EqualFold(filepath.Ext(path), ext)
+		}) {
+			fmt.Printf("Input must be a %s file, or a folder of videos.\nPlease try again\n",
+				strings.Join(allowedExts, ", "))
+			continue
+		}
+		if !util.IsFile(path) {
+			fmt.Printf("Unable to find file: %s\nPlease try to drag the file into this window\n", path)
+			continue
+		}
+
+		return []string{path}
+	}
+}
+
+// videosInFolder lists the .mp4 files directly in a folder, in name order. Sub-folders
+// are not searched.
+func videosInFolder(dir string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	// ReadDir returns entries sorted by name
+	var videos []string
+	for _, entry := range entries {
+		if entry.Type().IsRegular() && strings.EqualFold(filepath.Ext(entry.Name()), ".mp4") {
+			videos = append(videos, filepath.Join(dir, entry.Name()))
+		}
+	}
+	return videos, nil
 }
 
 // getInputAudio finds an appropriate audio file for processing. The input
