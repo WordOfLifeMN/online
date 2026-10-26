@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -25,6 +26,10 @@ offer to make YouTube match.
 Each reference is a video or a playlist, as for 'youtube get'. A playlist means every
 video in it. Each video is shown with its differences and confirmed in turn.
 
+With no references given, they are asked for. Paste or type any number, separated by
+spaces, tabs or new lines - a column of links copied from the spreadsheet works -
+and finish with an empty line.
+
 Only the title, description, privacy, category, languages, made-for-kids and
 playlist membership are compared. Everything else on YouTube is left as it is. A
 video is added to the playlists its series call for, and never removed from one.
@@ -37,8 +42,9 @@ The spreadsheet is read through a cache that is kept for an hour. Use --refresh
 after editing it.`,
 	Example: `  online youtube sync 01LiNfRzMo8
   online youtube sync https://www.youtube.com/playlist?list=PL...
-  online youtube sync --thumbnail cover.jpg 01LiNfRzMo8`,
-	Args: cobra.MinimumNArgs(1),
+  online youtube sync --thumbnail cover.jpg 01LiNfRzMo8
+  online youtube sync        (asks for them, so a column can be pasted from the sheet)`,
+	Args: cobra.ArbitraryArgs,
 	RunE: youtubeSync,
 }
 
@@ -91,6 +97,37 @@ func newSyncRun(cat *catalog.Catalog, yt *ytclient.Client, channel ytpkg.Channel
 	}
 }
 
+// promptForRefs asks for the videos and playlists to sync and returns every value
+// entered, in order. Values are separated by any whitespace, so all the ways a
+// selection comes out of a spreadsheet work: a column copies as one cell per line, a
+// row as cells separated by tabs. Quotes around a value, which a spreadsheet adds to a
+// cell holding a line break, are dropped.
+//
+// Input ends at an empty line, or when stdin closes. A blank cell in a pasted column
+// is also an empty line, so a selection with gaps in it ends at the first gap: copy a
+// range without blank cells, or paste it a part at a time.
+func promptForRefs(reader *bufio.Reader) []string {
+	fmt.Println("Enter or paste the videos or playlists to sync - IDs or links, separated by")
+	fmt.Println("spaces or one per line. Press Enter on an empty line to finish:")
+
+	var refs []string
+	for {
+		line, err := reader.ReadString('\n')
+		if strings.TrimSpace(line) == "" {
+			return refs
+		}
+		for _, value := range strings.Fields(line) {
+			if value = strings.Trim(value, `"'`); value != "" {
+				refs = append(refs, value)
+			}
+		}
+		if err != nil {
+			// the last line, unterminated, before stdin closed
+			return refs
+		}
+	}
+}
+
 // indexByVideoID maps each YouTube video ID found in the sheet's Video column to the
 // rows that carry it. Several rows can carry one ID - a message and its second service,
 // or a copy-and-paste mistake - so each ID maps to a list.
@@ -113,6 +150,15 @@ func indexByVideoID(cat *catalog.Catalog) map[string][]catalog.CatalogMessage {
 
 func youtubeSync(cmd *cobra.Command, args []string) error {
 	initLogging()
+
+	if len(args) == 0 {
+		args = promptForRefs(getStdin())
+		if len(args) == 0 {
+			fmt.Println("Nothing to sync")
+			return nil
+		}
+		fmt.Printf("Read %d reference(s)\n", len(args))
+	}
 
 	refs, refErr := parseGetRefs(args, false)
 	if len(refs) == 0 {

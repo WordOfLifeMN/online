@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/WordOfLifeMN/online/catalog"
@@ -258,4 +260,33 @@ func TestDropPlaylistSnapshot(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 
 	run.dropPlaylistSnapshot() // already gone is fine
+}
+
+func refsFrom(input string) []string {
+	return promptForRefs(bufio.NewReader(strings.NewReader(input)))
+}
+
+// every way a selection leaves a spreadsheet: a column is a cell per line, with
+// Windows or Unix line endings; a row is cells separated by tabs; typed values are
+// separated by spaces
+func TestPromptForRefs_SpreadsheetPastes(t *testing.T) {
+	want := []string{"https://youtu.be/01LiNfRzMo8", "https://youtu.be/16UKsDSvn3s", "2YsVzfbrtm8"}
+
+	assert.Equal(t, want, refsFrom("https://youtu.be/01LiNfRzMo8\nhttps://youtu.be/16UKsDSvn3s\n2YsVzfbrtm8\n\n"))
+	assert.Equal(t, want, refsFrom("https://youtu.be/01LiNfRzMo8\r\nhttps://youtu.be/16UKsDSvn3s\r\n2YsVzfbrtm8\r\n\r\n"))
+	assert.Equal(t, want, refsFrom("https://youtu.be/01LiNfRzMo8\thttps://youtu.be/16UKsDSvn3s\t2YsVzfbrtm8\n\n"))
+	assert.Equal(t, want, refsFrom("  https://youtu.be/01LiNfRzMo8   https://youtu.be/16UKsDSvn3s\n2YsVzfbrtm8\n\n"))
+
+	// a cell holding a line break is copied in quotes
+	assert.Equal(t, want, refsFrom("\"https://youtu.be/01LiNfRzMo8\"\nhttps://youtu.be/16UKsDSvn3s\n'2YsVzfbrtm8'\n\n"))
+}
+
+// input ends at an empty line - what follows is left for later prompts - or when
+// stdin closes, with or without a final line break
+func TestPromptForRefs_Ending(t *testing.T) {
+	assert.Equal(t, []string{"a", "b"}, refsFrom("a\nb\n\nc\n"))
+	assert.Equal(t, []string{"a", "b"}, refsFrom("a\nb"))
+	assert.Empty(t, refsFrom("\n"))
+	assert.Empty(t, refsFrom(""))
+	assert.Empty(t, refsFrom("   \t \n"), "a line of only whitespace is empty")
 }
