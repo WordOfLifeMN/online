@@ -216,14 +216,12 @@ func newMessageInfo(videoPath string, cat *catalog.Catalog) *MessageInfo {
 	// cannot leave the operator guessing which answer applies to which file
 	fmt.Printf("\n── %s\n", filepath.Base(videoPath))
 
+	// the row found is shown by the lookup, listed with any others on its date, so the
+	// speaker default below is never an unexplained suggestion
 	info.Message, info.Seri, info.PacketError = findMessageForVideo(videoPath, cat)
 	if info.PacketError != nil {
 		log.Printf("No spreadsheet row for %s: %s", filepath.Base(videoPath), info.PacketError)
 		fmt.Printf("   No spreadsheet row: %s\n", info.PacketError)
-	} else {
-		// show the row the answers are coming from, so the speaker default below is
-		// not an unexplained suggestion
-		fmt.Printf("   Spreadsheet: %s\n", info.Message.DescribeForChoice())
 	}
 
 	info.SpeakerName = resolveSpeaker(info.Message)
@@ -286,6 +284,7 @@ func findMessageForVideo(
 		return nil, nil, err
 	}
 
+	printOnlyCandidate(msg, videoPath)
 	return msg, seri, nil
 }
 
@@ -445,10 +444,11 @@ func extractAndTranscribe(info *MessageInfo) error {
 // winner is a clear one.
 //
 // The title in the file name is the one thing that distinguishes two videos recorded
-// on the same date, and until now it was the one thing the lookup ignored. It is still
-// not trusted to decide alone: the two sides disagree about leading articles,
-// abbreviations and punctuation, so matchConfidence orders the list and preselects a
-// default while the operator still sees every candidate, with its confidence.
+// on the same date, and until now it was the one thing the lookup ignored. It decides
+// alone only for a clear winner (see isClearWinner): the two sides disagree about
+// leading articles, abbreviations and punctuation, so otherwise matchConfidence orders
+// the list and preselects a default while the operator still chooses. Either way every
+// candidate is shown, with its confidence.
 //
 // "Clear" means strictly better than the runner up. On a tie there is no default,
 // because a default that is only a coin toss invites a confirming keystroke it has not
@@ -540,6 +540,65 @@ func formatConfidence(confidence float64) string {
 	}
 }
 
+// the bar for choosing a row without asking: the best must match the title closely,
+// and every other row must match it poorly, so that a near miss never wins by default
+const (
+	autoSelectConfidence = 0.9
+	autoSelectRivalBelow = 0.5
+)
+
+// isClearWinner reports whether ranked confidences, highest first, single out the first
+// row so plainly that there is nothing to ask. It needs a rival to beat: a lone row is
+// taken without asking whatever its confidence.
+func isClearWinner(confidences []float64) bool {
+	if len(confidences) < 2 || confidences[0] < autoSelectConfidence {
+		return false
+	}
+	for _, rival := range confidences[1:] {
+		if rival >= autoSelectRivalBelow {
+			return false
+		}
+	}
+	return true
+}
+
+// printCandidates lists spreadsheet rows under a heading, numbered from 1, each with its
+// match confidence when confidences is not nil. The row at selected, when it is not -1,
+// was chosen without asking and is printed in bold.
+func printCandidates(
+	heading string,
+	candidates []catalog.CatalogMessage,
+	confidences []float64,
+	selected int,
+) {
+	fmt.Printf("\n%s\n", heading)
+	for index := range candidates {
+		line := fmt.Sprintf("  %d. %s", index+1, candidates[index].DescribeForChoice())
+		if confidences != nil {
+			line = fmt.Sprintf("  %d. %s  %s", index+1,
+				formatConfidence(confidences[index]), candidates[index].DescribeForChoice())
+		}
+		if index == selected {
+			line = box.Bold(os.Stdout, line)
+		}
+		fmt.Println(line)
+	}
+}
+
+// printOnlyCandidate shows the one row a lookup found, as chosen without asking, so
+// that the operator sees which row every video was matched to
+func printOnlyCandidate(msg *catalog.CatalogMessage, videoPath string) {
+	candidates := []catalog.CatalogMessage{*msg}
+
+	var confidences []float64
+	if title := getTitleFromFileName(videoPath); util.NormalizeForMatch(title) != "" {
+		confidences = []float64{matchConfidence(title, msg.Name)}
+	}
+
+	printCandidates(fmt.Sprintf("Spreadsheet row dated %s:", msg.Date.String()),
+		candidates, confidences, 0)
+}
+
 // promptUserForMessageChoice asks which of several equally-matching spreadsheet rows
 // describes the video being processed. Returns nil if the operator declines to choose.
 func promptUserForMessageChoice(
@@ -555,28 +614,32 @@ func promptUserForMessageChoice(
 
 // promptUserForChoice asks which of several spreadsheet rows describes a video, under
 // a heading that says why there are several. The rows are ranked against title, each
-// shown with its match confidence, and the best is offered as the default when it is a
-// clear one. With no title there is nothing to be confident about, and no confidence
-// is shown. Returns nil if the operator declines to choose.
+// shown with its match confidence. A clear winner (see isClearWinner) is chosen without
+// asking and shown in bold; otherwise the best is offered as the default when it is
+// better than the rest. With no title there is nothing to be confident about, and no
+// confidence is shown. Returns nil if the operator declines to choose.
 func promptUserForChoice(
 	candidates []catalog.CatalogMessage,
 	title string,
 	heading string,
 ) *catalog.CatalogMessage {
-	reader := getStdin()
 	candidates, hasDefault := rankCandidatesByTitle(title, candidates)
-	scored := util.NormalizeForMatch(title) != ""
 
-	fmt.Printf("\n%s\n", heading)
-	for index := range candidates {
-		if scored {
-			fmt.Printf("  %d. %s  %s\n", index+1,
-				formatConfidence(matchConfidence(title, candidates[index].Name)),
-				candidates[index].DescribeForChoice())
-		} else {
-			fmt.Printf("  %d. %s\n", index+1, candidates[index].DescribeForChoice())
+	var confidences []float64
+	if util.NormalizeForMatch(title) != "" {
+		confidences = make([]float64, len(candidates))
+		for index := range candidates {
+			confidences[index] = matchConfidence(title, candidates[index].Name)
 		}
 	}
+
+	if isClearWinner(confidences) {
+		printCandidates(heading, candidates, confidences, 0)
+		return &candidates[0]
+	}
+	printCandidates(heading, candidates, confidences, -1)
+
+	reader := getStdin()
 
 	// the skip key moves off blank when blank has been given a meaning, so that
 	// accepting the best match and declining to choose stay distinct answers

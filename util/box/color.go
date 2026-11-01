@@ -3,6 +3,7 @@ package box
 import (
 	"io"
 	"os"
+	"strings"
 
 	"golang.org/x/term"
 )
@@ -15,6 +16,9 @@ const (
 	yellow = "\x1b[33m"
 	green  = "\x1b[32m"
 	red    = "\x1b[31m"
+
+	// bold marks a choice made without asking
+	bold = "\x1b[1m"
 )
 
 // ColorEnabled reports whether colour sequences written to w will be drawn as colour.
@@ -55,6 +59,13 @@ func Green(w io.Writer, s string) string {
 // Red returns s in red when w draws colour, and s unchanged when it does not
 func Red(w io.Writer, s string) string {
 	return paintFor(w, red, s)
+}
+
+// Bold returns s in bold when w draws colour, and s unchanged when it does not. Bold
+// is put back after every reset inside s, so a line holding a coloured part stays bold
+// all the way through.
+func Bold(w io.Writer, s string) string {
+	return paintFor(w, bold, strings.ReplaceAll(s, reset, reset+bold))
 }
 
 // paintFor wraps s in color when w draws colour. An empty s has nothing to colour.

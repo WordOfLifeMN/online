@@ -913,6 +913,73 @@ func (t *AudioTestSuite) TestChoice_NoConfidenceWithoutATitle() {
 	t.NotRegexp(`\d\.\d\d  `, out)
 }
 
+func (t *AudioTestSuite) TestClearWinner() {
+	t.True(isClearWinner([]float64{0.9, 0.49}))
+	t.True(isClearWinner([]float64{1, 0.2, 0.1}))
+
+	t.False(isClearWinner([]float64{0.89, 0.1}), "the best is not close enough")
+	t.False(isClearWinner([]float64{0.95, 0.5}), "a rival is too close")
+	t.False(isClearWinner([]float64{1, 0.1, 0.6}), "every rival must be poor, not just the next")
+	t.False(isClearWinner([]float64{1}), "a lone row has no rival to beat")
+	t.False(isClearWinner(nil), "no title, no confidence")
+}
+
+// a clear winner is taken without reading stdin, and the list is still shown
+func (t *AudioTestSuite) TestChoice_ClearWinnerChosenWithoutAsking() {
+	ambiguous := &catalog.AmbiguousLookupError{
+		Lookup: catalog.MessageLookup{Date: catalog.MustParseDateOnly("2026-05-17")},
+		Candidates: []catalog.CatalogMessage{
+			{Name: "Prayer"},
+			{Name: "The Importance of Voting"},
+		},
+	}
+
+	var chosen *catalog.CatalogMessage
+	out := captureStdout(t.T(), func() {
+		// closed stdin: were the question asked, the answer would be a skip
+		t.withStdin("", func() {
+			chosen = promptUserForMessageChoice(ambiguous, "2026-05-17 Importance of Voting.mp4")
+		})
+	})
+
+	t.Require().NotNil(chosen)
+	t.Equal("The Importance of Voting", chosen.Name)
+	t.Contains(out, "  1. 1.00  The Importance of Voting")
+	t.Contains(out, "  2. ")
+	t.NotContains(out, "Which one")
+}
+
+// a strong best with a close rival is still asked about
+func (t *AudioTestSuite) TestChoice_CloseRivalStillAsks() {
+	ambiguous := t.newAmbiguity() // 0.95 against 0.83
+	out := captureStdout(t.T(), func() {
+		t.withStdin("2\n", func() {
+			promptUserForMessageChoice(ambiguous, "2026-05-17 Power of Prayer QA.mp4")
+		})
+	})
+
+	t.Contains(out, "Which one")
+}
+
+// a date with only one row shows it, so every video's match is visible
+func (t *AudioTestSuite) TestOnlyCandidate_IsShown() {
+	msg := &catalog.CatalogMessage{
+		Name: "The Importance of Voting",
+		Date: catalog.MustParseDateOnly("2026-10-04"),
+	}
+
+	out := captureStdout(t.T(), func() {
+		printOnlyCandidate(msg, "2026-10-04 Importance of Voting.mp4")
+	})
+	t.Contains(out, "Spreadsheet row dated 2026-10-04:")
+	t.Contains(out, "  1. 1.00  The Importance of Voting")
+
+	out = captureStdout(t.T(), func() {
+		printOnlyCandidate(msg, "2026-10-04.mp4")
+	})
+	t.Contains(out, "  1. The Importance of Voting")
+}
+
 // captureStdout runs fn with os.Stdout replaced by a pipe, and returns what it wrote.
 // A pipe is not a terminal, so anything coloured comes out plain.
 func captureStdout(t *testing.T, fn func()) string {

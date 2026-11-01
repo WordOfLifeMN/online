@@ -299,8 +299,8 @@ func (t *BoxTestSuite) TestCopyIsExact() {
 
 // red and green are the package's own colours
 const (
-	bold = "\x1b[1;31m"
-	off  = "\x1b[0m"
+	boldRed = "\x1b[1;31m"
+	off     = "\x1b[0m"
 )
 
 // colour sequences take up no room on screen, so a coloured line must still put the
@@ -311,7 +311,7 @@ func (t *BoxTestSuite) TestColourDoesNotMoveTheRightBorder() {
 
 	b.Header(green + "Changes" + off)
 	b.Line("now: " + red + "Old Title" + off)
-	b.Line("new: " + green + "New Title" + off + " and " + bold + "more" + "\x1b[m")
+	b.Line("new: " + green + "New Title" + off + " and " + boldRed + "more" + "\x1b[m")
 	b.Labeled(red+"Title"+off+" : ", green+strings.Repeat("word ", 40)+off)
 	b.Line(strings.Repeat(red+"red"+off+" "+green+"green"+off+" ", 30))
 	b.Section(red + strings.Repeat("long coloured title ", 10) + off)
@@ -393,7 +393,7 @@ func (t *BoxTestSuite) TestVisibleWidth() {
 	t.Equal(0, visibleWidth(""))
 	t.Equal(3, visibleWidth("“a”"))
 	t.Equal(3, visibleWidth(red+"red"+off))
-	t.Equal(4, visibleWidth(bold+"bold"+"\x1b[m"))
+	t.Equal(4, visibleWidth(boldRed+"bold"+"\x1b[m"))
 	t.Equal(3, visibleWidth("\x1b[38;5;196mred\x1b[0m"))
 	t.Equal(3, visibleWidth("\x1b[38;2;255;0;0mred\x1b[0m"))
 }
@@ -421,6 +421,7 @@ func (t *BoxTestSuite) TestWarnings_PlainWhenNotATerminal() {
 	var buf bytes.Buffer
 	t.False(NewWidth(&buf, 40).color)
 	t.Equal("plain", Yellow(&buf, "plain"))
+	t.Equal("plain", Bold(&buf, "plain"))
 
 	for _, line := range drawWarnings(false) {
 		t.NotContains(line, "\x1b", "line %q", line)
