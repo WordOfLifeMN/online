@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -289,4 +290,93 @@ func TestPromptForRefs_Ending(t *testing.T) {
 	assert.Empty(t, refsFrom("\n"))
 	assert.Empty(t, refsFrom(""))
 	assert.Empty(t, refsFrom("   \t \n"), "a line of only whitespace is empty")
+}
+
+// a dragged file keeps the spaces in its path, whatever quotes the terminal put round it
+func TestSplitRefs_QuotedPaths(t *testing.T) {
+	assert.Equal(t, []string{`C:\Videos\Pay Attention.mp4`}, splitRefs(`"C:\Videos\Pay Attention.mp4"`))
+	assert.Equal(t, []string{`C:\Videos\Pay Attention.mp4`}, splitRefs(`& 'C:\Videos\Pay Attention.mp4'`))
+	assert.Equal(t, []string{`C:\Videos\God's Word.mp4`}, splitRefs(`& 'C:\Videos\God''s Word.mp4'`))
+
+	// several on a line, mixed with IDs
+	assert.Equal(t,
+		[]string{"01LiNfRzMo8", `C:\A B\one.mp4`, `C:\two.mp4`, "2YsVzfbrtm8"},
+		splitRefs("01LiNfRzMo8 \"C:\\A B\\one.mp4\" 'C:\\two.mp4'\t2YsVzfbrtm8\r\n"))
+
+	// a quote left open runs to the end of the line
+	assert.Equal(t, []string{`C:\Videos\Open ended.mp4`}, splitRefs(`"C:\Videos\Open ended.mp4`))
+
+	// an ampersand inside a value is part of it
+	assert.Equal(t, []string{"Q&A"}, splitRefs("Q&A"))
+	assert.Empty(t, splitRefs(`"" ''`))
+}
+
+// files and folders become the videos their rows link to; anything else is left for
+// parseGetRefs, and a file that cannot be matched is left out
+func TestResolvePathRefs(t *testing.T) {
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "Series", "Part 2")
+	require.NoError(t, os.MkdirAll(sub, 0o755))
+	for _, path := range []string{
+		filepath.Join(dir, "2026-10-04 Pay Attention.mp4"),
+		filepath.Join(sub, "2026-10-11 Watchmen.MP4"),
+		filepath.Join(dir, "2026-10-18 Rumble Only.mp4"),
+		filepath.Join(dir, "2026-10-25 No Row.mp4"),
+		filepath.Join(dir, "notes.txt"),
+	} {
+		require.NoError(t, os.WriteFile(path, nil, 0o644))
+	}
+
+	dated := func(name, date, url string) catalog.CatalogMessage {
+		msg := row(name, url)
+		msg.Date = catalog.MustParseDateOnly(date)
+		return msg
+	}
+	cat := &catalog.Catalog{Messages: []catalog.CatalogMessage{
+		dated("Pay Attention", "2026-10-04", "https://youtu.be/01LiNfRzMo8"),
+		dated("Watchmen", "2026-10-11", "https://youtu.be/16UKsDSvn3s"),
+		dated("Rumble Only", "2026-10-18", "https://rumble.com/v1abcde-x.html"),
+	}}
+
+	var args []string
+	var rows map[string]*catalog.CatalogMessage
+	out := captureStdout(t, func() {
+		withInput(t, "", func() {
+			args, rows = resolvePathRefs([]string{
+				"2YsVzfbrtm8",
+				"https://www.youtube.com/playlist?list=PL_trbEzIM4HtBsWgmgW0nNOLQk_jHb51I",
+				`"` + filepath.Join(dir, "2026-10-04 Pay Attention.mp4") + `"`,
+				dir,
+			}, cat)
+		})
+	})
+
+	// the folder repeats the file named before it; expandRefs removes the repeat
+	assert.Equal(t,
+		[]string{
+			"2YsVzfbrtm8",
+			"https://www.youtube.com/playlist?list=PL_trbEzIM4HtBsWgmgW0nNOLQk_jHb51I",
+			"01LiNfRzMo8", "01LiNfRzMo8", "16UKsDSvn3s",
+		}, args)
+	require.Contains(t, rows, "01LiNfRzMo8")
+	assert.Equal(t, "Pay Attention", rows["01LiNfRzMo8"].Name)
+	assert.Equal(t, "Watchmen", rows["16UKsDSvn3s"].Name)
+	assert.Len(t, rows, 2)
+
+	assert.Contains(t, out, "Found 4 video(s)")
+	assert.Contains(t, out, "WARNING: 2026-10-18 Rumble Only.mp4, skipped")
+	assert.Contains(t, out, "WARNING: 2026-10-25 No Row.mp4, skipped")
+	assert.NotContains(t, out, "notes.txt")
+}
+
+func TestResolvePathRefs_EmptyFolder(t *testing.T) {
+	dir := t.TempDir()
+
+	var args []string
+	out := captureStdout(t, func() {
+		args, _ = resolvePathRefs([]string{dir}, &catalog.Catalog{})
+	})
+
+	assert.Empty(t, args)
+	assert.Contains(t, out, "WARNING: there are no .mp4 files in")
 }

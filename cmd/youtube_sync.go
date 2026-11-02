@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
@@ -18,17 +21,21 @@ import (
 )
 
 var youtubeSyncCmd = &cobra.Command{
-	Use:   "sync <video or playlist>...",
+	Use:   "sync <video, playlist, file or folder>...",
 	Short: "Make videos on YouTube match the spreadsheet",
 	Long: `Compare videos on YouTube with what the spreadsheet says they should be, and
 offer to make YouTube match.
 
-Each reference is a video or a playlist, as for 'youtube get'. A playlist means every
-video in it. Each video is shown with its differences and confirmed in turn.
+Each reference is a video or a playlist, as for 'youtube get', or a video file or a
+folder. A playlist means every video in it. A file means the YouTube video in its
+spreadsheet row, found by the date in its name as 'audio' finds it, choosing between
+rows when several share the date. A folder means every .mp4 file in it and in the
+folders below it. A file with no row, or whose row has no YouTube video, is warned
+about and skipped. Each video is shown with its differences and confirmed in turn.
 
 With no references given, they are asked for. Paste or type any number, separated by
 spaces, tabs or new lines - a column of links copied from the spreadsheet works -
-and finish with an empty line.
+or drag in files and folders, and finish with an empty line.
 
 Only the title, description, privacy, category, languages, made-for-kids and
 playlist membership are compared. Everything else on YouTube is left as it is. A
@@ -42,6 +49,8 @@ The spreadsheet is read through a cache that is kept for an hour. Use --refresh
 after editing it.`,
 	Example: `  online youtube sync 01LiNfRzMo8
   online youtube sync https://www.youtube.com/playlist?list=PL...
+  online youtube sync "D:\Videos\2026-10-04 Pay Attention.mp4"
+  online youtube sync D:\Videos\Watchmen
   online youtube sync --thumbnail cover.jpg 01LiNfRzMo8
   online youtube sync        (asks for them, so a column can be pasted from the sheet)`,
 	Args: cobra.ArbitraryArgs,
@@ -68,6 +77,10 @@ type syncRun struct {
 
 	// the spreadsheet rows, by the video ID in their Video column
 	byVideo map[string][]catalog.CatalogMessage
+
+	// fileRows are the rows already matched to a file given to sync, by video ID. The
+	// file chose its row, so it is used rather than asking again.
+	fileRows map[string]*catalog.CatalogMessage
 
 	// playlists this run added a video to or created, by ID, and those named on the
 	// command line: the end-of-run sweep covers both
@@ -97,18 +110,18 @@ func newSyncRun(cat *catalog.Catalog, yt *ytclient.Client, channel ytpkg.Channel
 	}
 }
 
-// promptForRefs asks for the videos and playlists to sync and returns every value
-// entered, in order. Values are separated by any whitespace, so all the ways a
-// selection comes out of a spreadsheet work: a column copies as one cell per line, a
-// row as cells separated by tabs. Quotes around a value, which a spreadsheet adds to a
-// cell holding a line break, are dropped.
+// promptForRefs asks for the videos, playlists, files and folders to sync and returns
+// every value entered, in order. Values are separated by any whitespace, so all the
+// ways a selection comes out of a spreadsheet work: a column copies as one cell per
+// line, a row as cells separated by tabs. See splitRefs for quoted values.
 //
 // Input ends at an empty line, or when stdin closes. A blank cell in a pasted column
 // is also an empty line, so a selection with gaps in it ends at the first gap: copy a
 // range without blank cells, or paste it a part at a time.
 func promptForRefs(reader *bufio.Reader) []string {
-	fmt.Println("Enter or paste the videos or playlists to sync - IDs or links, separated by")
-	fmt.Println("spaces or one per line. Press Enter on an empty line to finish:")
+	fmt.Println("Enter or paste the videos or playlists to sync - IDs or links - or drag in")
+	fmt.Println("video files or folders, separated by spaces or one per line. Press Enter on an")
+	fmt.Println("empty line to finish:")
 
 	var refs []string
 	for {
@@ -116,16 +129,167 @@ func promptForRefs(reader *bufio.Reader) []string {
 		if strings.TrimSpace(line) == "" {
 			return refs
 		}
-		for _, value := range strings.Fields(line) {
-			if value = strings.Trim(value, `"'`); value != "" {
-				refs = append(refs, value)
-			}
-		}
+		refs = append(refs, splitRefs(line)...)
 		if err != nil {
 			// the last line, unterminated, before stdin closed
 			return refs
 		}
 	}
+}
+
+// splitRefs splits a line of input into values at whitespace, except inside quotes,
+// so a dragged file whose path has spaces in it stays one value. The quotes are
+// dropped, as cleanDroppedPath drops them:
+//
+//	"C:\Videos\Pay Attention.mp4"      cmd.exe, or a cell a spreadsheet copied in quotes
+//	'C:\Videos\God''s Word.mp4'        single quotes, with '' standing for '
+//	& 'C:\Videos\Pay Attention.mp4'    PowerShell, whose "&" is dropped
+//
+// A quote left open runs to the end of the line.
+func splitRefs(line string) []string {
+	var values []string
+	runes := []rune(line)
+
+	for i := 0; i < len(runes); {
+		switch r := runes[i]; {
+		case unicode.IsSpace(r):
+			i++
+
+		case r == '&' && (i+1 == len(runes) || unicode.IsSpace(runes[i+1])):
+			// PowerShell offers a dragged file as a command to run
+			i++
+
+		case r == '"' || r == '\'':
+			var value strings.Builder
+			for i++; i < len(runes); i++ {
+				if runes[i] != r {
+					value.WriteRune(runes[i])
+					continue
+				}
+				if r == '\'' && i+1 < len(runes) && runes[i+1] == '\'' {
+					// '' inside single quotes is one '
+					value.WriteRune('\'')
+					i++
+					continue
+				}
+				i++
+				break
+			}
+			if v := strings.TrimSpace(value.String()); v != "" {
+				values = append(values, v)
+			}
+
+		default:
+			start := i
+			for i < len(runes) && !unicode.IsSpace(runes[i]) {
+				i++
+			}
+			values = append(values, string(runes[start:i]))
+		}
+	}
+
+	return values
+}
+
+// resolvePathRefs replaces each file or folder among args with the YouTube video its
+// spreadsheet row links to, leaving every other value as it is for parseGetRefs. A
+// folder means every .mp4 in it and in the folders below it.
+//
+// A file is found in the spreadsheet as 'audio' finds it - by the date in its name,
+// choosing between rows when several share the date - and the row it was matched to is
+// returned by video ID, so the sync uses that row rather than asking again. A file that
+// cannot be matched to a row with a YouTube video is warned about and left out.
+func resolvePathRefs(
+	args []string,
+	cat *catalog.Catalog,
+) ([]string, map[string]*catalog.CatalogMessage) {
+	var out []string
+	rows := map[string]*catalog.CatalogMessage{}
+
+	for _, arg := range args {
+		// only a file or folder that is really there. Not DoesPathExist: that takes any
+		// error but "not found" to mean found, and Windows answers a link - with its "?"
+		// and second ":" - with "the syntax is incorrect", which would turn every link
+		// into a file.
+		path := util.NormalizePath(cleanDroppedPath(arg))
+		if path == "" || !(util.IsFile(path) || util.IsDirectory(path)) {
+			out = append(out, arg)
+			continue
+		}
+
+		files := []string{path}
+		if util.IsDirectory(path) {
+			var err error
+			if files, err = videosInTree(path); err != nil {
+				fmt.Println(box.Yellow(os.Stdout, fmt.Sprintf(
+					"WARNING: cannot read the folder %s, skipped: %s", path, err)))
+				continue
+			}
+			if len(files) == 0 {
+				fmt.Println(box.Yellow(os.Stdout, fmt.Sprintf(
+					"WARNING: there are no .mp4 files in %s, skipped", path)))
+				continue
+			}
+			fmt.Printf("Found %d video(s) in %s\n", len(files), path)
+		}
+
+		for _, file := range files {
+			fmt.Printf("\n── %s\n", filepath.Base(file))
+
+			id, msg, err := videoIDForFile(file, cat)
+			if err != nil {
+				fmt.Println(box.Yellow(os.Stdout, fmt.Sprintf(
+					"WARNING: %s, skipped: %s", filepath.Base(file), err)))
+				continue
+			}
+
+			fmt.Printf("   YouTube video: %s\n", id)
+			if _, ok := rows[id]; !ok {
+				rows[id] = msg
+			}
+			out = append(out, id)
+		}
+	}
+
+	return out, rows
+}
+
+// videoIDForFile finds a file's spreadsheet row and the YouTube video it links to
+func videoIDForFile(
+	file string,
+	cat *catalog.Catalog,
+) (string, *catalog.CatalogMessage, error) {
+	msg, _, err := findMessageForVideo(file, cat)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if msg.Video == nil {
+		return "", nil, fmt.Errorf("the spreadsheet row %q has no video", msg.Name)
+	}
+	id, ok := ytpkg.ParseVideoRef(msg.Video.URL)
+	if !ok {
+		return "", nil, fmt.Errorf("the spreadsheet row %q has no YouTube video, only %s",
+			msg.Name, msg.Video.URL)
+	}
+
+	return id, msg, nil
+}
+
+// videosInTree returns every .mp4 file in dir and the folders below it, in name order
+// folder by folder
+func videosInTree(dir string) ([]string, error) {
+	var videos []string
+	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.Type().IsRegular() && strings.EqualFold(filepath.Ext(path), ".mp4") {
+			videos = append(videos, path)
+		}
+		return nil
+	})
+	return videos, err
 }
 
 // indexByVideoID maps each YouTube video ID found in the sheet's Video column to the
@@ -160,11 +324,6 @@ func youtubeSync(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Read %d reference(s)\n", len(args))
 	}
 
-	refs, refErr := parseGetRefs(args, false)
-	if len(refs) == 0 {
-		return refErr
-	}
-
 	thumbnail, _ := cmd.Flags().GetString("thumbnail")
 	if thumbnail != "" {
 		thumbnail = util.NormalizePath(cleanDroppedPath(thumbnail))
@@ -181,6 +340,18 @@ func youtubeSync(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot initialize the catalog: %w", err)
 	}
 
+	// files and folders become the videos their rows link to. This asks its questions
+	// before signing in, so they are all asked together at the start.
+	args, fileRows := resolvePathRefs(args, cat)
+
+	refs, refErr := parseGetRefs(args, false)
+	if len(refs) == 0 {
+		if refErr == nil {
+			fmt.Println("Nothing to sync")
+		}
+		return refErr
+	}
+
 	channel := ytpkg.ChannelWOL
 	client, err := newYouTubeClient(cmd.Context(), channel)
 	if err != nil {
@@ -189,6 +360,7 @@ func youtubeSync(cmd *cobra.Command, args []string) error {
 
 	run := newSyncRun(cat, client, channel, os.Stdout)
 	run.thumbnail = thumbnail
+	run.fileRows = fileRows
 
 	ids, err := run.expandRefs(refs)
 	if err != nil {
@@ -261,7 +433,10 @@ func (r *syncRun) syncVideo(id string, live *ytpkg.Message) error {
 		return fmt.Errorf("not found, or not visible to this account")
 	}
 
-	msg := r.chooseRow(id, live)
+	msg := r.fileRows[id]
+	if msg == nil {
+		msg = r.chooseRow(id, live)
+	}
 	if msg == nil {
 		return nil
 	}
