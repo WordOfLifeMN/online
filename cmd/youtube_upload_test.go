@@ -241,3 +241,58 @@ func TestFileSize(t *testing.T) {
 	assert.Equal(t, "3 MB", fileSize(path))
 	assert.Equal(t, "size unknown", fileSize(filepath.Join(t.TempDir(), "missing.mp4")))
 }
+
+// +---------------------------------------------------------------------------
+// | Finding a row again after the sheet is edited
+// +---------------------------------------------------------------------------
+
+// sheetOn builds a sheet of rows with names, all on one date unless a name says "other"
+func sheetOn(names ...string) *catalog.Catalog {
+	cat := &catalog.Catalog{}
+	for _, name := range names {
+		date := "2026-10-04"
+		if strings.HasPrefix(name, "other") {
+			date = "2026-10-11"
+		}
+		cat.Messages = append(cat.Messages, catalog.CatalogMessage{
+			Name: name,
+			Date: catalog.MustParseDateOnly(date),
+		})
+	}
+	return cat
+}
+
+// the title is the column most likely to have just changed, so the row is found by its
+// place among the rows on its date, not by name
+func TestSameRow_FoundByPlaceWhenRenamed(t *testing.T) {
+	before := sheetOn("other one", "Message", "Message Q&A")
+	after := sheetOn("other one", "other two", "Pay Attention", "Pay Attention: Q&A")
+	after.Messages[2].Description = "The edited description."
+
+	row := before.Messages[2] // a copy, as the picker hands back
+	found, err := sameRow(&row, before, after)
+
+	require.NoError(t, err)
+	assert.Equal(t, "Pay Attention: Q&A", found.Name)
+
+	row = before.Messages[1]
+	found, err = sameRow(&row, before, after)
+	require.NoError(t, err)
+	assert.Equal(t, "The edited description.", found.Description)
+}
+
+// with a row added on the date the places shift, so only an unchanged name will do
+func TestSameRow_RowsAddedOnTheDate(t *testing.T) {
+	before := sheetOn("Message", "Prayer")
+	after := sheetOn("Message", "Inserted", "Prayer")
+
+	row := before.Messages[1]
+	found, err := sameRow(&row, before, after)
+	require.NoError(t, err)
+	assert.Equal(t, "Prayer", found.Name)
+
+	// renamed as well: there is nothing safe to go on
+	after.Messages[2].Name = "Evening Prayer"
+	_, err = sameRow(&row, before, after)
+	assert.ErrorContains(t, err, `cannot find the row "Prayer" dated 2026-10-04`)
+}

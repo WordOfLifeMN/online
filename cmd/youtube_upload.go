@@ -5,16 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util/box"
+	"github.com/WordOfLifeMN/online/util/cache"
 	"github.com/WordOfLifeMN/online/ytclient"
 	"github.com/WordOfLifeMN/online/ytpkg"
+	"github.com/spf13/viper"
 )
 
 // +---------------------------------------------------------------------------
@@ -172,6 +177,11 @@ const recentUploadCount = 50
 func publishAll(ctx context.Context, cat *catalog.Catalog, infos []*MessageInfo) error {
 	channel := ytpkg.ChannelWOL
 
+	if !slices.ContainsFunc(infos, func(info *MessageInfo) bool { return info.Packet != nil }) {
+		return nil
+	}
+	cat = refreshBeforePublish(ctx, cat, infos)
+
 	var toPublish []*MessageInfo
 	for _, info := range infos {
 		if info.Packet == nil {
@@ -213,6 +223,119 @@ func publishAll(ctx context.Context, cat *catalog.Catalog, infos []*MessageInfo)
 	errs = append(errs, run.sweepPlaylists())
 	run.printSummary()
 	return errors.Join(errs...)
+}
+
+// refreshBeforePublish waits while the operator copies the title and description just
+// shown into the spreadsheet, then reads it again and rebuilds each package from the
+// edited row, so that what is uploaded or synced is what the sheet now says. Returns
+// the catalog to publish from: the fresh one, or the one read at the start if the
+// sheet cannot be read again.
+//
+// The fresh copy is also written to the cache 'youtube sync' reads, so a sync run
+// straight after does not work from a copy older than these edits.
+func refreshBeforePublish(
+	ctx context.Context,
+	cat *catalog.Catalog,
+	infos []*MessageInfo,
+) *catalog.Catalog {
+	fmt.Println()
+	fmt.Println("Make any final edits to the spreadsheet now - copy in the title and description")
+	fmt.Print("above - then press Enter to continue publishing...")
+	if _, err := getStdin().ReadString('\n'); err != nil {
+		fmt.Println()
+	}
+
+	fresh, err := readOnlineContentFromInput(ctx)
+	if err == nil && viper.GetString("input") == "" {
+		if err := cache.Write(catalogCachePath(), fresh); err != nil {
+			log.Printf("WARNING: %s", err)
+		}
+	}
+	if err == nil {
+		err = fresh.Initialize()
+	}
+	if err != nil {
+		fmt.Println(box.Yellow(os.Stdout, "WARNING: could not read the spreadsheet again, so "+
+			"publishing from the copy read at the start, without your edits: "+err.Error()))
+		return cat
+	}
+
+	for _, info := range infos {
+		if info.Packet == nil {
+			continue
+		}
+
+		row, err := sameRow(info.Message, cat, fresh)
+		if err != nil {
+			fmt.Println(box.Yellow(os.Stdout, fmt.Sprintf(
+				"WARNING: %s: %s; publishing from the copy read at the start, without your edits",
+				filepath.Base(info.VideoPath), err)))
+			continue
+		}
+
+		// the sheet's description is the edited one when there is one; the generated
+		// summary is only for a row that has none yet
+		summary := info.Summary
+		if strings.TrimSpace(row.Description) != "" {
+			summary = ""
+		}
+
+		packet, err := ytpkg.NewMessageFromCatalog(row, fresh, info.Title, summary,
+			getThumbnailPath(info.VideoPath, row.Type))
+		if err != nil {
+			fmt.Println(box.Yellow(os.Stdout, fmt.Sprintf(
+				"WARNING: %s: %s; publishing from the copy read at the start, without your edits",
+				filepath.Base(info.VideoPath), err)))
+			continue
+		}
+
+		info.Message, info.Seri, info.Packet = row, fresh.FindSeriesForMessage(row), packet
+	}
+
+	return fresh
+}
+
+// sameRow finds a row from one reading of the spreadsheet in a later reading of it.
+//
+// Not by name, which is the column most likely to have just been edited. By date, and
+// then by its place among the rows on that date - the order the sheet lists them in,
+// which editing a row does not change. Should rows on the date have been added or
+// removed in between, an unchanged name is used instead, and failing that it is an
+// error rather than a guess.
+func sameRow(
+	row *catalog.CatalogMessage,
+	before, after *catalog.Catalog,
+) (*catalog.CatalogMessage, error) {
+	onDate := func(cat *catalog.Catalog) []*catalog.CatalogMessage {
+		var rows []*catalog.CatalogMessage
+		for index := range cat.Messages {
+			if cat.Messages[index].Date.Time.Equal(row.Date.Time) {
+				rows = append(rows, &cat.Messages[index])
+			}
+		}
+		return rows
+	}
+
+	was, now := onDate(before), onDate(after)
+	place := slices.IndexFunc(was, func(m *catalog.CatalogMessage) bool {
+		return reflect.DeepEqual(*m, *row)
+	})
+	if place >= 0 && len(was) == len(now) {
+		return now[place], nil
+	}
+
+	var named []*catalog.CatalogMessage
+	for _, m := range now {
+		if m.Name == row.Name {
+			named = append(named, m)
+		}
+	}
+	if len(named) == 1 {
+		return named[0], nil
+	}
+
+	return nil, fmt.Errorf("cannot find the row %q dated %s in the spreadsheet again",
+		row.Name, row.Date.String())
 }
 
 // publishMessage uploads one message, or syncs it if it is already on YouTube.
