@@ -140,11 +140,12 @@ func (t *FormatTestSuite) TestAlternative_SuppressedWhenItAgrees() {
 	t.Empty(AlternativeTitle(&msg, "power of prayer: q&a"), "case only")
 	t.Empty(AlternativeTitle(&msg, "Power of Prayer - Q&A"), "punctuation only")
 	t.Empty(AlternativeTitle(&msg, "  Power of Prayer: Q&A  "), "whitespace only")
+	t.Empty(AlternativeTitle(&msg, "Power of Prayer - Q and A"), "'and' is '&' spelled out")
 
 	// rewording is not punctuation, so this does count as an alternative. The rule is
 	// deliberately literal: judging whether two phrasings mean the same thing is the
 	// operator's job, and this line exists to put the question in front of them.
-	t.NotEmpty(AlternativeTitle(&msg, "Power of Prayer - Q and A"))
+	t.NotEmpty(AlternativeTitle(&msg, "Power of Prayer - Questions and Answers"))
 }
 
 // no generated title - the model was never called, or returned nothing

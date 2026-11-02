@@ -18,6 +18,14 @@ func TestNormalizeForMatch(t *testing.T) {
 	assert.Equal(t, "end of age", NormalizeForMatch("An End of the Age"))
 	assert.Equal(t, "importance of voting", NormalizeForMatch("(The) Importance, of Voting"))
 
+	// "and" is the spelled-out "&", and both are dropped
+	assert.Equal(t, "faith works", NormalizeForMatch("Faith and Works"))
+	assert.Equal(t, "faith works", NormalizeForMatch("Faith & Works"))
+	assert.Equal(t, "faith works", NormalizeForMatch("Faith&Works"))
+	assert.Equal(t, "power of prayer q a", NormalizeForMatch("Power of Prayer Q and A"))
+	assert.Equal(t, "power of prayer q a", NormalizeForMatch("Power of Prayer Q & A"))
+	assert.Equal(t, "android sandals", NormalizeForMatch("Android Sandals"))
+
 	// only whole words: the A in Q&A stays, as do words that merely contain one
 	assert.Equal(t, "power of prayer q a", NormalizeForMatch("Power of Prayer: Q&A"))
 	assert.Equal(t, "theology anchor", NormalizeForMatch("Theology Anchor"))

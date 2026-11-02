@@ -42,15 +42,21 @@ func ToJSON(data any) string {
 var matchNoise = regexp.MustCompile(`[^a-z0-9]+`)
 
 // NormalizeForMatch reduces a title to the part worth comparing: lower case, no
-// articles, no punctuation, single spaces. Applied to both sides so neither is
+// articles or "and", no punctuation, single spaces. Applied to both sides so neither is
 // penalised for a house style the other does not share.
 //
 // Articles go because they come and go between the sheet and a file name - "The
 // Importance of Voting" is saved as "Importance of Voting" - without changing which
-// message is meant. They are dropped as whole words before punctuation is flattened,
-// so the "A" in "Q&A" is not mistaken for one.
+// message is meant. "And" between two words goes so that it matches "&", which is
+// punctuation and so dropped: "Faith and Works" is "Faith & Works", and "Q and A" is
+// "Q&A". Articles are dropped as whole words before punctuation is flattened, so the
+// "A" in "Q&A" is not mistaken for one.
 func NormalizeForMatch(title string) string {
-	words := strings.Fields(strings.ToLower(title))
+	// "and" is written as "&" first, joining the words either side as "Q&A" is joined,
+	// so that an "A" after it is not then dropped as an article
+	title = matchAnd.ReplaceAllString(strings.ToLower(title), "&")
+
+	words := strings.Fields(title)
 	kept := words[:0]
 	for _, word := range words {
 		if !matchArticles[matchNoise.ReplaceAllString(word, "")] {
@@ -64,3 +70,6 @@ func NormalizeForMatch(title string) string {
 
 // matchArticles are the words NormalizeForMatch leaves out
 var matchArticles = map[string]bool{"the": true, "a": true, "an": true}
+
+// matchAnd is an "and" or "&" between two words, with the space around it
+var matchAnd = regexp.MustCompile(`\s*&\s*|\s+and\s+`)
