@@ -4,11 +4,15 @@ package catalog
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/WordOfLifeMN/online/util"
 )
+
+// youTubePlaylistURL is the only shape a series' playlist link may take
+var youTubePlaylistURL = regexp.MustCompile(`^https://www\.youtube\.com/playlist\?list=PL[A-Za-z0-9_-]+$`)
 
 // List of states that audio and video's can be in. Most of these should be temporary states
 // during editing, but some are permanent
@@ -252,6 +256,21 @@ func (s *CatalogSeri) IsValid(report *util.IndentingReport) bool {
 	// booklets
 	for _, booklet := range s.Booklets {
 		valid = booklet.IsValid(report) && valid
+	}
+
+	// playlist. a booklet has no videos, and a stand-alone series is the catalog's own
+	// wrapper around one message, so neither has a playlist to name. "-" in the Video
+	// column says the series has none on purpose. a missing playlist is only a warning
+	// while the Video column is being filled in
+	if !s.IsBooklet() && !strings.HasPrefix(s.ID, "SAM-") && !s.NoPlaylist {
+		switch {
+		case s.Playlist == nil || s.Playlist.URL == "":
+			report.Printf("WARNING: Has no playlist in the Video column")
+		case !youTubePlaylistURL.MatchString(s.Playlist.URL):
+			report.Printf("Playlist '%s' isn't a YouTube playlist link like https://www.youtube.com/playlist?list=PL<id>",
+				s.Playlist.URL)
+			valid = false
+		}
 	}
 
 	return valid

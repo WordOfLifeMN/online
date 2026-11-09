@@ -201,6 +201,77 @@ func (t *ValidateTestSuite) TestSeriBooklet() {
 	t.Contains(t.Report.String(), "not contain a valid URL")
 }
 
+func getValidTestSeri() CatalogSeri {
+	return CatalogSeri{
+		Name:        "SERIES",
+		ID:          "ID-123",
+		Description: "SERIES DESCRIPTION",
+		Visibility:  Public,
+		Playlist:    &OnlineResource{URL: "https://www.youtube.com/playlist?list=PLIv9NPKsgJlo"},
+	}
+}
+
+func (t *ValidateTestSuite) TestSeriPlaylist() {
+	sut := getValidTestSeri()
+
+	t.True(sut.IsValid(t.Report))
+	t.NotContains(t.Report.String(), "laylist")
+}
+
+// a blank Video column is a warning, not an error, while the sheet is being filled in
+func (t *ValidateTestSuite) TestSeriPlaylist_WhenMissing() {
+	sut := getValidTestSeri()
+	sut.Playlist = nil
+
+	t.True(sut.IsValid(t.Report))
+	t.Contains(t.Report.String(), "WARNING: Has no playlist")
+}
+
+func (t *ValidateTestSuite) TestSeriPlaylist_WhenNotAPlaylistLink() {
+	for _, url := range []string{
+		"https://youtu.be/01LiNfRzMo8",                               // a video
+		"https://www.youtube.com/watch?v=01LiNfRzMo8&list=PLIv9NPKsg", // a video in a playlist
+		"http://www.youtube.com/playlist?list=PLIv9NPKsgJlo",          // not https
+		"https://youtube.com/playlist?list=PLIv9NPKsgJlo",             // no www
+		"https://www.youtube.com/playlist?list=UUIv9NPKsgJlo",         // uploads list, not a playlist
+		"https://www.youtube.com/playlist?list=PL",                    // no id
+		"pending",
+		"n/a", // only "-" means no playlist
+	} {
+		t.Report = util.NewIndentingReport(util.ReportSilent)
+		sut := getValidTestSeri()
+		sut.Playlist = &OnlineResource{URL: url}
+
+		t.False(sut.IsValid(t.Report), url)
+		t.Contains(t.Report.String(), "isn't a YouTube playlist link", url)
+	}
+}
+
+// "-" in the Video column: private, audio only, on Rumble, ...
+func (t *ValidateTestSuite) TestSeriPlaylist_WhenNoneOnPurpose() {
+	sut := getValidTestSeri()
+	sut.Playlist = nil
+	sut.NoPlaylist = true
+
+	t.True(sut.IsValid(t.Report))
+	t.NotContains(t.Report.String(), "playlist")
+}
+
+// booklets and the catalog's stand-alone series have no playlist to name
+func (t *ValidateTestSuite) TestSeriPlaylist_NotExpected() {
+	booklet := getValidTestSeri()
+	booklet.Playlist = nil
+	booklet.Booklets = []OnlineResource{{URL: "https://booklet.pdf"}}
+	t.True(booklet.IsValid(t.Report))
+
+	standAlone := getValidTestSeri()
+	standAlone.Playlist = nil
+	standAlone.ID = "SAM-123"
+	t.True(standAlone.IsValid(t.Report))
+
+	t.NotContains(t.Report.String(), "playlist")
+}
+
 // +---------------------------------------------------------------------------
 // | Catalog
 // +---------------------------------------------------------------------------

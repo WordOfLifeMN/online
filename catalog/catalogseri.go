@@ -22,6 +22,8 @@ type CatalogSeri struct {
 	Booklets    []OnlineResource `json:"booklets,omitempty"`    // list of study booklets for this series (pdf)
 	Visibility  View             `json:"visibility"`            // visibility of this series as a whole
 	Thumbnail   string           `json:"thumbnail,omitempty"`   // link to the thumbnail to use for the series
+	Playlist    *OnlineResource  `json:"playlist,omitempty"`    // YouTube playlist of the series, from the Video column of its Series row
+	NoPlaylist  bool             `json:"no-playlist,omitempty"` // the Video column is "-": the series has no YouTube playlist on purpose (private, audio only, elsewhere)
 
 	// cached or generated data. note that this data could be customized for different views of
 	// the series. when read from the online content, the view is "Raw" and the list of messages

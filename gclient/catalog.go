@@ -165,6 +165,21 @@ func newCatalogSeriFromMessageRow(msg catalog.CatalogMessage) catalog.CatalogSer
 	}
 	seri.ID = util.ComputeHash(msg.Name)
 
+	// The Video column of a Series row holds the series' playlist, or "-" when it has none
+	// on purpose. The name made up from the URL ("playlist?list=PL...") says nothing, so
+	// only a name typed in the cell is kept
+	switch {
+	case msg.Type != catalog.Series || msg.Video == nil || msg.Video.URL == "":
+	case msg.Video.URL == "-":
+		seri.NoPlaylist = true
+	default:
+		playlist := *msg.Video
+		if playlist.Name == playlist.GetNameFromURL() {
+			playlist.Name = ""
+		}
+		seri.Playlist = &playlist
+	}
+
 	// Resources on the row become booklets so they appear on the booklet page.
 	// A Booklet row is only a booklet. A Series row still becomes a full series once
 	// its messages are attached in Catalog.Initialize(); the booklets ride along via

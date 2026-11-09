@@ -85,6 +85,48 @@ func (t *CatalogTestSuite) TestNewCatalogSeriFromMessageRow_Booklet() {
 	t.Empty(seri.Thumbnail)
 }
 
+func (t *CatalogTestSuite) TestNewCatalogSeriFromMessageRow_Playlist() {
+	// given a Series row with a playlist in the Video column
+	msg := catalog.CatalogMessage{
+		Name:  "Here I Am!",
+		Type:  catalog.Series,
+		Video: catalog.NewResourceFromString("https://www.youtube.com/playlist?list=PLIv9NPKsgJlo"),
+	}
+
+	// when
+	seri := newCatalogSeriFromMessageRow(msg)
+
+	// then the link is kept, without the name made up from the URL
+	t.Require().NotNil(seri.Playlist)
+	t.Equal("https://www.youtube.com/playlist?list=PLIv9NPKsgJlo", seri.Playlist.URL)
+	t.Empty(seri.Playlist.Name)
+
+	// a name typed in the cell is kept
+	msg.Video = catalog.NewResourceFromString("Here I Am|https://www.youtube.com/playlist?list=PLIv9NPKsgJlo")
+	t.Equal("Here I Am", newCatalogSeriFromMessageRow(msg).Playlist.Name)
+
+	t.False(seri.NoPlaylist)
+
+	// a blank Video column has no playlist, and doesn't say why
+	msg.Video = catalog.NewResourceFromString("")
+	seri = newCatalogSeriFromMessageRow(msg)
+	t.Nil(seri.Playlist)
+	t.False(seri.NoPlaylist)
+
+	// "-" says the series has no playlist on purpose
+	msg.Video = catalog.NewResourceFromString("-")
+	seri = newCatalogSeriFromMessageRow(msg)
+	t.Nil(seri.Playlist)
+	t.True(seri.NoPlaylist)
+
+	// anything else is kept for validation to reject
+	msg.Video = catalog.NewResourceFromString("pending")
+	t.Equal("pending", newCatalogSeriFromMessageRow(msg).Playlist.URL)
+	msg.Video = catalog.NewResourceFromString("https://www.youtube.com/playlist?list=PLIv9NPKsgJlo")
+	msg.Type = catalog.Booklet
+	t.Nil(newCatalogSeriFromMessageRow(msg).Playlist)
+}
+
 func (t *CatalogTestSuite) TestGetCellString() {
 	row := []any{"hello", "  world  ", 42}
 	t.Equal("hello", getCellString(row, 0))
