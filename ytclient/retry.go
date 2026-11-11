@@ -42,6 +42,21 @@ func retryable(err error) bool {
 	return apiErr.Code == http.StatusConflict && strings.Contains(strings.ToLower(apiErr.Message), "aborted")
 }
 
+// IsQuotaExceeded reports YouTube refusing a call because the project's daily quota is
+// used up. Every later call fails the same way until it resets at midnight Pacific time.
+func IsQuotaExceeded(err error) bool {
+	var apiErr *googleapi.Error
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	for _, item := range apiErr.Errors {
+		if item.Reason == "quotaExceeded" {
+			return true
+		}
+	}
+	return false
+}
+
 // isNotFound reports YouTube saying a resource does not exist
 func isNotFound(err error) bool {
 	var apiErr *googleapi.Error

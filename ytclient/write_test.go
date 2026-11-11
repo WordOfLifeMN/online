@@ -471,6 +471,18 @@ func TestRetryable(t *testing.T) {
 	assert.False(t, retryable(nil))
 }
 
+func TestIsQuotaExceeded(t *testing.T) {
+	quota := &googleapi.Error{Code: 403, Errors: []googleapi.ErrorItem{{Reason: "quotaExceeded"}}}
+	assert.True(t, IsQuotaExceeded(quota))
+	// sync wraps it on the way up: "cannot update video ...: googleapi: Error 403 ..."
+	assert.True(t, IsQuotaExceeded(fmt.Errorf("cannot update video 6mzxZKuS2uk: %w", quota)))
+
+	assert.False(t, IsQuotaExceeded(&googleapi.Error{Code: 403, Errors: []googleapi.ErrorItem{{Reason: "forbidden"}}}))
+	assert.False(t, IsQuotaExceeded(&googleapi.Error{Code: 403, Errors: []googleapi.ErrorItem{{Reason: "uploadLimitExceeded"}}}))
+	assert.False(t, IsQuotaExceeded(errors.New("quotaExceeded")))
+	assert.False(t, IsQuotaExceeded(nil))
+}
+
 // +---------------------------------------------------------------------------
 // | Playlist fields and order (Phase 5)
 // +---------------------------------------------------------------------------

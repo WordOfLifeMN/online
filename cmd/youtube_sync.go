@@ -380,10 +380,18 @@ func youtubeSync(cmd *cobra.Command, args []string) error {
 	}
 
 	errs := []error{refErr}
-	for _, id := range ids {
+	for index, id := range ids {
 		if err := run.syncVideo(id, live[id]); err != nil {
 			fmt.Fprintf(run.out, "ERROR     %s  %s\n\n", id, err)
 			errs = append(errs, fmt.Errorf("video %s: %w", id, err))
+
+			// every call after this one would fail too, the sweep included
+			if ytclient.IsQuotaExceeded(err) {
+				fmt.Fprintf(run.out, "YouTube's daily quota is used up, so the sync stops here with %d of %d "+
+					"videos not synced. It resets at midnight Pacific time.\n\n", len(ids)-index-1, len(ids))
+				run.printSummary()
+				return errors.Join(errs...)
+			}
 		}
 	}
 
