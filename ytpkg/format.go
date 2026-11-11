@@ -141,20 +141,22 @@ func SeriesDescription(seri *catalog.CatalogSeri) string {
 }
 
 // withResources appends one "name\nURL" block per resource, each separated from what
-// precedes it by a blank line
+// precedes it by a blank line. Nothing precedes the first block when there is no text:
+// YouTube trims the leading blank line away, so writing one would make every sync see
+// a change
 func withResources(text string, resources []catalog.OnlineResource) string {
 	var b strings.Builder
-	b.WriteString(text)
+	b.WriteString(strings.TrimSpace(text))
 
 	for _, resource := range resources {
 		if b.Len() > 0 {
-			b.WriteString("\n")
+			b.WriteString("\n\n")
 		}
 		name := resource.Name
 		if name == "" {
 			name = resource.GetNameFromURL()
 		}
-		fmt.Fprintf(&b, "\n%s\n%s", name, resource.URL)
+		fmt.Fprintf(&b, "%s\n%s", name, resource.URL)
 	}
 
 	return b.String()

@@ -184,6 +184,26 @@ func (t *FormatTestSuite) TestDescription_Layout() {
 		MessageDescription(&msg, &seri, "A short summary."))
 }
 
+// with no description the resources start the description: YouTube trims a leading
+// blank line, so writing one would make every sync see a change
+func (t *FormatTestSuite) TestDescription_NoTextStartsWithResources() {
+	msg := catalog.CatalogMessage{
+		Name:      "MSG",
+		Resources: []catalog.OnlineResource{{URL: "https://x/notes.pdf", Name: "Sermon Notes"}},
+	}
+	seri := catalog.CatalogSeri{
+		Name:     "SERIES",
+		Booklets: []catalog.OnlineResource{{URL: "https://x/booklet.pdf", Name: "Booklet"}},
+	}
+	want := "Sermon Notes\nhttps://x/notes.pdf\n\nBooklet\nhttps://x/booklet.pdf"
+
+	t.Equal(want, MessageDescription(&msg, &seri, ""))
+
+	// a description of only whitespace is no description
+	msg.Description = " \n"
+	t.Equal(want, MessageDescription(&msg, &seri, ""))
+}
+
 // A real series carries the resources of every message it contains, because
 // Normalize() gathers them there. Only this message's own may reach its
 // description - the notes for message 1 do not belong on message 8.
@@ -234,6 +254,9 @@ func (t *FormatTestSuite) TestSeriesDescription() {
 	t.Equal("About the series.\n\nBooklet\nhttps://x/booklet.pdf", SeriesDescription(&seri))
 	t.Equal("", SeriesDescription(nil))
 	t.Equal("Bare.", SeriesDescription(&catalog.CatalogSeri{Description: "Bare."}))
+
+	seri.Description = ""
+	t.Equal("Booklet\nhttps://x/booklet.pdf", SeriesDescription(&seri))
 }
 
 // +---------------------------------------------------------------------------
