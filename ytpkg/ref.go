@@ -43,7 +43,13 @@ func ParseVideoRef(s string) (string, bool) {
 	return "", false
 }
 
-// ParsePlaylistRef extracts a playlist ID from a bare ID, a playlist link, or the list=
+// studioPlaylistLinkPattern finds the playlist ID in a YouTube Studio link, which puts it
+// in the path: https://studio.youtube.com/playlist/PL.../edit (the /edit is optional)
+var studioPlaylistLinkPattern = regexp.MustCompile(
+	`(?i)studio\.youtube\.com/playlist/([A-Za-z0-9_-]+)(?:[/?#]\S*)?$`)
+
+// ParsePlaylistRef extracts a playlist ID from a bare ID, a playlist link, a YouTube
+// Studio playlist link, or the list=
 // parameter of a watch link
 func ParsePlaylistRef(s string) (string, bool) {
 	s = strings.TrimSpace(s)
@@ -51,6 +57,9 @@ func ParsePlaylistRef(s string) (string, bool) {
 		return s, true
 	}
 	if match := playlistLinkPattern.FindStringSubmatch(s); match != nil {
+		return match[1], true
+	}
+	if match := studioPlaylistLinkPattern.FindStringSubmatch(s); match != nil {
 		return match[1], true
 	}
 	return "", false

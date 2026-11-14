@@ -24,7 +24,8 @@ var youtubeGetCmd = &cobra.Command{
 	Long: `Show one or more videos or playlists as they are on YouTube.
 
 Each reference can be a video ID, a playlist ID, or any YouTube link to either -
-youtu.be, watch?v=, live/, shorts/ or playlist?list=. A watch link that also names a
+youtu.be, watch?v=, live/, shorts/, playlist?list= or a YouTube Studio playlist link
+(studio.youtube.com/playlist/PL.../edit). A watch link that also names a
 playlist means the video, unless --playlist is given.
 
 A video is shown with the playlists it belongs to. Finding them reads every playlist

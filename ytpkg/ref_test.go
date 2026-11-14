@@ -63,6 +63,9 @@ func TestParsePlaylistRef(t *testing.T) {
 		"https://www.youtube.com/playlist?list=PLmN8yVd0Kk4Ec6ab2c3d4e5f6g7h8i9j0":      "PLmN8yVd0Kk4Ec6ab2c3d4e5f6g7h8i9j0",
 		"https://youtube.com/playlist?list=PLmN8yVd0Kk4Ec6&si=abc":                      "PLmN8yVd0Kk4Ec6",
 		"https://www.youtube.com/watch?v=PksSjMFA6N0&list=PLmN8yVd0Kk4Ec6ab2c3d4e5f6g7": "PLmN8yVd0Kk4Ec6ab2c3d4e5f6g7",
+		"https://studio.youtube.com/playlist/PL_trbEzIM4HsBc18uCQdWzEagdQCnQWOB/edit":   "PL_trbEzIM4HsBc18uCQdWzEagdQCnQWOB",
+		"https://studio.youtube.com/playlist/PL_trbEzIM4HsBc18uCQdWzEagdQCnQWOB":        "PL_trbEzIM4HsBc18uCQdWzEagdQCnQWOB",
+		"https://studio.youtube.com/playlist/PL_trbEzIM4HsBc18uCQdWzEagdQCnQWOB/":       "PL_trbEzIM4HsBc18uCQdWzEagdQCnQWOB",
 	}
 
 	for ref, expected := range cases {
