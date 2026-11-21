@@ -14,6 +14,11 @@ import (
 // youTubePlaylistURL is the only shape a series' playlist link may take
 var youTubePlaylistURL = regexp.MustCompile(`^https://www\.youtube\.com/playlist\?list=PL[A-Za-z0-9_-]+$`)
 
+// studioPlaylistURL is a YouTube Studio link to a playlist's editing page, which only the
+// channel owner can open: https://studio.youtube.com/playlist/PL.../edit. It holds the
+// playlist ID, so the public link to use instead can be named
+var studioPlaylistURL = regexp.MustCompile(`(?i)studio\.youtube\.com/playlist/(PL[A-Za-z0-9_-]+)`)
+
 // List of states that audio and video's can be in. Most of these should be temporary states
 // during editing, but some are permanent
 var possibleAudioVideoStates = []string{
@@ -266,6 +271,11 @@ func (s *CatalogSeri) IsValid(report *util.IndentingReport) bool {
 		switch {
 		case s.Playlist == nil || s.Playlist.URL == "":
 			report.Printf("WARNING: Has no playlist in the Video column")
+		case studioPlaylistURL.MatchString(s.Playlist.URL):
+			id := studioPlaylistURL.FindStringSubmatch(s.Playlist.URL)[1]
+			report.Printf("Playlist '%s' is a YouTube Studio editing link, which only the channel owner can open. Use https://www.youtube.com/playlist?list=%s",
+				s.Playlist.URL, id)
+			valid = false
 		case !youTubePlaylistURL.MatchString(s.Playlist.URL):
 			report.Printf("Playlist '%s' isn't a YouTube playlist link like https://www.youtube.com/playlist?list=PL<id>",
 				s.Playlist.URL)

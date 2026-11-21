@@ -247,6 +247,24 @@ func (t *ValidateTestSuite) TestSeriPlaylist_WhenNotAPlaylistLink() {
 	}
 }
 
+// a Studio link opens only for the channel owner; the report names the public link to use
+func (t *ValidateTestSuite) TestSeriPlaylist_WhenStudioLink() {
+	for _, url := range []string{
+		"https://studio.youtube.com/playlist/PLIv9NPKsgJlo/edit",
+		"https://studio.youtube.com/playlist/PLIv9NPKsgJlo",
+		"https://studio.youtube.com/playlist/PLIv9NPKsgJlo/videos",
+		"studio.youtube.com/playlist/PLIv9NPKsgJlo/edit",
+	} {
+		t.Report = util.NewIndentingReport(util.ReportSilent)
+		sut := getValidTestSeri()
+		sut.Playlist = &OnlineResource{URL: url}
+
+		t.False(sut.IsValid(t.Report), url)
+		t.Contains(t.Report.String(), "is a YouTube Studio editing link", url)
+		t.Contains(t.Report.String(), "Use https://www.youtube.com/playlist?list=PLIv9NPKsgJlo", url)
+	}
+}
+
 // "-" in the Video column: private, audio only, on Rumble, ...
 func (t *ValidateTestSuite) TestSeriPlaylist_WhenNoneOnPurpose() {
 	sut := getValidTestSeri()
