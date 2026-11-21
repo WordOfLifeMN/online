@@ -146,7 +146,8 @@ func TestApprove_Defaults(t *testing.T) {
 
 	withYes(t, false)
 	withInput(t, "\n", func() { assert.True(t, run.approve(plain), "Enter is yes") })
-	withInput(t, "\n", func() { assert.False(t, run.approve(destructive), "Enter is no") })
+	withInput(t, "\n", func() { assert.True(t, run.approve(destructive), "Enter is yes") })
+	withInput(t, "n\n", func() { assert.False(t, run.approve(destructive), "n declines") })
 
 	withYes(t, true)
 	withInput(t, "", func() { assert.True(t, run.approve(plain), "--yes answers") })

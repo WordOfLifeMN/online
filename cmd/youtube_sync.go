@@ -42,8 +42,9 @@ playlist membership are compared. Everything else on YouTube is left as it is. A
 video is added to the playlists its series call for, and never removed from one.
 
 A change that would remove description text that is not in the spreadsheet is
-marked with a WARNING, defaults to No, and is asked about even with --yes. So is
-creating a playlist.
+marked with a WARNING and is asked about even with --yes, though Enter still
+applies it. Creating a playlist is also asked about even with --yes, and defaults
+to No.
 
 The spreadsheet is read through a cache that is kept for an hour. Use --refresh
 after editing it.`,
@@ -538,11 +539,12 @@ func (r *syncRun) syncVideoRow(id string, live *ytpkg.Message, msg *catalog.Cata
 	return nil
 }
 
-// approve asks whether to apply a video's changes. A destructive change defaults to No
-// and is asked even with --yes; anything else defaults to Yes and --yes answers it.
+// approve asks whether to apply a video's changes. Both default to Yes. A destructive
+// change is still asked even with --yes, so the WARNING is always seen; anything else
+// --yes answers.
 func (r *syncRun) approve(changes []ytpkg.Change) bool {
 	if ytpkg.HasDestructive(changes) {
-		return confirm("Apply these changes, including the WARNING above?", false, false)
+		return confirm("Apply these changes, including the WARNING above?", true, false)
 	}
 	return confirm("Apply these changes?", true, true)
 }
