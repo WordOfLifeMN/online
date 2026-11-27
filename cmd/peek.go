@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/WordOfLifeMN/online/gclient"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -12,9 +11,10 @@ import (
 // peekCmd represents the peek command
 var peekCmd = &cobra.Command{
 	Use:   "peek",
-	Short: "Peek into the Google Sheet",
-	Long: `Basically a debgging command to see if we can access and read a Google sheet.
-This reads the Google Sheet associated with the --sheet-id and print some stuff out.`,
+	Short: "Peek into the spreadsheet",
+	Long: `Basically a debugging command to see if we can access and read the spreadsheet.
+This reads the spreadsheet named by --sheet-id - an Excel workbook or a Google Sheet -
+and prints each tab's column titles and the first few rows.`,
 	RunE: peek,
 }
 
@@ -33,36 +33,36 @@ func peek(cmd *cobra.Command, args []string) error {
 	initLogging()
 
 	sheetID := viper.GetString("sheet-id")
-
-	// get the spreadsheet service
 	log.Printf("Checking spreadsheet %s", sheetID)
-	service, err := gclient.GetSheetService(cmd.Context())
+	src, err := openSheetSource(cmd.Context(), sheetID)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Spreadsheet %s\n", src.Title())
+
+	tabs, err := src.Tabs()
 	if err != nil {
 		return err
 	}
 
-	// output the sheet information
-	document, err := service.Spreadsheets.Get(sheetID).Do()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Spreadsheet \"%s\" (%s)\n", document.Properties.Title, sheetID)
-
-	// output the sheet info
 	maxColumns := viper.GetInt("columns")
 	maxRows := viper.GetInt("rows")
-	for _, sheet := range document.Sheets {
-		fmt.Printf("  Sheet #%d : %s\n", sheet.Properties.Index, sheet.Properties.Title)
+	for tabIndex, tab := range tabs {
+		fmt.Printf("  Sheet #%d : %s\n", tabIndex, tab)
 
-		// print columns (title row)
-		titleRange := fmt.Sprintf("'%s'!1:1", sheet.Properties.Title)
-		values, err := service.Spreadsheets.Values.Get(sheetID, titleRange).Do()
+		rows, err := src.Rows(tab)
 		if err != nil {
-			fmt.Printf("ERROR: Unable to get the column titles: %v", err)
+			fmt.Printf("ERROR: Unable to read the sheet: %v\n", err)
 			continue
 		}
-		fmt.Printf("    %d columns : ", len(values.Values[0]))
-		for columnIndex, v := range values.Values[0] {
+		if len(rows) == 0 {
+			fmt.Printf("    (empty)\n")
+			continue
+		}
+
+		// print columns (title row)
+		fmt.Printf("    %d columns : ", len(rows[0]))
+		for columnIndex, title := range rows[0] {
 			if columnIndex > 0 {
 				fmt.Print(", ")
 			}
@@ -70,19 +70,13 @@ func peek(cmd *cobra.Command, args []string) error {
 				fmt.Print("...")
 				break
 			}
-			fmt.Printf("%s", v.(string))
+			fmt.Printf("%s", title)
 		}
 		fmt.Println()
 
-		// print rows (titles). assume first row is still column titles
-		titleRange = fmt.Sprintf("'%s'!A:A", sheet.Properties.Title)
-		values, err = service.Spreadsheets.Values.Get(sheetID, titleRange).Do()
-		if err != nil {
-			fmt.Printf("ERROR: Unable to get the row titles: %v", err)
-			continue
-		}
-		fmt.Printf("    %d rows : ", len(values.Values)-1)
-		for rowIndex, row := range values.Values {
+		// print rows (first column). the first row is the column titles
+		fmt.Printf("    %d rows : ", len(rows)-1)
+		for rowIndex, row := range rows {
 			if rowIndex == 0 {
 				continue
 			}
@@ -96,7 +90,7 @@ func peek(cmd *cobra.Command, args []string) error {
 			if len(row) == 0 {
 				fmt.Printf("\"\"")
 			} else {
-				fmt.Printf("%q", row[0].(string))
+				fmt.Printf("%q", row[0])
 			}
 		}
 		fmt.Println()

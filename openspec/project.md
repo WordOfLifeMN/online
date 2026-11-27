@@ -11,7 +11,9 @@ Run locally by the media operator on Windows; not a server, not a service.
 |---------|------|
 | `cmd/` | Cobra commands. One file per command, `<noun>_<verb>.go` for subcommands. |
 | `catalog/` | Domain model: `Catalog`, `CatalogSeri`, `CatalogMessage`, `OnlineResource`, plus the `Ministry` / `View` / `MessageType` enums. No I/O beyond JSON. |
-| `gclient/` | Google API access (Sheets today). Translates sheet rows into `catalog` types. |
+| `sheet/` | Turns spreadsheet rows into `catalog` types, whatever the spreadsheet is kept in. Defines the read-only `Source` interface. |
+| `sheet/google/` | Google Sheet `Source`, plus the read-only service-account auth. To be retired once the Excel workbook is the system of record. |
+| `sheet/microsoft/` | Excel workbook `Source`, read even while Excel has it open. |
 | `util/` | Small helpers: hashing, path normalization, stopwatch, indenting report. |
 
 ## Conventions

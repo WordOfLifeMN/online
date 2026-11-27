@@ -46,8 +46,10 @@ marked with a WARNING and is asked about even with --yes, though Enter still
 applies it. Creating a playlist is also asked about even with --yes, and defaults
 to No.
 
-The spreadsheet is read through a cache that is kept for an hour. Use --refresh
-after editing it.`,
+An Excel workbook is read afresh on every run, and the time it was last saved is
+shown: an edit made in Excel reaches the local file through OneDrive, which can take
+a minute. A Google Sheet is read through a cache that is kept for an hour. Use
+--refresh after editing it.`,
 	Example: `  online youtube sync 01LiNfRzMo8
   online youtube sync https://www.youtube.com/playlist?list=PL...
   online youtube sync "D:\Videos\2026-10-04 Pay Attention.mp4"

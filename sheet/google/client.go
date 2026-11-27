@@ -1,6 +1,6 @@
-package gclient
+package google
 
-// methdos for accessing and interacting with Google API
+// authentication for reading Google Sheets
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	"golang.org/x/oauth2/google"
+	googleoauth "golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
 )
@@ -36,7 +36,7 @@ func GetGoogleClient(ctx context.Context) (*http.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Cannot read credentials from %s: %w", credentialFile, err)
 	}
-	config, err := google.JWTConfigFromJSON(credentials, sheetsScope)
+	config, err := googleoauth.JWTConfigFromJSON(credentials, sheetsScope)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to parse client JWT file to config: %w", err)
 	}

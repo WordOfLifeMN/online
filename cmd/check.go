@@ -8,7 +8,7 @@ import (
 
 // checkCmd represents the check command
 var checkCmd = &cobra.Command{
-	Use:   "check [--input FILE | --sheet-id ID]",
+	Use:   "check [--input FILE | --sheet-id WORKBOOK|ID]",
 	Short: "Validate a catalog has correct data in it.",
 	Long: `Ensures that an online content catalog is internall consistent.
 

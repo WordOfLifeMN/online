@@ -1,6 +1,6 @@
-package gclient
+package sheet
 
-// code that can read a spreadsheet and generate a catalog model from it
+// code that reads a spreadsheet and generates a catalog model from it
 
 import (
 	"fmt"
@@ -10,25 +10,17 @@ import (
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
-	"google.golang.org/api/sheets/v4"
 )
 
-// NewCatalogFromSheet takes a valid spreadsheet service and a spreadsheet
-// document ID and creates a catalog from the info in the spreadsheet
-func NewCatalogFromSheet(service *sheets.Service, documentID string) (*catalog.Catalog, error) {
+// NewCatalog reads every message tab of a spreadsheet and creates a catalog from it
+func NewCatalog(src Source) (*catalog.Catalog, error) {
 	// initialize the catalog
 	catalog := catalog.Catalog{
 		Created: time.Now(),
 	}
 
-	// get document information
-	document, err := service.Spreadsheets.Get(documentID).Do()
-	if err != nil {
-		return &catalog, err
-	}
-
-	log.Printf("Reading catalog from spreadsheet %s (ID: %s)", document.Properties.Title, documentID)
-	messages, msgSeries, err := readMessagesFromDocument(service, documentID)
+	log.Printf("Reading catalog from spreadsheet %s", src.Title())
+	messages, msgSeries, err := readMessages(src)
 	if err != nil {
 		return &catalog, err
 	}
@@ -38,9 +30,13 @@ func NewCatalogFromSheet(service *sheets.Service, documentID string) (*catalog.C
 	return &catalog, nil
 }
 
+// DateColumn is the title of the column holding each message's date. A Source may need
+// it to read dates by value rather than as displayed.
+const DateColumn = "Date"
+
 const (
 	msgName        string = "Name"
-	msgDate        string = "Date"
+	msgDate        string = DateColumn
 	msgSpeakers    string = "Speaker"
 	msgMinistry    string = "Ministry"
 	msgType        string = "Type"
@@ -62,78 +58,69 @@ var requiredMessageColumns []string = []string{
 	msgResources,
 }
 
-// readMessagesFromDocument finds the "Messages" tabs and reads the message data
-// from them. It also extracts any Series/Booklet rows and returns them as a
-// separate series list.
-func readMessagesFromDocument(
-	service *sheets.Service, documentID string,
-) (
-	[]catalog.CatalogMessage, []catalog.CatalogSeri, error,
-) {
+// readMessages reads the message data from every tab of the spreadsheet. It also
+// extracts any Series/Booklet rows and returns them as a separate series list.
+func readMessages(src Source) ([]catalog.CatalogMessage, []catalog.CatalogSeri, error) {
 	var messages []catalog.CatalogMessage
 	var series []catalog.CatalogSeri
 
-	// get information about all the sheets
-	document, err := service.Spreadsheets.Get(documentID).Do()
+	tabs, err := src.Tabs()
 	if err != nil {
 		return messages, series, err
 	}
 
-	// iterate through all the sheets: skip "_"-prefixed and "Series" tabs,
-	// treat all others as message tabs using the tab name as the default ministry
-	for _, sheet := range document.Sheets {
-		title := sheet.Properties.Title
-		log.Printf("Checking sheet %s\n", title)
-		if strings.HasPrefix(title, "_") {
-			log.Printf("Ignoring sheet '%s' (starts with '_')\n", title)
+	// iterate through all the tabs: skip "_"-prefixed tabs, and treat all others as
+	// message tabs using the tab name as the default ministry
+	for _, tab := range tabs {
+		log.Printf("Checking sheet %s\n", tab)
+		if strings.HasPrefix(tab, "_") {
+			log.Printf("Ignoring sheet '%s' (starts with '_')\n", tab)
 			continue
 		}
-		sheetMessages, sheetSeries, err := readMessagesFromSheet(service, documentID, title, title)
+		tabMessages, tabSeries, err := readMessagesFromTab(src, tab, tab)
 		if err != nil {
-			log.Printf("Unable to read messages from sheet '%s': %s", title, err)
+			log.Printf("Unable to read messages from sheet '%s': %s", tab, err)
 			continue
 		}
-		messages = append(messages, sheetMessages...)
-		series = append(series, sheetSeries...)
+		messages = append(messages, tabMessages...)
+		series = append(series, tabSeries...)
 	}
 
 	return messages, series, nil
 }
 
-// readMessagesFromSheet reads a series of messages from a single sheet in a document.
+// readMessagesFromTab reads the messages from a single tab of the spreadsheet.
 // defaultMinistry is used for any message that does not have an explicit Ministry column value.
 // Rows with type Series or Booklet are returned as CatalogSeri rather than CatalogMessage.
-func readMessagesFromSheet(service *sheets.Service, documentID string, sheetName string, defaultMinistry string) ([]catalog.CatalogMessage, []catalog.CatalogSeri, error) {
-	log.Printf("Reading the Messages from tab '%s'\n", sheetName)
+func readMessagesFromTab(src Source, tab string, defaultMinistry string) ([]catalog.CatalogMessage, []catalog.CatalogSeri, error) {
+	log.Printf("Reading the Messages from tab '%s'\n", tab)
 
-	// get the first row as column titles
-	columns, err := getIndexOfColumns(service, documentID, sheetName, 1)
+	rows, err := src.Rows(tab)
 	if err != nil {
+		log.Printf("Unable to read the messages: %v", err)
 		return nil, nil, err
 	}
+	if len(rows) == 0 {
+		return nil, nil, fmt.Errorf("sheet '%s' is empty", tab)
+	}
+
+	// the first row holds the column titles
+	columns := getIndexOfColumns(rows[0])
 	log.Printf("  Found %d columns:\n", len(columns))
 
 	// validate that the columns we are expecting are actually there
 	for _, requiredColumn := range requiredMessageColumns {
 		if _, ok := columns[requiredColumn]; !ok {
 			return nil, nil, fmt.Errorf("required column '%s' cannot be found in sheet '%s'",
-				requiredColumn, sheetName)
+				requiredColumn, tab)
 		}
 	}
 
 	var messages []catalog.CatalogMessage
 	var series []catalog.CatalogSeri
 
-	// read the data from the spreadsheet
-	messageRange := fmt.Sprintf("'%s'!2:80000", sheetName)
-	values, err := service.Spreadsheets.Values.Get(documentID, messageRange).Do()
-	if err != nil {
-		log.Printf("Unable to read the messages: %v", err)
-		return messages, series, err
-	}
-
-	log.Printf("  Found %d rows", len(values.Values))
-	for messageIndex, messageRow := range values.Values {
+	log.Printf("  Found %d rows", len(rows)-1)
+	for messageIndex, messageRow := range rows[1:] {
 		message, err := newCatalogMessageFromRow(columns, messageRow, defaultMinistry)
 		if err != nil {
 			log.Printf("Unable to read message from row %d: %s", messageIndex+2, err)
@@ -194,7 +181,7 @@ func newCatalogSeriFromMessageRow(msg catalog.CatalogMessage) catalog.CatalogSer
 // sheet data. The columns contains the index of column names to column indices,
 // and all the required columns must be present when called. rowData is the raw
 // row data from the sheet
-func newCatalogMessageFromRow(columns map[string]int, rowData []any, defaultMinistry string) (catalog.CatalogMessage, error) {
+func newCatalogMessageFromRow(columns map[string]int, rowData []string, defaultMinistry string) (catalog.CatalogMessage, error) {
 	msg := catalog.CatalogMessage{}
 
 	// simple mapping
@@ -245,32 +232,22 @@ func newCatalogMessageFromRow(columns map[string]int, rowData []any, defaultMini
 	return msg, nil
 }
 
-// getIndexOfColumns takes a sheet name and returns all the column titles in a
-// map where the key is the column name, and the value is the index of the
-// column
-func getIndexOfColumns(service *sheets.Service, documentID string, tabName string, titleRow int) (map[string]int, error) {
-	// the range of the column titles is always the entire row
-	titleRange := fmt.Sprintf("'%s'!%d:%d", tabName, titleRow, titleRow)
-
-	values, err := service.Spreadsheets.Values.Get(documentID, titleRange).Do()
-	if err != nil {
-		return nil, err
-	}
-
+// getIndexOfColumns takes the title row of a tab and returns all the column titles in
+// a map where the key is the column name, and the value is the index of the column
+func getIndexOfColumns(titleRow []string) map[string]int {
 	columns := map[string]int{}
-	for columnIndex, columnName := range values.Values[0] {
-		columns[columnName.(string)] = columnIndex
+	for columnIndex, columnName := range titleRow {
+		columns[columnName] = columnIndex
 	}
-
-	return columns, nil
+	return columns
 }
 
-// getCellString takes a row of data and returns the string version of the data in
-// the index'th column of the row. Returns "" if the index is out of range
-func getCellString(rowData []any, index int) string {
+// getCellString takes a row of data and returns the data in the index'th column of the
+// row, trimmed. Returns "" if the index is out of range
+func getCellString(rowData []string, index int) string {
 	if index >= len(rowData) {
 		return ""
 	}
 
-	return strings.TrimSpace(fmt.Sprintf("%v", rowData[index]))
+	return strings.TrimSpace(rowData[index])
 }

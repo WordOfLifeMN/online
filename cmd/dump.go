@@ -14,10 +14,11 @@ import (
 
 // dumpCmd represents the dump command
 var dumpCmd = &cobra.Command{
-	Use:     "dump [--sheet-id ID | --input FILE]",
-	Short:   "Read the content and output the data in JSON",
-	Long:    `Used to make a local copy of the data.`,
-	Example: `dump --sheet-id 1vvhIGMPvVF-DtWoYsEbVBvzk_VtLyKuIw_zyLdsB-JY >/tmp/catalog.json`,
+	Use:   "dump [--sheet-id WORKBOOK|ID | --input FILE]",
+	Short: "Read the content and output the data in JSON",
+	Long:  `Used to make a local copy of the data.`,
+	Example: `  dump --sheet-id 'C:\Catalog\MediaCatalog.xlsx' -o stdout >catalog.json
+  dump --sheet-id 1vvhIGMPvVF-DtWoYsEbVBvzk_VtLyKuIw_zyLdsB-JY -o stdout >catalog.json`,
 	RunE:    dump,
 }
 

@@ -27,6 +27,9 @@ func catalogCachePath() string {
 // and the cache rewritten. --refresh forces a read. An explicit --input is read
 // directly and never cached, since it is already a local file.
 //
+// An Excel workbook is never cached either. It takes well under a second to read, and a
+// cached copy would hide the edit the operator has just made.
+//
 // The catalog is returned as read, not initialized, as 'online dump' writes it.
 //
 // 'audio' does not use this: its row has usually just been edited, so it reads the
@@ -40,7 +43,7 @@ func readCatalogCachedFrom(
 	ctx context.Context,
 	read func(context.Context) (*catalog.Catalog, error),
 ) (*catalog.Catalog, error) {
-	if viper.GetString("input") != "" {
+	if viper.GetString("input") != "" || sheetIsWorkbook() {
 		return read(ctx)
 	}
 

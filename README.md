@@ -18,7 +18,7 @@ longer generates a website. The last version that did is tagged `v1-static-site`
       ├─ ffmpeg ──────────► .mp3        (temporary)
       ├─ faster-whisper ──► .txt        (kept beside the .mp4)
       ├─ Claude ──────────► title + description
-      ├─ Google Sheet ────► series, track, ministry, visibility, resources
+      ├─ spreadsheet ─────► series, track, ministry, visibility, resources
       └─ assemble ────────► UPLOAD PACKET, printed for copy-paste
 ```
 
@@ -100,7 +100,7 @@ otherwise the generic artwork in `thumb-dir`.
 | `audio summarize` | Generate a title and description from an existing transcript |
 | `dump` | Write the spreadsheet contents to a local JSON file |
 | `check` | Validate the spreadsheet for internal consistency |
-| `peek` | Check that the Google Sheet can be read |
+| `peek` | Check that the spreadsheet can be read |
 
 # Configuration
 
@@ -110,7 +110,7 @@ override the configuration file.
 
 | Key | Meaning | Default |
 |-----|---------|---------|
-| `sheet-id` | Google spreadsheet holding the series and messages | - |
+| `sheet-id` | Spreadsheet holding the series and messages: the path of an Excel workbook, or the ID of a Google Sheet (see below) | - |
 | `anthropic-api-key` | API key for the church's Anthropic Console account | - |
 | `anthropic-model` | Model used for titles and descriptions | `claude-haiku-4-5` |
 | `whisper-model` | Transcription model | `small` |
@@ -125,9 +125,47 @@ about 3 minutes per service and summarises identically to `large-v3`, which take
 18. The full comparison is in the `defaultWhisperModel` comment in
 `cmd/audio_transcribe.go`.
 
+## The spreadsheet
+
+`sheet-id` names either an Excel workbook or a Google Sheet, and its value decides
+which:
+
+- **Excel workbook:** anything containing `\` or `/`, starting with `~`, or ending
+  in `.xlsx` / `.xlsm`. Single-quote it in the YAML, so backslashes are taken
+  literally:
+  ```yaml
+  sheet-id: 'C:\Users\WordofLifeMNMedia\OneDrive - Word of Life Ministries\Documents\WOLCatalog\MediaCatalog.xlsx'
+  ```
+  A path is never sent to Google. If the file is missing, that is an error.
+- **Google Sheet:** anything else is taken as a Sheet ID.
+- **A URL is refused.** It is neither of the above.
+
+The workbook can be read while it is open in Excel, so there is no need to close
+it first. It is only ever read, never written.
+
+Edits are saved to OneDrive/SharePoint at once, but they reach the local file only
+when OneDrive syncs it. Edits made in the browser took about five minutes to arrive.
+With desktop Excel open it was anywhere from 7 seconds to over a minute. So every
+read shows which edits the local copy includes:
+
+```
+Reading MediaCatalog.xlsx (includes edits up to 12:28:26, 5 min ago)
+```
+
+The time is the save Excel records inside the workbook. That's not the file's
+modification time, which OneDrive sets to the server's time and which can even go
+backwards. Excel Online records a save up to about a minute after an edit. If the
+time is older than your last edit, wait and run again. The workbook is
+read fresh on every run. Only a Google Sheet goes through the one-hour cache that
+`youtube --refresh` bypasses.
+
+Keep the workbook set to OneDrive's "Always keep on this device", so it is never a
+cloud-only placeholder.
+
 ## Credentials
 
-**Google Sheets.** Create a Service Account and download the credentials file.
+**Google Sheets** (only when `sheet-id` is a Google Sheet ID). Create a Service
+Account and download the credentials file.
 Copy it to `~/.wolm/credentials.json`, then share the spreadsheet with that
 service account's email address.
 
