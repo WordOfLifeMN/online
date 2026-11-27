@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/WordOfLifeMN/online/catalog"
-	"github.com/WordOfLifeMN/online/gclient"
+	"github.com/WordOfLifeMN/online/sheet"
 	"github.com/WordOfLifeMN/online/util"
 	"github.com/spf13/cobra"
 
@@ -27,7 +27,7 @@ var rootCmd = &cobra.Command{
 YouTube.
 
 Given an edited video it extracts the audio, transcribes it, generates a suggested
-title and description, looks the message up in the Google Sheet for its series,
+title and description, looks the message up in the spreadsheet for its series,
 track, ministry and visibility, and assembles everything needed to upload the
 message by hand.`,
 	SilenceUsage: true,
@@ -50,7 +50,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Include logging")
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 
-	rootCmd.PersistentFlags().String("sheet-id", "", "ID of Google spreadsheet that contains the series and messages")
+	rootCmd.PersistentFlags().String("sheet-id", "", "Spreadsheet of series and messages: the path of an Excel workbook (.xlsx), or the ID of a Google Sheet")
 	viper.BindPFlag("sheet-id", rootCmd.PersistentFlags().Lookup("sheet-id"))
 
 	rootCmd.PersistentFlags().StringP("input", "i", "", "Path to JSON file to read catalog from (overrides --sheet-id)")
@@ -135,7 +135,8 @@ func redactIfSecret(key string, value string) string {
 
 // readOnlineContentFromInput reads the content of a catalog from wherever
 // requested. If there is an --input parameter, then it is read from that file.
-// Otherwise, it is read from the --sheet-id. If there is no --input or --sheet-id, then an error is returned
+// Otherwise, it is read from the --sheet-id: an Excel workbook when that is a path,
+// else a Google Sheet. If there is no --input or --sheet-id, then an error is returned
 func readOnlineContentFromInput(ctx context.Context) (*catalog.Catalog, error) {
 
 	// check if reading from file
@@ -148,17 +149,17 @@ func readOnlineContentFromInput(ctx context.Context) (*catalog.Catalog, error) {
 		return nil, fmt.Errorf("filetype %s is not supported", inputFile)
 	}
 
-	// check if reading from Google Sheet
+	// check if reading from the spreadsheet: a Google Sheet or an Excel workbook
 	sheetID := viper.GetString("sheet-id")
 	if sheetID != "" {
-		sheetService, err := gclient.GetSheetService(ctx)
+		src, err := openSheetSource(ctx, sheetID)
 		if err != nil {
 			return nil, err
 		}
 
-		return gclient.NewCatalogFromSheet(sheetService, sheetID)
+		return sheet.NewCatalog(src)
 	}
 
 	// no input
-	return nil, fmt.Errorf("no input specified. please provide an --input or --sheet-id parameter, or configure a default sheet-id in the ~/.wolm/online.yaml file")
+	return nil, fmt.Errorf("no input specified. please provide an --input or --sheet-id parameter, or configure a default sheet-id in the ~/.wolm/online-config.yaml file")
 }

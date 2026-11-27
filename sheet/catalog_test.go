@@ -1,16 +1,13 @@
-package gclient
+package sheet
 
 import (
-	"context"
+	"errors"
 	"testing"
 
 	"github.com/WordOfLifeMN/online/catalog"
 	"github.com/WordOfLifeMN/online/util"
 	"github.com/stretchr/testify/suite"
-	"google.golang.org/api/sheets/v4"
 )
-
-const testDocumentID = "1vvhIGMPvVF-DtWoYsEbVBvzk_VtLyKuIw_zyLdsB-JY"
 
 func TestCatalogTestSuite(t *testing.T) {
 	suite.Run(t, new(CatalogTestSuite))
@@ -18,18 +15,28 @@ func TestCatalogTestSuite(t *testing.T) {
 
 type CatalogTestSuite struct {
 	suite.Suite
-	service *sheets.Service
 }
 
-func (t *CatalogTestSuite) SetupSuite() {
-	var err error
-	t.service, err = GetSheetService(context.Background())
-	t.NoError(err)
+// fakeSource is a Source held in memory: tab name to rows, titles first
+type fakeSource struct {
+	order []string
+	tabs  map[string][][]string
 }
 
-// +---------------------------------------------------------------------------
-// | Unit tests (no Google API)
-// +---------------------------------------------------------------------------
+func (f fakeSource) Title() string           { return "fake" }
+func (f fakeSource) Tabs() ([]string, error) { return f.order, nil }
+func (f fakeSource) Rows(tab string) ([][]string, error) {
+	rows, ok := f.tabs[tab]
+	if !ok {
+		return nil, errors.New("no such tab")
+	}
+	return rows, nil
+}
+
+var messageTitles = []string{
+	"Date", "Name", "Speaker", "Type", "Visibility",
+	"Series Name", "Track", "Description", "Thumb", "Video", "Resources",
+}
 
 func (t *CatalogTestSuite) TestNewCatalogSeriFromMessageRow_Series() {
 	// given a Series-type message row
@@ -128,21 +135,22 @@ func (t *CatalogTestSuite) TestNewCatalogSeriFromMessageRow_Playlist() {
 }
 
 func (t *CatalogTestSuite) TestGetCellString() {
-	row := []any{"hello", "  world  ", 42}
+	row := []string{"hello", "  world  ", "42"}
 	t.Equal("hello", getCellString(row, 0))
 	t.Equal("world", getCellString(row, 1)) // trims whitespace
-	t.Equal("42", getCellString(row, 2))    // non-string value coerced via fmt
-	t.Equal("", getCellString(row, 99))     // out-of-range returns empty
-	t.Equal("", getCellString(nil, 0))      // nil slice returns empty
+	t.Equal("42", getCellString(row, 2))
+	t.Equal("", getCellString(row, 99)) // out-of-range returns empty
+	t.Equal("", getCellString(nil, 0))  // nil slice returns empty
 }
 
-func seriColumnsForTest() map[string]int {
-	return map[string]int{
-		"Name": 0, "ID": 1, "Description": 2,
-		"Date Started": 3, "Date Ended": 4,
-		"Visibility": 5, "Booklets": 6,
-		"CD Jacket": 7, "DVD Jacket": 8, "Cover Art": 9,
-	}
+func (t *CatalogTestSuite) TestGetIndexOfColumns() {
+	columns := getIndexOfColumns([]string{"One", "Two", "And-a-Three", "Four Space", "!# Five †"})
+	t.Len(columns, 5)
+	t.Equal(0, columns["One"])
+	t.Equal(1, columns["Two"])
+	t.Equal(2, columns["And-a-Three"])
+	t.Equal(3, columns["Four Space"])
+	t.Equal(4, columns["!# Five †"])
 }
 
 func msgColumnsForTest() map[string]int {
@@ -157,7 +165,7 @@ func msgColumnsForTest() map[string]int {
 
 func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_NoThumbColumn() {
 	// Thumb column absent from the columns map → msg.Thumb must be nil
-	rowData := []any{
+	rowData := []string{
 		"2021-06-01", "Test Message", "A description",
 		"Speaker One", "message", "public",
 		"", "", "", "", "",
@@ -169,7 +177,7 @@ func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_NoThumbColumn() {
 }
 
 func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_DefaultMinistry() {
-	rowData := []any{
+	rowData := []string{
 		"2021-06-01", "Test Message", "",
 		"", "message", "public",
 		"", "", "", "", "",
@@ -183,7 +191,7 @@ func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_DefaultMinistry() {
 	// Ministry column present but cell is empty → still falls back to defaultMinistry
 	columnsWithMinistry := msgColumnsForTest()
 	columnsWithMinistry["Ministry"] = 11
-	rowWithEmptyMinistry := append(append([]any{}, rowData...), "")
+	rowWithEmptyMinistry := append(append([]string{}, rowData...), "")
 
 	msg, err = newCatalogMessageFromRow(columnsWithMinistry, rowWithEmptyMinistry, "wol")
 	t.NoError(err)
@@ -194,7 +202,7 @@ func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_MinistryFromColumn() {
 	// Ministry column present with non-empty value → overrides defaultMinistry
 	columns := msgColumnsForTest()
 	columns["Ministry"] = 11
-	rowData := []any{
+	rowData := []string{
 		"2021-06-01", "Test Message", "",
 		"", "message", "public",
 		"", "", "", "", "", "tbo",
@@ -206,7 +214,7 @@ func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_MinistryFromColumn() {
 }
 
 func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_MultipleSpeakers() {
-	rowData := []any{
+	rowData := []string{
 		"2021-06-01", "Test Message", "",
 		"Alice;Bob;Charlie", "message", "public",
 		"", "", "", "", "",
@@ -222,7 +230,7 @@ func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_MultipleSpeakers() {
 
 func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_InvalidDate() {
 	// unparseable date → zero DateOnly, no error returned
-	rowData := []any{
+	rowData := []string{
 		"not-a-date", "Test Message", "",
 		"", "message", "public",
 		"", "", "", "", "",
@@ -233,101 +241,59 @@ func (t *CatalogTestSuite) TestNewCatalogMessageFromRow_InvalidDate() {
 	t.True(msg.Date.IsZero())
 }
 
-// +---------------------------------------------------------------------------
-// | Integration tests (require Google API)
-// +---------------------------------------------------------------------------
-
-func (t *CatalogTestSuite) TestReadColumns() {
-	// when
-	columns, err := getIndexOfColumns(t.service, testDocumentID, "Columns", 1)
-	t.NoError(err)
-
-	// then
-	t.NotNil(columns)
-	t.Len(columns, 5)
-	t.Equal(0, columns["One"])
-	t.Equal(1, columns["Two"])
-	t.Equal(2, columns["And-a-Three"])
-	t.Equal(3, columns["Four Space"])
-	t.Equal(4, columns["!# Five †"])
-}
-
-func (t *CatalogTestSuite) TestReadMessageSheet() {
-	// when
-	msgs, series, err := readMessagesFromSheet(t.service, testDocumentID, "Messages", "Messages")
-	t.NoError(err)
-	_ = series
-
-	// fully validate the first message
-	sut := msgs[0]
-	t.Equal(catalog.MustParseDateOnly("2021-09-01"), sut.Date)
-	t.Equal("Message Name", sut.Name)
-	t.Equal("Generic description", sut.Description)
-	t.Len(sut.Speakers, 1)
-	t.Equal("Speaker Jones", sut.Speakers[0])
-	t.Equal(catalog.WordOfLife, sut.Ministry)
-	t.Equal(catalog.Message, sut.Type)
-	t.Equal(catalog.Public, sut.Visibility)
-	t.Equal(catalog.OnlineResource{URL: "https://youtu.be/c/blahtyblah", Name: "blahtyblah"}, *sut.Video)
-
-	// validate resources
-	sut = msgs[8]
-	t.Equal("Resources", sut.Name)
-	t.Len(sut.Resources, 2)
-	t.Equal(catalog.OnlineResource{URL: "http://url-one.pdf", Name: "url-one"}, sut.Resources[0])
-	t.Equal(catalog.OnlineResource{URL: "https://url-two.pdf", Name: "url-two"}, sut.Resources[1])
-
-	// validate series reference
-	sut = msgs[9]
-	t.Equal("One Series", sut.Name)
-	t.Len(sut.Series, 1)
-	t.Equal(catalog.SeriesReference{Name: "Serical", Index: 4}, sut.Series[0])
-
-	// validate multiple series references
-	sut = msgs[10]
-	t.Equal("Multiple Series", sut.Name)
-	t.Len(sut.Series, 2)
-	t.Equal(catalog.SeriesReference{Name: "Prayer", Index: 1}, sut.Series[0])
-	t.Equal(catalog.SeriesReference{Name: "Grace", Index: 12}, sut.Series[1])
-
-	// validate series references with missing index
-	sut = msgs[11]
-	t.Equal("Series Missing Index", sut.Name)
-	t.Len(sut.Series, 3)
-	t.Equal(catalog.SeriesReference{Name: "Prayer", Index: 2}, sut.Series[0])
-	t.Equal(catalog.SeriesReference{Name: "Grace", Index: 2}, sut.Series[1])
-	t.Equal(catalog.SeriesReference{Name: "Love", Index: 2}, sut.Series[2])
-}
-
-func (t *CatalogTestSuite) TestReadMessagesFromDocument() {
-	// when
-	messages, series, err := readMessagesFromDocument(t.service, testDocumentID)
-
-	// then
-	t.NoError(err)
-	t.NotEmpty(messages)
-	// every series extracted from message tabs must have a hash-based ID
-	for _, s := range series {
-		t.Equal(util.ComputeHash(s.Name), s.ID,
-			"series %q should have a hash-based ID", s.Name)
+func (t *CatalogTestSuite) TestNewCatalog() {
+	// given a spreadsheet with two message tabs, one ignored tab, and one tab missing
+	// required columns
+	src := fakeSource{
+		order: []string{"WOL", "_validate", "Broken", "TBO"},
+		tabs: map[string][][]string{
+			"WOL": {
+				messageTitles,
+				{"2021-06-01", "First", "Pastor Vern", "message", "public", "Grace", "1"},
+				{"2021-06-08", "Grace", "", "series", "public", "", "", "A series", "", "-"},
+				{"2021-06-15", "Not a type", "", "bogus", "public"},
+				{}, // a blank row
+			},
+			"_validate": {{"Types"}, {"message"}},
+			"Broken":    {{"Date", "Name"}, {"2021-06-01", "Ignored"}},
+			"TBO": {
+				messageTitles,
+				{"2021-07-01", "Bridge", "Speaker", "message", "public"},
+			},
+		},
 	}
+
+	// when
+	cat, err := NewCatalog(src)
+
+	// then messages come from both message tabs, in order, with the tab as ministry
+	t.Require().NoError(err)
+	t.Require().Len(cat.Messages, 2)
+	t.Equal("First", cat.Messages[0].Name)
+	t.Equal(catalog.MustParseDateOnly("2021-06-01"), cat.Messages[0].Date)
+	t.Equal(catalog.WordOfLife, cat.Messages[0].Ministry)
+	t.Equal([]catalog.SeriesReference{{Name: "Grace", Index: 1}}, cat.Messages[0].Series)
+	t.Equal("Bridge", cat.Messages[1].Name)
+	t.Equal(catalog.TheBridgeOutreach, cat.Messages[1].Ministry)
+
+	// and the Series row becomes a series
+	t.Require().Len(cat.Series, 1)
+	t.Equal("Grace", cat.Series[0].Name)
+	t.Equal(util.ComputeHash("Grace"), cat.Series[0].ID)
+	t.True(cat.Series[0].NoPlaylist)
 }
 
-func (t *CatalogTestSuite) TestNewCatalogFromSheet() {
-	// when
-	cat, err := NewCatalogFromSheet(t.service, testDocumentID)
-
-	// then
-	t.NoError(err)
-	t.NotNil(cat)
-	t.NotEmpty(cat.Messages)
-
-	// Series are no longer read from a separate tab, so this fixture produces none:
-	// every row in its message tabs is a plain message. Series now come from rows
-	// typed Series or Booklet, which is covered by
-	// TestNewCatalogSeriFromMessageRow_Series and _Booklet, and the IDs they get are
-	// checked against the live sheet by TestReadMessagesFromDocument.
-	for _, s := range cat.Series {
-		t.NotEmpty(s.ID, "series %q should have an ID", s.Name)
+func (t *CatalogTestSuite) TestNewCatalog_EmptyTab() {
+	// an empty tab is skipped, not a failure
+	src := fakeSource{
+		order: []string{"Empty", "WOL"},
+		tabs: map[string][][]string{
+			"Empty": {},
+			"WOL":   {messageTitles, {"2021-06-01", "First", "", "message", "public"}},
+		},
 	}
+
+	cat, err := NewCatalog(src)
+	t.Require().NoError(err)
+	t.Len(cat.Messages, 1)
 }

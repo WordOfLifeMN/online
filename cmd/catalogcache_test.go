@@ -87,6 +87,39 @@ func TestCatalogCache_RefreshForcesARead(t *testing.T) {
 	assert.Equal(t, 2, sheet.reads)
 }
 
+// an Excel workbook is read every time, and neither uses nor writes the cache
+func TestCatalogCache_WorkbookBypasses(t *testing.T) {
+	withCatalogConfig(t, "", false)
+	viper.Set("sheet-id", `C:\Users\someone\OneDrive\MediaCatalog.xlsx`)
+	t.Cleanup(func() { viper.Set("sheet-id", "") })
+	sheet := &fakeSheet{name: "first"}
+
+	_, err := readCatalogCachedFrom(context.Background(), sheet.read)
+	require.NoError(t, err)
+	sheet.name = "edited"
+	cat, err := readCatalogCachedFrom(context.Background(), sheet.read)
+	require.NoError(t, err)
+	assert.Equal(t, "edited", cat.Messages[0].Name, "the edit is seen at once")
+	assert.Equal(t, 2, sheet.reads)
+
+	_, err = os.Stat(catalogCachePath())
+	assert.True(t, os.IsNotExist(err))
+}
+
+// a Google Sheet ID still goes through the cache
+func TestCatalogCache_GoogleSheetUsesCache(t *testing.T) {
+	withCatalogConfig(t, "", false)
+	viper.Set("sheet-id", "1z4XIiEPMFPpeRgGpdhshiQpmY7A45KzCyZzQ7Ohe85E")
+	t.Cleanup(func() { viper.Set("sheet-id", "") })
+	sheet := &fakeSheet{name: "first"}
+
+	for range 2 {
+		_, err := readCatalogCachedFrom(context.Background(), sheet.read)
+		require.NoError(t, err)
+	}
+	assert.Equal(t, 1, sheet.reads)
+}
+
 // an explicit --input is read directly, and neither uses nor writes the cache
 func TestCatalogCache_InputBypasses(t *testing.T) {
 	withCatalogConfig(t, "test.json", false)

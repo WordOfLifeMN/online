@@ -45,7 +45,7 @@ func init() {
 	viper.SetDefault("youtube-channel-ids", defaultYouTubeChannelIDs)
 
 	youtubeCmd.PersistentFlags().Bool("refresh", false,
-		"Re-read the spreadsheet instead of using the cached copy")
+		"Re-read a Google Sheet instead of using the cached copy (a workbook is always re-read)")
 	viper.BindPFlag("refresh", youtubeCmd.PersistentFlags().Lookup("refresh"))
 
 	youtubeCmd.PersistentFlags().Bool("yes", false,

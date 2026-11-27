@@ -1,4 +1,4 @@
-// Package ytclient is this application's access to the YouTube Data API, as gclient is
+// Package ytclient is this application's access to the YouTube Data API, as sheet/google is
 // its access to the Google Sheet.
 //
 // Unlike the Sheet, YouTube is reached as a user, not as a service account: a service
