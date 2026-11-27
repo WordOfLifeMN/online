@@ -37,6 +37,18 @@ file is read, as before.
 - WHEN the catalog is read
 - THEN the local file is read, and the workbook is not opened in Excel
 
+#### Scenario: Same name, different folder
+- GIVEN Excel has `…/WOLCatalog/MediaCatalog.xlsx` open from SharePoint
+- AND `sheet-id` is `C:\backup\MediaCatalog.xlsx`
+- WHEN the catalog is read
+- THEN the backup file is read, not the workbook open in Excel
+
+#### Scenario: Excel can't be reached
+- GIVEN an Excel process is running, but COM can't see it (one of the two runs as
+  Administrator)
+- WHEN the catalog is read
+- THEN the local file is read, saying Excel is running but can't be reached
+
 #### Scenario: Two candidate workbooks
 - GIVEN Excel has two workbooks named `MediaCatalog.xlsx` open, from different places
 - WHEN the catalog is read

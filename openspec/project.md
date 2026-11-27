@@ -13,7 +13,7 @@ Run locally by the media operator on Windows; not a server, not a service.
 | `catalog/` | Domain model: `Catalog`, `CatalogSeri`, `CatalogMessage`, `OnlineResource`, plus the `Ministry` / `View` / `MessageType` enums. No I/O beyond JSON. |
 | `sheet/` | Turns spreadsheet rows into `catalog` types, whatever the spreadsheet is kept in. Defines the read-only `Source` interface. |
 | `sheet/google/` | Google Sheet `Source`, plus the read-only service-account auth. To be retired once the Excel workbook is the system of record. |
-| `sheet/microsoft/` | Excel workbook `Source`, read even while Excel has it open. |
+| `sheet/microsoft/` | Excel workbook `Source`: read from the running desktop Excel over COM when it has the workbook open (Windows only), otherwise from the local file, which can be read even while Excel has it open. Read-only either way. |
 | `util/` | Small helpers: hashing, path normalization, stopwatch, indenting report. |
 
 ## Conventions

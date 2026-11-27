@@ -8,8 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/WordOfLifeMN/online/sheet/microsoft"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xuri/excelize/v2"
 )
 
 func TestClassifySheetRef(t *testing.T) {
@@ -84,6 +86,50 @@ func TestDescribeSaved(t *testing.T) {
 	for _, tt := range tests {
 		assert.Equal(t, tt.want, describeSaved(tt.saved, now))
 	}
+}
+
+// namedSource is a sheet.Source that only has a name, standing in for one read live
+type namedSource struct{ name string }
+
+func (n namedSource) Title() string                   { return n.name }
+func (n namedSource) Tabs() ([]string, error)         { return nil, nil }
+func (n namedSource) Rows(string) ([][]string, error) { return nil, nil }
+
+// workbookSavedAt writes a small workbook that records it was saved at saved
+func workbookSavedAt(t *testing.T, saved time.Time) *microsoft.Workbook {
+	f := excelize.NewFile()
+	defer f.Close()
+	require.NoError(t, f.SetDocProps(&excelize.DocProperties{Modified: saved.UTC().Format(time.RFC3339)}))
+	path := filepath.Join(t.TempDir(), "Catalog.xlsx")
+	require.NoError(t, f.SaveAs(path))
+	w, err := microsoft.OpenFile(path)
+	require.NoError(t, err)
+	return w
+}
+
+func TestPrintWorkbookReading(t *testing.T) {
+	now := time.Date(2026, 11, 27, 11, 4, 52, 0, time.Local)
+
+	t.Run("read live from Excel", func(t *testing.T) {
+		var out bytes.Buffer
+		printWorkbookReading(&out, namedSource{"MediaCatalog.xlsx"}, microsoft.Reading{Live: true}, now)
+		assert.Equal(t, "Reading MediaCatalog.xlsx from Excel (live)\n", out.String())
+	})
+
+	file := workbookSavedAt(t, now.Add(-40*time.Second))
+
+	t.Run("file, Excel not running or workbook not open", func(t *testing.T) {
+		var out bytes.Buffer
+		printWorkbookReading(&out, file, microsoft.Reading{}, now)
+		assert.Equal(t, "Reading Catalog.xlsx (includes edits up to 11:04:12, 40 s ago)\n", out.String())
+	})
+
+	t.Run("file after a fallback", func(t *testing.T) {
+		var out bytes.Buffer
+		printWorkbookReading(&out, file, microsoft.Reading{Fallback: "Excel is busy"}, now)
+		assert.Equal(t, "Excel is busy; reading the file instead\n"+
+			"Reading Catalog.xlsx (includes edits up to 11:04:12, 40 s ago)\n", out.String())
+	})
 }
 
 func TestPrintWorkbookSaved(t *testing.T) {

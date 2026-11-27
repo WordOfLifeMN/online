@@ -2,7 +2,8 @@
 
 **Change ID:** `read-catalog-from-running-excel`
 **Created:** 2026-11-27
-**Status:** Draft
+**Status:** Implementation Complete
+**Completed:** 2026-11-27
 **Depends on:** `add-excel-catalog-source` (the `sheet.Source` interface and the
 `sheet/microsoft` workbook reader)
 
@@ -55,8 +56,14 @@ works; it just reads the local file and says how old that copy is.
   `https://wordoflifeministries.sharepoint.com/sites/VideoDownloads/Shared Documents/WOLCatalog/MediaCatalog.xlsx`.
   So a workbook matches when its `Name` equals the file name in `sheet-id`, and
   either:
-  - its `FullName` is a URL, or
+  - its `FullName` is a URL whose **last folder and file name** match the `sheet-id`
+    path's (`…/WOLCatalog/MediaCatalog.xlsx` against `…\WOLCatalog\MediaCatalog.xlsx`),
+    or
   - its `FullName` is the `sheet-id` path itself.
+
+  *(Changed during implementation: the first draft accepted any URL with the right
+  name. That would let any `MediaCatalog.xlsx` path, such as a backup copy elsewhere,
+  read the live workbook.)*
 - **If more than one open workbook matches**, the tool reads the file and warns, rather
   than guessing.
 
@@ -146,14 +153,14 @@ so, then shows the file line, for example:
 
 ## Success Criteria
 
-- [ ] With the workbook open in desktop Excel, an edit made in the browser shows up in
+- [x] With the workbook open in desktop Excel, an edit made in the browser shows up in
       the next `online` run within a few seconds, with no file sync.
-- [ ] With Excel closed, the tool reads the local file and says how old it is, as now.
-- [ ] A `dump` read from Excel equals a `dump` read from the file once OneDrive has
+- [x] With Excel closed, the tool reads the local file and says how old it is, as now.
+- [x] A `dump` read from Excel equals a `dump` read from the file once OneDrive has
       synced, apart from `created`.
-- [ ] The tool never starts Excel, and never changes the workbook or Excel's state
+- [x] The tool never starts Excel, and never changes the workbook or Excel's state
       (window, selection, saved status).
-- [ ] If Excel is busy, the tool falls back to the file within a few seconds, saying
+- [x] If Excel is busy, the tool falls back to the file within a few seconds, saying
       why, instead of hanging.
 
 ## Risks & Mitigations

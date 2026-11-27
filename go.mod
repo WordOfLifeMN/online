@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/agnivade/levenshtein v1.2.1
 	github.com/anthropics/anthropic-sdk-go v1.78.0
+	github.com/go-ole/go-ole v1.3.0
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
