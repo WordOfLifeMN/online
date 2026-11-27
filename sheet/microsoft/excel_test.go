@@ -85,7 +85,7 @@ func (t *WorkbookTestSuite) SetupTest() {
 func strPtr(s string) *string { return &s }
 
 func (t *WorkbookTestSuite) TestOpen() {
-	w, err := Open(t.path)
+	w, err := OpenFile(t.path)
 	t.Require().NoError(err)
 
 	t.Equal("MediaCatalog.xlsx", w.Title())
@@ -122,14 +122,14 @@ func (t *WorkbookTestSuite) TestSaved_NotRecorded() {
 	path := filepath.Join(t.T().TempDir(), "bare.xlsx")
 	t.Require().NoError(os.WriteFile(path, buf.Bytes(), 0o644))
 
-	w, err := Open(path)
+	w, err := OpenFile(path)
 	t.Require().NoError(err)
 	_, ok := w.Saved()
 	t.False(ok)
 }
 
 func (t *WorkbookTestSuite) TestRows() {
-	w, err := Open(t.path)
+	w, err := OpenFile(t.path)
 	t.Require().NoError(err)
 
 	rows, err := w.Rows("WOL")
@@ -149,7 +149,7 @@ func (t *WorkbookTestSuite) TestRows() {
 }
 
 func (t *WorkbookTestSuite) TestNewCatalog() {
-	w, err := Open(t.path)
+	w, err := OpenFile(t.path)
 	t.Require().NoError(err)
 
 	cat, err := sheet.NewCatalog(w)
@@ -178,7 +178,7 @@ func (t *WorkbookTestSuite) TestReadDoesNotChangeTheWorkbook() {
 	modBefore := info.ModTime()
 
 	time.Sleep(20 * time.Millisecond) // so a write would show in the modification time
-	w, err := Open(t.path)
+	w, err := OpenFile(t.path)
 	t.Require().NoError(err)
 	_, err = sheet.NewCatalog(w)
 	t.Require().NoError(err)
@@ -194,16 +194,16 @@ func (t *WorkbookTestSuite) TestReadDoesNotChangeTheWorkbook() {
 func (t *WorkbookTestSuite) TestOpen_Errors() {
 	dir := t.T().TempDir()
 
-	_, err := Open(filepath.Join(dir, "missing.xlsx"))
+	_, err := OpenFile(filepath.Join(dir, "missing.xlsx"))
 	t.ErrorContains(err, "missing.xlsx")
 
 	csv := filepath.Join(dir, "catalog.csv")
 	t.Require().NoError(os.WriteFile(csv, []byte("a,b\n"), 0o644))
-	_, err = Open(csv)
+	_, err = OpenFile(csv)
 	t.ErrorContains(err, "only .xlsx and .xlsm")
 
 	junk := filepath.Join(dir, "junk.xlsx")
 	t.Require().NoError(os.WriteFile(junk, []byte("not a zip"), 0o644))
-	_, err = Open(junk)
+	_, err = OpenFile(junk)
 	t.ErrorContains(err, "junk.xlsx")
 }

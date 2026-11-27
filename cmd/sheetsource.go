@@ -65,16 +65,35 @@ func openSheetSource(ctx context.Context, ref string) (sheet.Source, error) {
 		return google.Open(ctx, ref)
 	}
 
-	w, err := microsoft.Open(ref)
+	src, reading, err := microsoft.Open(ref)
 	if err != nil {
 		return nil, err
 	}
-	saved, ok := w.Saved()
-	printWorkbookSaved(os.Stderr, w.Title(), saved, ok, w.ModTime(), time.Now())
-	return w, nil
+	printWorkbookReading(os.Stderr, src, reading, time.Now())
+	return src, nil
 }
 
-// printWorkbookSaved says how up to date the workbook that was read is. Edits reach
+// printWorkbookReading says where the workbook was read from. Read from the running
+// Excel, it is as current as Excel is. Read from the file, the line says which edits the
+// copy includes, after the reason Excel couldn't be used, if there was one worth
+// mentioning.
+//
+// It goes to stderr, so it can't corrupt 'online dump -o stdout'.
+func printWorkbookReading(w io.Writer, src sheet.Source, reading microsoft.Reading, now time.Time) {
+	if reading.Live {
+		fmt.Fprintf(w, "Reading %s from Excel (live)\n", src.Title())
+		return
+	}
+	if reading.Fallback != "" {
+		fmt.Fprintf(w, "%s; reading the file instead\n", reading.Fallback)
+	}
+	if file, ok := src.(*microsoft.Workbook); ok {
+		saved, ok := file.Saved()
+		printWorkbookSaved(w, file.Title(), saved, ok, file.ModTime(), now)
+	}
+}
+
+// printWorkbookSaved says how up to date a workbook read from its file is. Edits reach
 // the local copy only when OneDrive brings them down, seconds or minutes after they are
 // made, so this is how the operator can tell whether the last edit is in yet.
 //

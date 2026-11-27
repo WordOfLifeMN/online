@@ -20,7 +20,9 @@ import (
 // It is the hand-maintained system of record for the entire media catalog, as the
 // Google Sheet was before it, and a damaged copy syncs to OneDrive within seconds. So
 // the file is opened for reading only (see readShared), parsed from a copy in memory,
-// and excelize's Save, SaveAs and Write are never called.
+// and excelize's Save, SaveAs and Write are never called. When the workbook is read
+// from the running Excel instead (live_windows.go), only properties are read over COM:
+// nothing is set, saved, activated or selected, and Excel is never started.
 //
 // Do NOT add a write path here as an incidental part of some other change. If writing
 // to the workbook is ever genuinely wanted, raise it, discuss it, and get explicit
@@ -37,13 +39,22 @@ type Workbook struct {
 
 var _ sheet.Source = (*Workbook)(nil)
 
-// Open reads a workbook into memory, even while Excel has it open. The file is closed
-// again before Open returns.
-func Open(path string) (*Workbook, error) {
+// checkExtension refuses a path that can't be an Excel workbook
+func checkExtension(path string) error {
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".xlsx", ".xlsm":
+		return nil
 	default:
-		return nil, fmt.Errorf("%s is not an Excel workbook: only .xlsx and .xlsm files are supported", path)
+		return fmt.Errorf("%s is not an Excel workbook: only .xlsx and .xlsm files are supported", path)
+	}
+}
+
+// OpenFile reads a workbook file into memory, even while Excel has it open. The file
+// is closed again before OpenFile returns. Open prefers the running Excel, and uses
+// this when Excel doesn't have the workbook open.
+func OpenFile(path string) (*Workbook, error) {
+	if err := checkExtension(path); err != nil {
+		return nil, err
 	}
 
 	info, err := os.Stat(path)
@@ -161,12 +172,8 @@ func (w *Workbook) dateValue(tab, cell string) (string, bool) {
 		return "", false
 	}
 	serial, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
-	if err != nil || serial < 1 {
-		return "", false
-	}
-	t, err := excelize.ExcelDateToTime(serial, w.date1904)
 	if err != nil {
 		return "", false
 	}
-	return t.Format("2006-01-02"), true
+	return serialDate(serial, w.date1904)
 }

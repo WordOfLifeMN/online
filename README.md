@@ -140,13 +140,28 @@ which:
 - **Google Sheet:** anything else is taken as a Sheet ID.
 - **A URL is refused.** It is neither of the above.
 
-The workbook can be read while it is open in Excel, so there is no need to close
-it first. It is only ever read, never written.
+The workbook is only ever read, never written, whether from Excel or from the file.
+
+**Keep the workbook open in desktop Excel in the background, and edit in the
+browser.** When desktop Excel has the workbook open, the tool reads it straight from
+Excel, which picks up browser edits within a few seconds:
+
+```
+Reading MediaCatalog.xlsx from Excel (live)
+```
+
+The tool never starts Excel or opens the workbook in it. The open workbook must be
+the one `sheet-id` names: the same file name in the same folder (a SharePoint URL
+ending `…/WOLCatalog/MediaCatalog.xlsx` matches a path ending
+`…\WOLCatalog\MediaCatalog.xlsx`).
+
+Otherwise the local file is read. If Excel had the workbook but couldn't be used, the
+tool says why first, for example `Excel is busy; reading the file instead` (you were
+typing in a cell). Finish the edit and run again to read it live.
 
 Edits are saved to OneDrive/SharePoint at once, but they reach the local file only
-when OneDrive syncs it. Edits made in the browser took about five minutes to arrive.
-With desktop Excel open it was anywhere from 7 seconds to over a minute. So every
-read shows which edits the local copy includes:
+when OneDrive syncs it, which took between 5 and 14 minutes for browser edits. So a
+read from the file shows which edits the local copy includes:
 
 ```
 Reading MediaCatalog.xlsx (includes edits up to 12:28:26, 5 min ago)
